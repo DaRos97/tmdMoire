@@ -65,6 +65,7 @@ class ParameterFitter:
         self.config = config
         self.min_chi2 = 1e5
         self.evaluation_step = 0
+        self._gap_DFT = self._compute_DFT_gap()
 
     def chi2(self, params_tb: np.ndarray, HSO: np.ndarray, SOC_pars: np.ndarray,
              max_eval: int, return_energy: bool = False) -> float:
@@ -169,14 +170,7 @@ class ParameterFitter:
         K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
 
         # K5: band gap at K vs DFT (relative error)
-        DFT_params = self.material.dft_params
-        args_H_DFT = (self.material.build_hopping_matrices(DFT_params),
-                      self.material.build_onsite_energies(DFT_params),
-                      self.material.build_soc_hamiltonian(DFT_params),
-                      DFT_params[-3])
-        Ham_DFT = self._build_hamiltonian(np.array([self.arpes_data.K]), args_H_DFT)
-        evals_DFT = np.linalg.eigvalsh(Ham_DFT[0])
-        gap_DFT = evals_DFT[14] - evals_DFT[13]
+        gap_DFT = self._gap_DFT
         gap_p = evals_K[14] - evals_K[13]
         K5_gap = abs(gap_DFT - gap_p) / gap_DFT
 
@@ -264,6 +258,37 @@ class ParameterFitter:
                           method="Nelder-Mead",
                           options={"disp": True, "adaptive": True, "fatol": 1e-4, "maxiter": 1e6})
         return {"x": result.x, "fun": result.fun}
+
+    def compute_bands(self, params: np.ndarray | None = None) -> np.ndarray:
+        """Compute TB band energies at ARPES k-points.
+
+        Parameters
+        ----------
+        params : np.ndarray, optional
+            43-parameter array. Defaults to DFT params.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(6, n_kpts)`` — top 6 valence band energies.
+        """
+        if params is None:
+            params = self.material.dft_params
+
+        SOC_pars = params[-2:]
+        HSO = self.material.build_soc_hamiltonian(SOC_pars)
+        return self.chi2(params[:-2], HSO, SOC_pars, max_eval=1, return_energy=True)
+
+    def _compute_DFT_gap(self) -> float:
+        """Precompute the DFT band gap at K (constant throughout fitting)."""
+        DFT = self.material.dft_params
+        args = (self.material.build_hopping_matrices(DFT),
+                self.material.build_onsite_energies(DFT),
+                self.material.build_soc_hamiltonian(DFT),
+                DFT[-3])
+        Ham = self._build_hamiltonian(np.array([self.arpes_data.K]), args)
+        ev = np.linalg.eigvalsh(Ham[0])
+        return ev[14] - ev[13]
 
     def _build_hamiltonian(self, k_points, args_H):
         """Build the monolayer Hamiltonian at given k-points (internal)."""
