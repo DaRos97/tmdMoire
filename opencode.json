@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "allow",
+          "npm install*": "ask",
+          "npm i *": "ask",
+          "pip install*": "ask",
+          "pip3 install*": "ask",
+          "yarn add*": "ask",
+          "yarn install*": "ask",
+          "bun install*": "ask",
+          "bun add*": "ask",
+          "pnpm install*": "ask",
+          "pnpm add*": "ask",
+          "conda install*": "ask",
+          "conda env*": "ask",
+          "apt-get install*": "ask",
+          "apt install*": "ask",
+          "brew install*": "ask"
+        }
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+    "code-reviewer": {
+      "description": "Reviews code for best practices and potential issues",
+      "mode": "subagent",
+      "prompt": "You are a code reviewer. Focus on security, performance, and maintainability.",
+      "permission": {
+        "edit": "deny"
+      }
+    }
+  }
+}

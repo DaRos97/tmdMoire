@@ -4,9 +4,127 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
 import matplotlib.ticker as ticker
+from pathlib import Path
 from .constants import (
     FORMATTED_NAMES, IND_OFF, IND_PZ, IND_PXY, IND_SOC,
 )
+
+
+def plot_data_pipeline(arpes, tmd=None, save_dir=None):
+    """Plot the three stages of ARPES data processing: raw → symmetrized → interpolated.
+
+    Produces a 3-column figure showing, for each band on each path:
+    - Left: raw experimental data (momentum vs energy)
+    - Center: symmetrized data (averaged K→Γ and Γ→K segments)
+    - Right: interpolated data on the uniform fitting grid
+
+    Parameters
+    ----------
+    arpes : ARPESData
+        ARPESData instance with raw_data, sym_data, and fit_data populated.
+    tmd : str, optional
+        Material name for the filename. Inferred from ``arpes.tmd`` if not given.
+    save_dir : str or Path, optional
+        Directory to save the figure. If None, uses ``Figures/`` relative to
+        the repository root.
+    """
+    tmd = tmd or arpes.tmd
+    paths = arpes.paths
+    nbands = arpes.nbands
+
+    fig, axes = plt.subplots(len(paths), 3, figsize=(18, 4 * len(paths)),
+                             sharey=True, constrained_layout=True)
+    if len(paths) == 1:
+        axes = axes[np.newaxis, :]
+
+    path_labels = {"KpGK": r"$K' \rightarrow \Gamma \rightarrow K$",
+                   "KMKp": r"$K \rightarrow M \rightarrow K'$"}
+
+    stage_titles = ["Raw data", "Symmetrized", "Interpolated (fitting grid)"]
+
+    for ip, path in enumerate(paths):
+        for ib in range(nbands[path]):
+            ax_raw = axes[ip, 0]
+            ax_sym = axes[ip, 1]
+            ax_interp = axes[ip, 2]
+
+            # Raw data
+            rd = arpes.raw_data[path][ib]
+            valid = ~np.isnan(rd[:, 1])
+            ax_raw.scatter(rd[valid, 0], rd[valid, 1], s=4, c="steelblue", alpha=0.6)
+            ax_raw.axhline(0, color="gray", lw=0.5, ls="--")
+            ax_raw.set_title(f"Band {ib + 1}", fontsize=11)
+            if ip == 0:
+                ax_raw.set_title(stage_titles[0], fontsize=12, fontweight="bold")
+            if ip == len(paths) - 1:
+                ax_raw.set_xlabel("Momentum (Å⁻¹)", fontsize=10)
+            if ib == 0:
+                ax_raw.set_ylabel("Energy (eV)", fontsize=10)
+
+            # Symmetrized data
+            sd = arpes.sym_data[path][ib]
+            valid = ~np.isnan(sd[:, 1])
+            ax_sym.scatter(sd[valid, 0], sd[valid, 1], s=8, c="darkorange", alpha=0.7)
+            ax_sym.axhline(0, color="gray", lw=0.5, ls="--")
+            if ip == 0:
+                ax_sym.set_title(stage_titles[1], fontsize=12, fontweight="bold")
+            if ip == len(paths) - 1:
+                ax_sym.set_xlabel("Momentum (Å⁻¹)", fontsize=10)
+
+            # Interpolated data
+            fd = arpes.fit_data
+            ptsGK = fd.shape[0] // 3 * 2 if "KMKp" in paths else fd.shape[0]
+            if path == "KpGK":
+                xs = fd[:ptsGK, 0]
+                ys = fd[:ptsGK, 3 + ib]
+            else:
+                xs = fd[ptsGK:, 0]
+                ys = fd[ptsGK:, 3 + ib]
+            valid = ~np.isnan(ys)
+            ax_interp.scatter(xs[valid], ys[valid], s=12, c="forestgreen", alpha=0.8, zorder=3)
+            ax_interp.axhline(0, color="gray", lw=0.5, ls="--")
+
+            # Add high-symmetry point markers on interpolated plot
+            modK = np.linalg.norm(arpes.K)
+            if path == "KpGK":
+                ax_interp.axvline(0, color="k", lw=0.8, ls=":")
+                ax_interp.axvline(modK, color="k", lw=0.8, ls=":")
+                if ib == 0:
+                    ax_interp.text(0, ax_interp.get_ylim()[1] * 0.95, r"$\Gamma$",
+                                   ha="center", va="top", fontsize=9, fontweight="bold")
+                    ax_interp.text(modK, ax_interp.get_ylim()[1] * 0.95, r"$K$",
+                                   ha="center", va="top", fontsize=9, fontweight="bold")
+            else:
+                ax_interp.axvline(modK, color="k", lw=0.8, ls=":")
+                modKM = modK + np.linalg.norm(arpes.M - arpes.K)
+                ax_interp.axvline(modKM, color="k", lw=0.8, ls=":")
+                if ib == 0:
+                    ax_interp.text(modK, ax_interp.get_ylim()[1] * 0.95, r"$K$",
+                                   ha="center", va="top", fontsize=9, fontweight="bold")
+                    ax_interp.text(modKM, ax_interp.get_ylim()[1] * 0.95, r"$M$",
+                                   ha="center", va="top", fontsize=9, fontweight="bold")
+
+            if ip == 0:
+                ax_interp.set_title(stage_titles[2], fontsize=12, fontweight="bold")
+            if ip == len(paths) - 1:
+                ax_interp.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=10)
+
+        # Row label
+        for ax in axes[ip]:
+            ax.text(-0.15, 0.5, path_labels.get(path, path),
+                    transform=ax.transAxes, rotation=90, va="center",
+                    fontsize=12, fontweight="bold")
+
+    fig.suptitle(f"ARPES data processing pipeline — {tmd}", fontsize=14, fontweight="bold", y=1.01)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[1] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / f"data_pipeline_{tmd}.png"
+    fig.savefig(fn, dpi=150, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
 
 
 def plot_bands(tb_en, data, legend_info):

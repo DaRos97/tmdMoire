@@ -47,6 +47,8 @@ def get_master_folder(cwd: str) -> str:
         return cwd[:20] + "/git/MoireBands/Code/"
     elif cwd[:13] == "/users/rossid":
         return cwd[:13] + "/git/MoireBands/Code/"
+    else:
+        return ''
 
 
 def get_home_dn(machine: str, context: str = "monolayer") -> str:
