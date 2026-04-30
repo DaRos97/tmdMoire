@@ -130,14 +130,12 @@ class ParameterFitter:
         # K1: parameter distance from DFT
         K1_par_dis = self.material.parameter_distance(full_params)
 
-        # K2: orbital band content at M
+        # K2: orbital band content at M (mean per orbital per band)
         k_pts_bc = np.array([self.arpes_data.M, np.zeros(2), self.arpes_data.K])
         Ham_bc = self._build_hamiltonian(k_pts_bc, args_H)
         evals_M, evecs_M = np.linalg.eigh(Ham_bc[0])
         bandsM = TVB4 if self.material.name == "WSe2" else TVB2
-        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2)
-        if self.material.name == "WS2":
-            K2_M *= 2
+        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2) / (len(IND_ILC) * len(bandsM))
 
         # K3: orbital occupation at Gamma and K
         evals_G, evecs_G = np.linalg.eigh(Ham_bc[1])
@@ -161,7 +159,7 @@ class ParameterFitter:
         K3_DFT = (abs(occ_ze - G_ze_tvb1) + abs(occ_ze - G_ze_tvb2)
                   + abs(occ_z2 - G_z2_tvb1) + abs(occ_z2 - G_z2_tvb2)
                   + abs(occ_p1_tvb1 - K_p1_tvb1) + abs(occ_p1_tvb2 - K_p1_tvb2)
-                  + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2))
+                  + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2)) / 8
 
         # K4: conduction band minimum at K
         # Continuous penalty: squared relative distance of CBM from K point
@@ -170,7 +168,7 @@ class ParameterFitter:
         k_mod = np.linalg.norm(self.arpes_data.K)
         K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
 
-        # K5: band gap at K vs DFT
+        # K5: band gap at K vs DFT (relative error)
         DFT_params = self.material.dft_params
         args_H_DFT = (self.material.build_hopping_matrices(DFT_params),
                       self.material.build_onsite_energies(DFT_params),
@@ -180,7 +178,7 @@ class ParameterFitter:
         evals_DFT = np.linalg.eigvalsh(Ham_DFT[0])
         gap_DFT = evals_DFT[14] - evals_DFT[13]
         gap_p = evals_K[14] - evals_K[13]
-        K5_gap = abs(gap_DFT - gap_p)
+        K5_gap = abs(gap_DFT - gap_p) / gap_DFT
 
         result = chi2_band_distance + (K1 * K1_par_dis + K2 * K2_M
                                        + K3 * K3_DFT + K4 * K4_band_min + K5 * K5_gap)

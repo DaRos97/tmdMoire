@@ -5,6 +5,31 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Two-stag
 1. **Monolayer** — Fit 43 tight-binding parameters per TMD (WSe₂, WS₂) to ARPES data
 2. **Bilayer** — Build moiré supercell Hamiltonian, compute EDCs, extract moiré potential & interlayer coupling
 
+## Table of Contents
+
+- [Monolayer Fitting](#monolayer-fitting)
+  - [Overview](#overview)
+  - [Experimental data processing](#experimental-data-processing)
+    - [1. Raw loading](#1-raw-loading)
+    - [2. Symmetrization](#2-symmetrization)
+    - [3. Interpolation](#3-interpolation)
+  - [Hamiltonian basis](#hamiltonian-basis)
+  - [43 fitted parameters](#43-fitted-parameters)
+  - [Chi-squared objective](#chi-squared-objective)
+    - [Band distance](#band-distance)
+    - [K₁ — parameter distance from DFT](#k1--parameter-distance-from-dft)
+    - [K₂ — orbital band content at M](#k2--orbital-band-content-at-m)
+    - [K₃ — orbital occupation at Γ and K](#k3--orbital-occupation-at-%CE%93-and-k)
+    - [K₄ — conduction band minimum at K](#k4--conduction-band-minimum-at-k)
+    - [K₅ — band gap at K](#k5--band-gap-at-k)
+    - [K₆ — high-symmetry point weight](#k6--high-symmetry-point-weight)
+  - [Quick start](#quick-start)
+  - [Programmatic usage](#programmatic-usage)
+  - [Output](#output)
+  - [Lattice constants](#lattice-constants)
+- [Bilayer Moiré Bands](#bilayer-moir%C3%A9-bands)
+- [References](#references)
+
 ## Monolayer Fitting
 
 ### Overview
@@ -81,17 +106,96 @@ Indices 11–21 are the spin-down counterparts.
 
 ### Chi-squared objective
 
-The minimization optimizes a weighted sum of six terms:
+The minimization optimizes a weighted sum:
 
-| Term | Weight | Description |
-|---|---|---|
-| Band distance | 1.0 | Σ(TB band − ARPES band)² |
-| K₁ | variable | Parameter distance from DFT values |
-| K₂ | variable | Orbital band content at M point |
-| K₃ | variable | Orbital occupation at Γ and K vs DFT |
-| K₄ | variable | Conduction band minimum position at K |
-| K₅ | variable | Band gap at K vs DFT gap |
-| K₆ | variable | Weight multiplier for high-symmetry points (Γ, K, M) |
+```
+χ² = χ²_band + K₁·C₁ + K₂·C₂ + K₃·C₃ + K₄·C₄ + K₅·C₅
+```
+
+where `χ²_band` is the band distance term and `C₁`–`C₅` are the five physical constraints. All constraint terms are normalized to O(0–1) so that the weights `K₁`–`K₅` directly encode physical importance.
+
+#### Band distance
+
+**What it does**: Measures how well the TB band energies match the experimental ARPES data across all 6 bands and all k-points.
+
+**Implementation**: For each band `b` and k-point `i`, compute the squared residual `(E_TB - E_ARPES)²`. Sum over all valid (non-NaN) data points across all bands, then divide by the total number of valid points. Four special k-points (Γ, top of band 1, minimum of band 2, and M) receive an additional weight multiplier `K₆`:
+
+```python
+χ²_band = Σ_b Σ_i [w_i · (E_TB[b,i] - E_ARPES[b,i])²] / N_total_valid
+```
+
+where `w_i = K₆` at the four special points and `w_i = 1` elsewhere.
+
+#### K₁ — parameter distance from DFT
+
+**What it does**: Penalizes parameters that deviate far from their DFT-derived initial values, preventing unphysical results.
+
+**Implementation**: Mean absolute relative deviation of all parameters (except the global offset) from their DFT values. Excludes the offset (index 40) since it is a fitting artifact, not a physical parameter:
+
+```python
+C₁ = [ Σ_{i≠40} |p_i - p_DFT,i| / |p_DFT,i| ] / (N_params - 1)
+```
+
+Typical range: 0 (at DFT) to ~2 (large deviations).
+
+#### K₂ — orbital band content at M
+
+**What it does**: Ensures the top valence bands at the M point have the correct interlayer-coupling orbital character (p_z^o, d_z², p_z^e). DFT predicts these orbitals should have low weight at M for the valence bands.
+
+**Implementation**: Sum the squared eigenvector components `|c|²` for the 6 interlayer-coupling orbitals (IND_ILC) across the top valence bands (4 for WSe₂, 2 for WS₂) at the M point, then normalize by the number of terms:
+
+```python
+C₂ = Σ_{orb ∈ ILC} Σ_{band ∈ TVB} |⟨orb|ψ_band(M)⟩|² / (|ILC| × |TVB|)
+```
+
+Typical range: 0.01–0.2 (DFT values are small, ~0.05 for WSe₂, ~0.11 for WS₂).
+
+#### K₃ — orbital occupation at Γ and K
+
+**What it does**: Enforces the DFT-derived orbital occupations of the top valence bands at the high-symmetry points Γ and K. These occupations are well-defined from symmetry and serve as strong physical anchors.
+
+**Implementation**: Eight absolute differences between target DFT occupations and the computed occupations:
+
+- **At Γ** (4 terms): p_z^e and d_z² content in each of the two degenerate TVB states
+- **At K** (4 terms): p₋₁^e and d₂ content in each of the two TVB states (p₋₁^e = (p_x^e - i·p_y^e)/√2, d₂ = (d_x²-y² - i·d_xy)/√2)
+
+The sum is divided by 8 to give a mean occupation error:
+
+```python
+C₃ = [ Σ |occ_DFT - occ_TB| ] / 8
+```
+
+Typical range: 0 (perfect match) to ~0.5 (poor match).
+
+#### K₄ — conduction band minimum at K
+
+**What it does**: Forces the conduction band minimum (CBM) to sit at the K point, as required by the physics of TMD monolayers.
+
+**Implementation**: Squared relative distance between the k-point where the CBM occurs and the K point magnitude:
+
+```python
+C₄ = [(|k_CBM| - |K|) / |K|]²
+```
+
+Value is 0 when the CBM is exactly at K, ~0.34 when at M, and ~1 when at Γ. This provides a smooth gradient that the optimizer can follow.
+
+#### K₅ — band gap at K
+
+**What it does**: Keeps the band gap at K close to the DFT-predicted value. The absolute gap size is less certain than the band dispersion shape, so this acts as a soft constraint.
+
+**Implementation**: Relative difference between the current gap and the DFT gap at K:
+
+```python
+C₅ = |gap_DFT - gap_TB| / gap_DFT
+```
+
+Typical range: 0 (matches DFT) to ~0.5 (50% deviation).
+
+#### K₆ — high-symmetry point weight
+
+**What it does**: Increases the importance of four special k-points in the band distance term: Γ (index 0), the top of band 1, the minimum of band 2, and the M point (last index). These points are physically significant and should be fitted accurately.
+
+**Implementation**: Multiplies the residual weight `w_i` by `K₆` at these four k-points. With `K₆ = 5`, each residual at a special point contributes 5× as much to χ²_band as a regular point.
 
 ### Quick start
 
