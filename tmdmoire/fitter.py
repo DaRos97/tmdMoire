@@ -42,10 +42,8 @@ class ParameterFitter:
 
     Attributes
     ----------
-    min_chi2 : float
-        Best chi-squared value found so far.
-    evaluation_step : int
-        Number of chi-squared evaluations performed.
+    _gap_DFT : float
+        Precomputed DFT band gap at K (constant throughout fitting).
 
     Examples
     --------
@@ -64,12 +62,10 @@ class ParameterFitter:
         self.material = material
         self.arpes_data = arpes_data
         self.config = config
-        self.min_chi2 = 1e5
-        self.evaluation_step = 0
         self._gap_DFT = self._compute_DFT_gap()
 
     def chi2(self, params_tb: np.ndarray, HSO: np.ndarray, SOC_pars: np.ndarray,
-             max_eval: int, return_energy: bool = False) -> float:
+             return_energy: bool = False) -> float:
         """Compute chi-squared for a given set of TB parameters (excluding SOC).
 
         Parameters
@@ -80,8 +76,6 @@ class ParameterFitter:
             Pre-computed 22×22 SOC Hamiltonian.
         SOC_pars : np.ndarray
             SOC parameters [L_W, L_S].
-        max_eval : int
-            Maximum number of evaluations before raising an error.
         return_energy : bool
             If True, return band energies instead of chi-squared.
 
@@ -178,24 +172,15 @@ class ParameterFitter:
         result = chi2_band_distance + (K1 * K1_par_dis + K2 * K2_M
                                        + K3 * K3_DFT + K4 * K4_band_min + K5 * K5_gap)
 
-        self.evaluation_step += 1
-        if result < self.min_chi2:
-            self.min_chi2 = result
-
-        if self.evaluation_step > max_eval:
-            raise RuntimeError(f"Reached max number of evaluations ({max_eval})")
-
         return result
 
-    def chi2_full(self, params_full: np.ndarray, max_eval: int, return_energy: bool = False) -> float:
+    def chi2_full(self, params_full: np.ndarray, return_energy: bool = False) -> float:
         """Wrapper that includes SOC parameters in the fit.
 
         Parameters
         ----------
         params_full : np.ndarray
             Full 43-parameter array (including SOC).
-        max_eval : int
-            Maximum number of evaluations.
         return_energy : bool
             If True, return band energies instead of chi-squared.
 
@@ -206,7 +191,7 @@ class ParameterFitter:
         """
         SOC_pars = params_full[-2:]
         HSO = self.material.build_soc_hamiltonian(SOC_pars)
-        return self.chi2(params_full[:-2], HSO, SOC_pars, max_eval, return_energy)
+        return self.chi2(params_full[:-2], HSO, SOC_pars, return_energy)
 
     def get_bounds(self) -> list[tuple]:
         """Generate parameter bounds based on the configured bound type.
@@ -255,11 +240,11 @@ class ParameterFitter:
 
         if self.config["Bs"][-1] == 0:
             HSO = self.material.build_soc_hamiltonian()
-            args_chi2 = (HSO, self.material.dft_params[-2:], maxiter, False)
+            args_chi2 = (HSO, self.material.dft_params[-2:], False)
             bounds = self.get_bounds()[:-2]
             func = lambda x: self.chi2(x, *args_chi2)
         else:
-            args_chi2 = (maxiter, False)
+            args_chi2 = (False,)
             bounds = self.get_bounds()
             func = lambda x: self.chi2_full(x, *args_chi2)
 
@@ -294,7 +279,7 @@ class ParameterFitter:
 
         SOC_pars = params[-2:]
         HSO = self.material.build_soc_hamiltonian(SOC_pars)
-        return self.chi2(params[:-2], HSO, SOC_pars, max_eval=1, return_energy=True)
+        return self.chi2(params[:-2], HSO, SOC_pars, return_energy=True)
 
     def _compute_DFT_gap(self) -> float:
         """Precompute the DFT band gap at K (constant throughout fitting)."""
