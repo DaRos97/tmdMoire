@@ -94,7 +94,7 @@ class ParameterFitter:
         hopping = self.material.build_hopping_matrices(full_params)
         epsilon = self.material.build_onsite_energies(full_params)
         offset = full_params[-3]
-        args_H = (hopping, epsilon, HSO, self.material.lattice_constant, offset)
+        args_H = (hopping, epsilon, HSO, offset)
 
         k_pts = self.arpes_data.fit_data[:, 1:3]
         all_H = self._build_hamiltonian(k_pts, args_H)
@@ -161,17 +161,18 @@ class ParameterFitter:
                   + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2))
 
         # K4: conduction band minimum at K
-        if abs(self.arpes_data.fit_data[np.argmin(cond_en), 0] - self.arpes_data.K[0]) < 1e-3:
-            K4_band_min = 0
-        else:
-            K4_band_min = 1
+        # Continuous penalty: squared relative distance of CBM from K point
+        cbm_idx = np.argmin(cond_en)
+        cbm_k = self.arpes_data.fit_data[cbm_idx, 0]
+        k_mod = np.linalg.norm(self.arpes_data.K)
+        K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
 
         # K5: band gap at K vs DFT
         DFT_params = self.material.dft_params
         args_H_DFT = (self.material.build_hopping_matrices(DFT_params),
                       self.material.build_onsite_energies(DFT_params),
                       self.material.build_soc_hamiltonian(DFT_params),
-                      self.material.lattice_constant, DFT_params[-3])
+                      DFT_params[-3])
         Ham_DFT = self._build_hamiltonian(np.array([self.arpes_data.K]), args_H_DFT)
         evals_DFT = np.linalg.eigvalsh(Ham_DFT[0])
         gap_DFT = evals_DFT[14] - evals_DFT[13]
