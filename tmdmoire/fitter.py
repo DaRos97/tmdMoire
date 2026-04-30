@@ -1,10 +1,11 @@
-"""Parameter fitting: chi-squared objective and Nelder-Mead minimization.
+"""Parameter fitting: chi-squared objective and dual annealing minimization.
 
 The ``ParameterFitter`` class encapsulates the full monolayer fitting
 procedure. It computes a weighted chi-squared objective function that
 combines band dispersion matching with physical constraints (orbital
 character, parameter distance from DFT, band gap, etc.), then minimizes
-it using scipy's Nelder-Mead algorithm.
+it using scipy's dual annealing algorithm chained with Nelder-Mead for
+local refinement.
 
 Chi-squared terms:
     - Band distance: Σ(TB band − ARPES band)² (always included)
@@ -25,7 +26,7 @@ from .arpes_data import ARPESData
 
 
 class ParameterFitter:
-    """Fits tight-binding parameters to ARPES data via Nelder-Mead minimization.
+    """Fits tight-binding parameters to ARPES data via dual annealing + Nelder-Mead.
 
     Parameters
     ----------
@@ -56,7 +57,7 @@ class ParameterFitter:
     ...     "Bs": (5, 2, 4, 1, 0),
     ... }
     >>> fitter = ParameterFitter(material, arpes, config)
-    >>> result = fitter.run(material.dft_params, max_eval=int(1e4))
+    >>> result = fitter.run(maxiter=int(1e4), seed=42)
     """
 
     def __init__(self, material: TMDMaterial, arpes_data: ARPESData, config: dict):
@@ -223,15 +224,20 @@ class ParameterFitter:
             return self.material.get_bounds_absolute(*Bs)
         raise ValueError(f"Unknown bound type: {bt}")
 
-    def run(self, initial_params: np.ndarray, max_eval: int = 5e6) -> dict:
-        """Run the Nelder-Mead minimization.
+    def run(self, initial_params: np.ndarray | None = None, maxiter: int = 3000, seed: int = 42) -> dict:
+        """Run global optimization via dual annealing + Nelder-Mead refinement.
+
+        Dual annealing explores the full parameter space (reproducible with seed),
+        then Nelder-Mead refines the best solution locally.
 
         Parameters
         ----------
-        initial_params : np.ndarray
-            Starting parameter values (typically DFT params).
-        max_eval : int
-            Maximum number of chi-squared evaluations.
+        initial_params : np.ndarray, optional
+            Starting point for the annealing trajectory. Defaults to DFT params.
+        maxiter : int
+            Maximum dual annealing iterations.
+        seed : int
+            Random seed for reproducibility.
 
         Returns
         -------
@@ -239,25 +245,36 @@ class ParameterFitter:
             Dictionary with keys:
             - ``x``: optimized parameter array
             - ``fun``: final chi-squared value
+            - ``nfev``: total number of function evaluations
+            - ``method``: optimization method used
         """
-        from scipy.optimize import minimize
+        from scipy.optimize import dual_annealing
+
+        if initial_params is None:
+            initial_params = self.material.dft_params
 
         if self.config["Bs"][-1] == 0:
-            # SOC bounds set to 0: fit only TB params, HSO fixed from DFT
             HSO = self.material.build_soc_hamiltonian()
-            args_chi2 = (HSO, self.material.dft_params[-2:], max_eval, False)
+            args_chi2 = (HSO, self.material.dft_params[-2:], maxiter, False)
             bounds = self.get_bounds()[:-2]
             func = lambda x: self.chi2(x, *args_chi2)
         else:
-            # Fit all parameters including SOC
-            args_chi2 = (max_eval, False)
+            args_chi2 = (maxiter, False)
             bounds = self.get_bounds()
             func = lambda x: self.chi2_full(x, *args_chi2)
 
-        result = minimize(func, args=(), x0=initial_params, bounds=bounds,
-                          method="Nelder-Mead",
-                          options={"disp": True, "adaptive": True, "fatol": 1e-4, "maxiter": 1e6})
-        return {"x": result.x, "fun": result.fun}
+        result = dual_annealing(
+            func,
+            bounds=bounds,
+            x0=initial_params,
+            seed=seed,
+            maxiter=maxiter,
+            minimizer_kwargs={
+                "method": "Nelder-Mead",
+                "options": {"adaptive": True, "fatol": 1e-4, "maxiter": 1e6},
+            },
+        )
+        return {"x": result.x, "fun": result.fun, "nfev": result.nfev, "method": "dual_annealing"}
 
     def compute_bands(self, params: np.ndarray | None = None) -> np.ndarray:
         """Compute TB band energies at ARPES k-points.

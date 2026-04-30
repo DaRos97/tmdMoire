@@ -4,9 +4,10 @@ This script fits 43 tight-binding parameters for a single TMD monolayer
 (WSe2 or WS2) to reproduce ARPES-measured band dispersions along the
 high-symmetry paths K′–Γ–K and K–M–K′.
 
-The fitting uses Nelder-Mead minimization with a weighted chi-squared
-objective that combines band dispersion matching with physical constraints
-(orbital character, parameter distance from DFT, band gap, etc.).
+The fitting uses dual annealing (global search) followed by Nelder-Mead
+(local refinement) with a weighted chi-squared objective that combines
+band dispersion matching with physical constraints (orbital character,
+parameter distance from DFT, band gap, etc.).
 
 Usage
 -----
@@ -55,7 +56,7 @@ from tmdmoire import (
 machine = detect_machine(os.getcwd())
 master_folder = get_master_folder(os.getcwd())
 disp = machine == "loc"
-max_eval = 5e6
+maxiter = 3000
 
 if len(sys.argv) != 3:
     print("Usage: python scripts/fit_monolayer.py <WSe2|WS2> <index>")
@@ -124,8 +125,8 @@ material = TMDMaterial(tmd_name)
 arpes_data = ARPESData(tmd_name, master_folder, pts=pts)
 fitter = ParameterFitter(material, arpes_data, args_minimization)
 
-initial_params = material.dft_params.copy()
-result = fitter.run(initial_params, max_eval=int(max_eval))
+result = fitter.run(maxiter=maxiter, seed=42)
 
 print(f"Final chi2: {result['fun']}")
 print(f"Final parameters: {result['x']}")
+print(f"Evaluations: {result['nfev']}")
