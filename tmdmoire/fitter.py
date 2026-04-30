@@ -109,20 +109,23 @@ class ParameterFitter:
         if return_energy:
             return tb_en
 
-        # Band distance term
-        chi2_band_distance = 0
+        # Band distance term: global normalization over all valid points
+        chi2_band_distance = 0.0
+        total_valid = 0
         special_indices = [0, np.argmax(self.arpes_data.fit_data[:, 3]),
                            np.argmin(self.arpes_data.fit_data[:, 4]),
                            self.arpes_data.fit_data.shape[0] - 1]
         weights = np.ones(self.arpes_data.fit_data.shape[0])
         weights[special_indices] = K6
         for ib in range(nbands):
+            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
             chi2_band_distance += np.sum(
                 np.absolute(
-                    ((tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib]) * weights)
-                    [~np.isnan(self.arpes_data.fit_data[:, 3 + ib])]
-                ) ** 2
-            ) / self.arpes_data.fit_data[~np.isnan(self.arpes_data.fit_data[:, 3 + ib])].shape[0]
+                    (tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib]) * weights
+                )[valid] ** 2
+            )
+            total_valid += valid.sum()
+        chi2_band_distance /= total_valid
 
         # K1: parameter distance from DFT
         K1_par_dis = self.material.parameter_distance(full_params)
