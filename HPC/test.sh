@@ -27,5 +27,5 @@ python3 scripts/run_grid.py ${MATERIAL} --score --run-id ${RUN_ID} --top 1 --plo
 
 echo ""
 echo "=== Test complete ==="
-echo "Results in: Data/run_${RUN_ID}/"
-echo "To clean up: rm -rf Data/run_${RUN_ID}"
+echo "Results in: Data/${MATERIAL}_run_${RUN_ID}/"
+echo "To clean up: rm -rf Data/${MATERIAL}_run_${RUN_ID}"

@@ -25,6 +25,7 @@ Arguments
 - ``WSe2`` or ``WS2``: Target material.
 - ``--start``, ``--end``: Run only a subset of indices (for HPC chunking).
 - ``--run-id``: Subdirectory name under Data/ for results (default: "default").
+  Results are saved to ``Data/<material>_run_<id>/``.
 - ``--score``: Skip fitting, just score and display existing results.
 - ``--top N``: Show top N results when scoring (default: 10).
 - ``--k4-threshold``: K4 hard filter threshold for scoring (default: 0.05).
@@ -70,23 +71,25 @@ from tmdmoire import (
 SOURCE_CONFIG = "Inputs/grid_config.json"
 
 
-def prepare_run_dir(run_id: str) -> str:
+def prepare_run_dir(run_id: str, material: str) -> str:
     """Create the run output directory and copy grid_config.json into it.
 
     Reads the source config from ``Inputs/grid_config.json`` and writes
-    a snapshot to ``Data/run_<id>/grid_config.json``.
+    a snapshot to ``Data/<material>_run_<id>/grid_config.json``.
 
     Parameters
     ----------
     run_id : str
         Run identifier.
+    material : str
+        Material name (WSe2 or WS2).
 
     Returns
     -------
     str
         Path to the run directory.
     """
-    run_dir = os.path.join("Data", f"run_{run_id}")
+    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
 
     dst = os.path.join(run_dir, "grid_config.json")
@@ -205,7 +208,6 @@ def run_chunk(material_name: str, master_folder: str,
         t_fit = time.time() - t_fit
 
         print(f"[{i:4d}/{total}] chi2={result['fun']:.6f}  "
-              f"chi2_band={result.get('chi2_band', 'N/A')}  "
               f"nfev={result['nfev']}  "
               f"time={t_fit:.1f}s  "
               f"saved: {fn.name}")
@@ -273,14 +275,14 @@ def main():
     machine = detect_machine(os.getcwd())
     master_folder = get_master_folder(os.getcwd())
 
-    run_dir = os.path.join("Data", f"run_{args.run_id}")
+    run_dir = os.path.join("Data", f"{args.material}_run_{args.run_id}")
 
     if args.score:
         do_score(args.material, args.top, args.k4_threshold,
                  run_dir=run_dir, master_folder=master_folder, plot=args.plot)
         return
 
-    run_dir = prepare_run_dir(args.run_id)
+    run_dir = prepare_run_dir(args.run_id, args.material)
 
     config = load_grid_config(run_dir)
     all_configs = build_grid(config)

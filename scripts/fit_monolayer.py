@@ -71,9 +71,9 @@ if machine == "maf":
     argc -= 1
 
 
-def prepare_run_dir(run_id: str) -> str:
+def prepare_run_dir(run_id: str, material: str) -> str:
     """Create the run output directory and copy grid_config.json into it."""
-    run_dir = os.path.join("Data", f"run_{run_id}")
+    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     dst = os.path.join(run_dir, "grid_config.json")
     if not os.path.exists(dst):
@@ -127,7 +127,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     }
 
 
-run_dir = prepare_run_dir(args.run_id)
+run_dir = prepare_run_dir(args.run_id, tmd_name)
 
 args_minimization = get_args(tmd_name, argc, run_dir)
 pts = args_minimization["pts"]

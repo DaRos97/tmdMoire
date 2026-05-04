@@ -40,7 +40,7 @@ class GridScorer:
             values, K weights, and the parameter array.
         """
         rows = []
-        pattern = f"fit_{self.material}_idx*.npz"
+        pattern = "fit_idx*.npz"
         for fn in sorted(self.data_dir.glob(pattern)):
             d = np.load(fn, allow_pickle=True)
             match = re.search(r"idx(\d+)", fn.stem)

@@ -272,7 +272,7 @@ class ParameterFitter:
         Parameters
         ----------
         params : np.ndarray, optional
-            43-parameter array. Defaults to DFT params.
+            43-parameter array (or 41 if SOC is frozen). Defaults to DFT params.
 
         Returns
         -------
@@ -282,9 +282,14 @@ class ParameterFitter:
         if params is None:
             params = self.material.dft_params
 
-        SOC_pars = params[-2:]
+        if self.config["Bs"][-1] == 0 and params.shape[0] == 41:
+            full_params = np.append(params, self.material.dft_params[-2:])
+        else:
+            full_params = params
+
+        SOC_pars = full_params[-2:]
         HSO = self.material.build_soc_hamiltonian(SOC_pars)
-        return self.chi2(params[:-2], HSO, SOC_pars, return_energy=True)
+        return self.chi2(full_params[:-2], HSO, SOC_pars, return_energy=True)
 
     def save(self, result: dict, output_dir: str = "Data") -> Path:
         """Save fitting result to an npz file.
@@ -312,7 +317,7 @@ class ParameterFitter:
         out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        fn = out_dir / f"fit_{self.material.name}_idx{result['idx']}.npz"
+        fn = out_dir / f"fit_idx{result['idx']}.npz"
         np.savez(fn,
                  params=params,
                  chi2=result["fun"],

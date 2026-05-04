@@ -12,7 +12,7 @@
         "boundType": "absolute",
         "Bs": [5, 2, 4, 1, 0]
     },
-    "pts": 19,
+    "pts": 91,
     "seed": 42,
     "optimizer": {
         "da_maxiter": 100,

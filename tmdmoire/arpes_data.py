@@ -157,7 +157,7 @@ class ARPESData:
         dict
             Symmetrized data with same structure as ``raw_data``.
         """
-        data_dir = Path(self.master_folder) / "Data"
+        data_dir = Path("Data")
         cache_fn = data_dir / f"sym_{self.tmd}.npz"
 
         if cache_fn.exists():
