@@ -9,7 +9,7 @@
 MATERIAL=$1
 RUN_ID=${2:-default}
 N_TASKS=128
-TOTAL=3600
+TOTAL=1536
 
 qsub -N grid_${MATERIAL}_${RUN_ID} \
      -o HPC/out_${MATERIAL}_${RUN_ID}.out \

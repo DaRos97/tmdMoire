@@ -258,7 +258,7 @@ class ParameterFitter:
             maxiter=maxiter,
             minimizer_kwargs={
                 "method": "Nelder-Mead",
-                "options": {"adaptive": True, "fatol": 1e-4, "maxiter": 500},
+                "options": {"adaptive": True, "fatol": 1e-3, "maxiter": 50},
             },
         )
         return {"x": result.x, "fun": result.fun, "nfev": result.nfev, "method": "dual_annealing", "seed": seed}

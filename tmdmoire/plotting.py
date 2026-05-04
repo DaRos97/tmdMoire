@@ -192,8 +192,8 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
     save_path : str or Path, optional
         If given, save figure to this path and close.
     """
-    DFT_pars = np.array([0] * 43)
     npars = pars.shape[0]
+    DFT_pars = np.array([0] * npars)
     fig = plt.figure(figsize=(19, 9))
     gs = gridspec.GridSpec(1, 2, figure=fig, width_ratios=[10, 1], hspace=0)
     fig.patch.set_facecolor("#F7F7F7")
@@ -201,13 +201,18 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
     ax.set_facecolor("#F7F7F7")
     x = np.arange(npars)
     group_colors = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#64B5CD"]
-    group_bounds = [(0, 6), (7, 27), (28, 35), (36, 39), (40, 40), (41, 42)]
-    group_labels = ["Epsilon", "t_1", "t_5", "t_6", "", "SOC"]
+    if npars >= 43:
+        group_bounds = [(0, 6), (7, 27), (28, 35), (36, 39), (40, 40), (41, 42)]
+        group_labels = ["Epsilon", "t_1", "t_5", "t_6", "", "SOC"]
+        has_bound = [0, 1, 2, 3, 5]
+    else:
+        group_bounds = [(0, 6), (7, 27), (28, 35), (36, 39), (40, 40)]
+        group_labels = ["Epsilon", "t_1", "t_5", "t_6", ""]
+        has_bound = [0, 1, 2, 3]
     for gi, (start, end) in enumerate(group_bounds):
         ax.axvspan(start - 0.5, end + 0.5, color=group_colors[gi], alpha=0.07, zorder=0)
     param_colors = [""] * npars
     param_bound = [None] * npars
-    has_bound = [0, 1, 2, 3, 5]
     b_idx = 0
     for gi, (start, end) in enumerate(group_bounds):
         for i in range(start, end + 1):
@@ -242,7 +247,7 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
                         color="#111", lw=1.4, ls="-", zorder=5, alpha=0.75)
     s_, s_p = 12, 15
     ax.set_xticks(x)
-    ax.set_xticklabels(FORMATTED_NAMES, rotation=55, ha="right", fontsize=s_, fontfamily="monospace")
+    ax.set_xticklabels(FORMATTED_NAMES[:npars], rotation=55, ha="right", fontsize=s_, fontfamily="monospace")
     ax.set_xlim(-0.4, npars - 0.6)
     ax.set_ylabel("Value", fontsize=s_p, labelpad=6)
     ax.axhline(0, color="#555", lw=0.8, zorder=4)
@@ -300,7 +305,7 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     epsilon = _find_e(pars)
     offset = pars[-3]
     HSO = _find_HSO(pars[-2:])
-    args_H = (hopping, epsilon, HSO, a_TMD, offset)
+    args_H = (hopping, epsilon, HSO, offset)
 
     from .hamiltonian import MonolayerHamiltonian
     from .material import TMDMaterial
@@ -434,6 +439,11 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         with open(config_path) as f:
             pts = json.load(f).get("pts", 91)
 
+    if not df.empty:
+        first_tb = df.iloc[0]["tb_en"]
+        if hasattr(first_tb, "shape"):
+            pts = first_tb.shape[1]
+
     arpes = ARPESData(material_name, master_folder, pts=pts)
 
     for _, row in df.iterrows():
@@ -441,9 +451,10 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         idx = int(row["idx"])
         params = row["params"]
         tb_en = row["tb_en"]
-        Ks = row["Ks"] if hasattr(row["Ks"], "__len__") else tuple(
-            [row[f"K{i}_w"] for i in range(1, 7)]
-        )
+        if "Ks" in row.index:
+            Ks = tuple(row["Ks"])
+        else:
+            Ks = tuple([row[f"K{i}_w"] for i in range(1, 7)])
         Bs = tuple(row["Bs"])
         boundType = "absolute"
 

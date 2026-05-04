@@ -58,7 +58,8 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 - **Lattice constants**: WS2=3.18 Å, WSe2=3.32 Å
 - **Chi-squared terms**: band distance (always) + K1 (param distance from DFT) + K2 (orbital content at M) + K3 (orbital occupation at G/K) + K4 (CBM position at K) + K5 (band gap at K) + K6 (weight multiplier for high-symmetry points)
 - **Inputs/**: ARPES band data (`KpGK_*.txt`, `KMKp_*.txt`), pre-fitted TB params (`tb_*.npy`), grid config (`grid_config.json`), manifest (`manifest.json`)
-- **Outputs**: `Data/fit_{TMD}_idx{N}.npz` (fitting results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), bilayer `.h5` files (EDC sweep results)
+- **Outputs**: `Data/run_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/run_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), bilayer `.h5` files (EDC sweep results)
+- **Default grid**: 3×4×4×4×4×2 = 1,536 combinations. Dual annealing maxiter=100, Nelder-Mead fatol=1e-3, maxiter=50. ~22s/fit.
 
 ## Workflow
 

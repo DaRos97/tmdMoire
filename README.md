@@ -233,7 +233,7 @@ python scripts/run_grid.py WSe2 --score --top 20
 python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
 ```
 
-The default grid has 3×5×5×4×4×3 = **3,600 combinations**. Each fit uses dual annealing (maxiter=3000, seed=42) followed by Nelder-Mead refinement.
+The default grid has 3×4×4×4×4×2 = **1,536 combinations**. Each fit uses dual annealing (maxiter=100) followed by Nelder-Mead refinement (fatol=1e-3, maxiter=50).
 
 ### HPC workflow
 
