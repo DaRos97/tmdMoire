@@ -1,5 +1,7 @@
 import numpy as np
 import copy
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
@@ -127,7 +129,20 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
     plt.close(fig)
 
 
-def plot_bands(tb_en, data, legend_info):
+def plot_bands(tb_en, data, legend_info, save_path=None):
+    """Plot TB band energies vs ARPES data.
+
+    Parameters
+    ----------
+    tb_en : np.ndarray
+        Band energies, shape (6, n_kpts).
+    data : ARPESData
+        ARPES data with fit_data and K attributes.
+    legend_info : tuple
+        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
+    save_path : str or Path, optional
+        If given, save figure to this path and close.
+    """
     fit_data = data.fit_data
     fig = plt.figure(figsize=(15, 9))
     gs = gridspec.GridSpec(1, 2, figure=fig, width_ratios=[10, 1], hspace=0)
@@ -141,7 +156,8 @@ def plot_bands(tb_en, data, legend_info):
         ax.plot(fit_data[:, 0], en_pars, ls="-", label="Fit" if b == 0 else "",
                 zorder=3, color="skyblue", marker="s", markersize=10, mew=1, mec="k", mfc="deepskyblue")
     s_m, s_, s_p = 15, 20, 30
-    ks = [fit_data[0, 0], 4 / 3 * np.pi / data.lattice_constant, fit_data[-1, 0]]
+    modK = np.linalg.norm(data.K)
+    ks = [fit_data[0, 0], modK, fit_data[-1, 0]]
     ax.set_xticks(ks, [r"$\Gamma$", r"$K$", r"$M$"], size=s_)
     for i in range(len(ks)):
         ax.axvline(ks[i], color="k", lw=0.5)
@@ -155,9 +171,27 @@ def plot_bands(tb_en, data, legend_info):
     ax2 = fig.add_subplot(gs[1])
     _add_legend_result(legend_info, ax2)
     plt.subplots_adjust(left=0.083, bottom=0.045, right=0.893, top=0.95, wspace=0.06, hspace=0.2)
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
 
 
-def plot_parameters_absolute(pars, tmd, Bs, legend_info):
+def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
+    """Plot parameter values as bar chart.
+
+    Parameters
+    ----------
+    pars : np.ndarray
+        43 tight-binding parameters.
+    tmd : str
+        Material name.
+    Bs : tuple
+        Bound parameters.
+    legend_info : tuple
+        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
+    save_path : str or Path, optional
+        If given, save figure to this path and close.
+    """
     DFT_pars = np.array([0] * 43)
     npars = pars.shape[0]
     fig = plt.figure(figsize=(19, 9))
@@ -226,9 +260,25 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info):
     axl = fig.add_subplot(gs[1])
     _add_legend_result(legend_info, axl)
     fig.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
 
 
-def plot_orbital_content(pars, tmd, legend_info):
+def plot_orbital_content(pars, tmd, legend_info, save_path=None):
+    """Plot orbital content of bands along high-symmetry path.
+
+    Parameters
+    ----------
+    pars : np.ndarray
+        43 tight-binding parameters.
+    tmd : str
+        Material name.
+    legend_info : tuple
+        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
+    save_path : str or Path, optional
+        If given, save figure to this path and close.
+    """
     from .material import _find_t, _find_e, _find_HSO
     from .constants import LATTICE_CONSTANTS, IND_OPO, IND_IPO
 
@@ -300,11 +350,31 @@ def plot_orbital_content(pars, tmd, legend_info):
     axl = fig.add_subplot(gs[1])
     _add_legend_result(legend_info, axl)
     plt.subplots_adjust(left=0.083, bottom=0.045, right=0.893, top=0.95, wspace=0.06, hspace=0.2)
+    if save_path is not None:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
 
 
 def _add_legend_result(legend_info, ax):
-    tmd, Ks, boundType, Bs, chi2_elements = legend_info
+    """Add a text box with fit configuration and scoring to an axis.
+
+    Parameters
+    ----------
+    legend_info : tuple
+        Either (tmd, Ks, boundType, Bs, chi2_elements) or
+        (tmd, Ks, boundType, Bs, chi2_elements, rank, idx).
+    ax : matplotlib.axes.Axes
+        Axis to draw the text box on.
+    """
+    if len(legend_info) >= 7:
+        tmd, Ks, boundType, Bs, chi2_elements, rank, idx = legend_info[:7]
+    else:
+        tmd, Ks, boundType, Bs, chi2_elements = legend_info
+        rank, idx = None, None
+
     txt = tmd + "\n"
+    if rank is not None:
+        txt += f"Rank #{rank}  (idx {idx})\n"
     txt_Bs = ["gen", "z  ", "xy ", "soc"] if boundType == "relative" else ["eps", "t_1", "t_5", "t_6", "soc"]
     txt += "-" * 10 + "\nBoundaries: " + boundType + "\n" + "-" * 10 + "\n"
     for i in range(len(Bs)):
@@ -321,3 +391,79 @@ def _add_legend_result(legend_info, ax):
     ax.text(0.0, 0., txt, bbox=box_dic, transform=ax.transAxes,
             fontsize=15, fontfamily="monospace")
     ax.axis("off")
+
+
+def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=None):
+    """Generate band, parameter, and orbital content plots for top scoring results.
+
+    For each result in the scored DataFrame, produces three figures:
+    1. Bands comparison (TB vs ARPES)
+    2. Parameter overview (bar chart)
+    3. Orbital content of bands
+
+    Figures are saved to ``run_dir/Figures/`` with filenames like
+    ``rank001_bands.png``, ``rank001_params.png``, ``rank001_orbitals.png``.
+
+    Parameters
+    ----------
+    scored_df : pd.DataFrame
+        Scored results from GridScorer.score(), must have 'rank' column.
+    material_name : str
+        "WSe2" or "WS2".
+    master_folder : str
+        Repository root (for loading ARPES data).
+    run_dir : str
+        Run directory containing grid_config.json and fit_*.npz files.
+    top_n : int, optional
+        Number of top results to plot. If None, plots all in scored_df.
+    """
+    from .arpes_data import ARPESData
+    import json
+
+    df = scored_df if top_n is None else scored_df.head(top_n)
+    if df.empty:
+        print("No results to plot.")
+        return
+
+    fig_dir = Path(run_dir) / "Figures"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+
+    pts = 91
+    config_path = Path(run_dir) / "grid_config.json"
+    if config_path.exists():
+        with open(config_path) as f:
+            pts = json.load(f).get("pts", 91)
+
+    arpes = ARPESData(material_name, master_folder, pts=pts)
+
+    for _, row in df.iterrows():
+        rank = int(row["rank"])
+        idx = int(row["idx"])
+        params = row["params"]
+        tb_en = row["tb_en"]
+        Ks = row["Ks"] if hasattr(row["Ks"], "__len__") else tuple(
+            [row[f"K{i}_w"] for i in range(1, 7)]
+        )
+        Bs = tuple(row["Bs"])
+        boundType = "absolute"
+
+        chi2_elements = [
+            row["chi2_band"], row["K1_val"], row["K2_val"],
+            row["K3_val"], row["K4_val"], row["K5_val"],
+        ]
+        legend_info = (material_name, Ks, boundType, Bs, chi2_elements, rank, idx)
+
+        prefix = f"rank{rank:03d}_idx{idx}"
+
+        plot_bands(tb_en, arpes, legend_info,
+                   save_path=fig_dir / f"{prefix}_bands.png")
+
+        plot_parameters_absolute(params, material_name, Bs, legend_info,
+                                 save_path=fig_dir / f"{prefix}_params.png")
+
+        plot_orbital_content(params, material_name, legend_info,
+                             save_path=fig_dir / f"{prefix}_orbitals.png")
+
+        print(f"  Plots saved for rank {rank} (idx {idx})")
+
+    print(f"All figures saved to {fig_dir}/")

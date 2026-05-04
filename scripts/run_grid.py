@@ -17,6 +17,8 @@ Usage
     python scripts/run_grid.py WSe2 --score --run-id 001      # Score specific run
     python scripts/run_grid.py WSe2 --score --top 20          # Top 20
     python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
+    python scripts/run_grid.py WSe2 --score --plot              # Score + generate plots
+    python scripts/run_grid.py WSe2 --score --plot --top 5      # Plots for top 5
 
 Arguments
 ---------
@@ -210,7 +212,7 @@ def run_chunk(material_name: str, master_folder: str,
 
 
 def do_score(material_name: str, top_n: int, k4_threshold: float,
-             run_dir: str = "Data") -> None:
+             run_dir: str = "Data", master_folder: str = "", plot: bool = False) -> None:
     """Load and score existing results.
 
     Parameters
@@ -223,9 +225,20 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
         K4 hard filter threshold.
     run_dir : str
         Directory containing fit_*.npz files and grid_config.json.
+    master_folder : str
+        Repository root (needed for plotting).
+    plot : bool
+        If True, generate figures for top results.
     """
     scorer = GridScorer(material_name, data_dir=run_dir)
     print(scorer.summary(k4_threshold=k4_threshold, top_n=top_n))
+
+    if plot:
+        ranked = scorer.score(k4_threshold=k4_threshold, top_n=top_n)
+        if not ranked.empty:
+            print(f"\nGenerating plots for top {len(ranked)} results...")
+            from tmdmoire.plotting import plot_top_results
+            plot_top_results(ranked, material_name, master_folder, run_dir)
 
 
 def main():
@@ -250,6 +263,8 @@ def main():
                         help="Random seed for fitting.")
     parser.add_argument("--maxiter", type=int, default=3000,
                         help="Max dual annealing iterations per fit.")
+    parser.add_argument("--plot", action="store_true",
+                        help="When scoring, also generate plots for top results.")
 
     args = parser.parse_args()
 
@@ -259,7 +274,8 @@ def main():
     run_dir = os.path.join("Data", f"run_{args.run_id}")
 
     if args.score:
-        do_score(args.material, args.top, args.k4_threshold, run_dir=run_dir)
+        do_score(args.material, args.top, args.k4_threshold,
+                 run_dir=run_dir, master_folder=master_folder, plot=args.plot)
         return
 
     run_dir = prepare_run_dir(args.run_id)
