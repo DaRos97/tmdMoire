@@ -31,7 +31,7 @@ Arguments
 
 Examples
 --------
-Run all 3600 combinations for WSe2::
+Run all combinations for WSe2::
 
     python scripts/run_grid.py WSe2
 
@@ -109,7 +109,7 @@ def load_grid_config(run_dir: str) -> dict:
     Returns
     -------
     dict
-        Configuration with keys: grid, bounds, pts, maxiter, seed.
+        Configuration with keys: grid, bounds, pts, seed, optimizer.
     """
     config_path = os.path.join(run_dir, "grid_config.json")
     with open(config_path) as f:
@@ -149,7 +149,7 @@ def build_grid(config: dict) -> list[dict]:
 
 def run_chunk(material_name: str, master_folder: str,
               start: int, end: int, seed: int = 42,
-              maxiter: int = 3000, run_dir: str = "Data") -> None:
+              run_dir: str = "Data") -> None:
     """Run fitting for a chunk of grid indices.
 
     Parameters
@@ -164,8 +164,6 @@ def run_chunk(material_name: str, master_folder: str,
         Last index (exclusive).
     seed : int
         Random seed for reproducibility.
-    maxiter : int
-        Maximum dual annealing iterations per fit.
     run_dir : str
         Directory to save .npz results and read grid_config.json from.
     """
@@ -182,8 +180,14 @@ def run_chunk(material_name: str, master_folder: str,
     pts = config.get("pts", 91)
     arpes_data = ARPESData(material_name, master_folder, pts=pts)
 
+    opt = config.get("optimizer", {})
+    da_maxiter = opt.get("da_maxiter", 100)
+    nm_maxiter = opt.get("nm_maxiter", 50)
+    nm_fatol = opt.get("nm_fatol", 1e-3)
+
     print(f"Running indices {start} to {end - 1} / {total}")
-    print(f"Material: {material_name}, pts: {pts}, maxiter: {maxiter}, seed: {seed}")
+    print(f"Material: {material_name}, pts: {pts}, seed: {seed}")
+    print(f"Optimizer: da_maxiter={da_maxiter}, nm_maxiter={nm_maxiter}, nm_fatol={nm_fatol}")
     print(f"Output directory: {run_dir}")
     print()
 
@@ -193,7 +197,7 @@ def run_chunk(material_name: str, master_folder: str,
         fitter = ParameterFitter(material, arpes_data, cfg)
 
         t_fit = time.time()
-        result = fitter.run(maxiter=maxiter, seed=seed)
+        result = fitter.run(seed=seed)
         result["idx"] = i
         result["seed"] = seed
 
@@ -261,8 +265,6 @@ def main():
                         help="K4 hard filter threshold for scoring.")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for fitting.")
-    parser.add_argument("--maxiter", type=int, default=3000,
-                        help="Max dual annealing iterations per fit.")
     parser.add_argument("--plot", action="store_true",
                         help="When scoring, also generate plots for top results.")
 
@@ -293,7 +295,7 @@ def main():
     print()
 
     run_chunk(args.material, master_folder, args.start, args.end,
-              seed=args.seed, maxiter=args.maxiter, run_dir=run_dir)
+              seed=args.seed, run_dir=run_dir)
 
 
 if __name__ == "__main__":

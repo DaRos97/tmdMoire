@@ -13,6 +13,10 @@
         "Bs": [5, 2, 4, 1, 0]
     },
     "pts": 19,
-    "maxiter": 500,
-    "seed": 42
+    "seed": 42,
+    "optimizer": {
+        "da_maxiter": 100,
+        "nm_maxiter": 50,
+        "nm_fatol": 1e-3
+    }
 }

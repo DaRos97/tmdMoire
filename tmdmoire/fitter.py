@@ -210,7 +210,7 @@ class ParameterFitter:
             return self.material.get_bounds_absolute(*Bs)
         raise ValueError(f"Unknown bound type: {bt}")
 
-    def run(self, initial_params: np.ndarray | None = None, maxiter: int = 3000, seed: int = 42) -> dict:
+    def run(self, initial_params: np.ndarray | None = None, seed: int = 42) -> dict:
         """Run global optimization via dual annealing + Nelder-Mead refinement.
 
         Dual annealing explores the full parameter space (reproducible with seed),
@@ -220,8 +220,6 @@ class ParameterFitter:
         ----------
         initial_params : np.ndarray, optional
             Starting point for the annealing trajectory. Defaults to DFT params.
-        maxiter : int
-            Maximum dual annealing iterations.
         seed : int
             Random seed for reproducibility.
 
@@ -235,6 +233,11 @@ class ParameterFitter:
             - ``method``: optimization method used
         """
         from scipy.optimize import dual_annealing
+
+        opt = self.config.get("optimizer", {})
+        da_maxiter = opt.get("da_maxiter", 100)
+        nm_maxiter = opt.get("nm_maxiter", 50)
+        nm_fatol = opt.get("nm_fatol", 1e-3)
 
         if initial_params is None:
             initial_params = self.material.dft_params
@@ -255,10 +258,10 @@ class ParameterFitter:
             bounds=bounds,
             x0=initial_params,
             seed=seed,
-            maxiter=maxiter,
+            maxiter=da_maxiter,
             minimizer_kwargs={
                 "method": "Nelder-Mead",
-                "options": {"adaptive": True, "fatol": 1e-3, "maxiter": 50},
+                "options": {"adaptive": True, "fatol": nm_fatol, "maxiter": nm_maxiter},
             },
         )
         return {"x": result.x, "fun": result.fun, "nfev": result.nfev, "method": "dual_annealing", "seed": seed}

@@ -100,7 +100,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     Returns
     -------
     dict
-        Configuration with keys: ``idx``, ``pts``, ``Ks``, ``boundType``, ``Bs``.
+        Configuration with keys: ``idx``, ``pts``, ``Ks``, ``boundType``, ``Bs``, ``optimizer``.
     """
     config_path = os.path.join(run_dir, "grid_config.json")
     with open(config_path) as f:
@@ -123,6 +123,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
         "Ks": tuple(combo),
         "boundType": config["bounds"]["boundType"],
         "Bs": tuple(config["bounds"]["Bs"]),
+        "optimizer": config.get("optimizer", {}),
     }
 
 
@@ -136,6 +137,10 @@ if disp:
     print(f" TMD: {tmd_name}")
     for i in range(6):
         print(f" K_{i+1}: {args_minimization['Ks'][i]:.6f}")
+    opt = args_minimization.get("optimizer", {})
+    print(f" Optimizer: da_maxiter={opt.get('da_maxiter', 100)}, "
+          f"nm_maxiter={opt.get('nm_maxiter', 50)}, "
+          f"nm_fatol={opt.get('nm_fatol', 1e-3)}")
     print(f" Using {pts} points of interpolated data.")
     print("-" * 15)
 
@@ -143,7 +148,7 @@ material = TMDMaterial(tmd_name)
 arpes_data = ARPESData(tmd_name, master_folder, pts=pts)
 fitter = ParameterFitter(material, arpes_data, args_minimization)
 
-result = fitter.run(maxiter=3000, seed=42)
+result = fitter.run(seed=42)
 result["idx"] = argc
 result["seed"] = 42
 
