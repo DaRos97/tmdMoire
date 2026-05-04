@@ -2,7 +2,7 @@
 
 This script fits 43 tight-binding parameters for a single TMD monolayer
 (WSe2 or WS2) to reproduce ARPES-measured band dispersions along the
-high-symmetry paths K′–Γ–K and K–M–K′.
+high-symmetry paths K'-Gamma-K and K-M-K'.
 
 The fitting uses dual annealing (global search) followed by Nelder-Mead
 (local refinement) with a weighted chi-squared objective that combines
@@ -14,12 +14,14 @@ Usage
 ::
 
     python scripts/fit_monolayer.py <WSe2|WS2> <index>
+    python scripts/fit_monolayer.py <WSe2|WS2> <index> --run-id 001
 
 Arguments
 ---------
 - ``WSe2`` or ``WS2``: Target material.
-- ``index``: Integer selecting a combination of constraint weights (K₁–K₆)
-  from a parameter grid. There are 2×10×10×2×2×2 = 1600 combinations.
+- ``index``: Integer selecting a combination of constraint weights (K1-K6)
+  from the grid defined in ``Inputs/grid_config.json``.
+- ``--run-id``: Run identifier. Results saved to Data/run_<id>/ (default: 'default').
 
 Examples
 --------
@@ -27,55 +29,64 @@ Fit WSe2 with constraint weight set 0::
 
     python scripts/fit_monolayer.py WSe2 0
 
-Fit WS2 with constraint weight set 5::
+Fit WS2 with constraint weight set 5 into a named run::
 
-    python scripts/fit_monolayer.py WS2 5
+    python scripts/fit_monolayer.py WS2 5 --run-id 001
 
 Output
 ------
-Optimized parameters are printed to stdout. Intermediate results during
-minimization are saved as ``.npz`` files in the ``Data/`` directory.
-
-Notes
------
-- On the Mafalda cluster (``machine=='maf'``), the index is shifted by −1.
-- Setting SOC bounds to 0 fixes the SOC Hamiltonian to DFT values and
-  fits only the 41 tight-binding parameters.
+Optimized parameters are saved to ``Data/run_<id>/fit_{TMD}_idx{N}.npz``.
 """
 import sys
 import os
+import json
+import shutil
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
+import itertools
 from tmdmoire import (
     TMDMaterial, ARPESData, ParameterFitter,
-    detect_machine, get_master_folder, DFT_INITIAL_PARAMS,
+    detect_machine, get_master_folder,
 )
+
+SOURCE_CONFIG = "Inputs/grid_config.json"
 
 machine = detect_machine(os.getcwd())
 master_folder = get_master_folder(os.getcwd())
 disp = machine == "loc"
-maxiter = 3000
 
-if len(sys.argv) != 3:
-    print("Usage: python scripts/fit_monolayer.py <WSe2|WS2> <index>")
-    sys.exit(1)
+parser = argparse.ArgumentParser(description="Fit monolayer TB parameters.")
+parser.add_argument("material", choices=["WSe2", "WS2"], help="Target material.")
+parser.add_argument("index", type=int, help="Grid index.")
+parser.add_argument("--run-id", type=str, default="default",
+                    help="Run identifier for output subdirectory.")
+args = parser.parse_args()
 
-tmd_name = sys.argv[1]
-if tmd_name not in ["WSe2", "WS2"]:
-    raise ValueError(f"Unknown TMD: {tmd_name}")
-
-argc = int(sys.argv[2])
+tmd_name = args.material
+argc = args.index
 if machine == "maf":
     argc -= 1
 
 
-def get_args(tmd, ind):
+def prepare_run_dir(run_id: str) -> str:
+    """Create the run output directory and copy grid_config.json into it."""
+    run_dir = os.path.join("Data", f"run_{run_id}")
+    os.makedirs(run_dir, exist_ok=True)
+    dst = os.path.join(run_dir, "grid_config.json")
+    if not os.path.exists(dst):
+        shutil.copy2(SOURCE_CONFIG, dst)
+    elif os.path.getmtime(SOURCE_CONFIG) > os.path.getmtime(dst):
+        shutil.copy2(SOURCE_CONFIG, dst)
+    return run_dir
+
+
+def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     """Select constraint weights and bound parameters for a given index.
 
-    Generates a grid of constraint weight combinations (K₁–K₆) and
-    returns the configuration for the specified index.
+    Reads the grid definition from the run directory's grid_config.json.
 
     Parameters
     ----------
@@ -83,34 +94,41 @@ def get_args(tmd, ind):
         Material name (unused, kept for API compatibility).
     ind : int
         Index into the parameter grid.
+    run_dir : str
+        Directory containing grid_config.json.
 
     Returns
     -------
     dict
-        Configuration with keys: ``pts``, ``Ks``, ``boundType``, ``Bs``.
+        Configuration with keys: ``idx``, ``pts``, ``Ks``, ``boundType``, ``Bs``.
     """
-    import itertools
-    lK1 = [0, 1e-5]
-    lK2 = np.logspace(-7, 1, 10, base=2)
-    lK3 = np.logspace(-7, 1, 10, base=2)
-    lK4 = [0.5, 1]
-    lK5 = [0.1, 0.5]
-    lK6 = [1, 5]
-    boundType = "absolute"
-    Bs = (5, 2, 4, 1, 0)
-    pts = 91
-    listPar = list(itertools.product(*[lK1, lK2, lK3, lK4, lK5, lK6]))
-    print(f"Index {ind} / {len(listPar)}")
-    listPar = listPar[ind]
+    config_path = os.path.join(run_dir, "grid_config.json")
+    with open(config_path) as f:
+        config = json.load(f)
+
+    grid = config["grid"]
+    keys = ["K1", "K2", "K3", "K4", "K5", "K6"]
+    values = [grid[k] for k in keys]
+    listPar = list(itertools.product(*values))
+
+    if ind >= len(listPar):
+        raise IndexError(
+            f"Index {ind} out of range (grid has {len(listPar)} combinations)"
+        )
+
+    combo = listPar[ind]
     return {
-        "pts": pts,
-        "Ks": tuple(listPar),
-        "boundType": boundType,
-        "Bs": Bs,
+        "idx": ind,
+        "pts": config.get("pts", 91),
+        "Ks": tuple(combo),
+        "boundType": config["bounds"]["boundType"],
+        "Bs": tuple(config["bounds"]["Bs"]),
     }
 
 
-args_minimization = get_args(tmd_name, argc)
+run_dir = prepare_run_dir(args.run_id)
+
+args_minimization = get_args(tmd_name, argc, run_dir)
 pts = args_minimization["pts"]
 
 if disp:
@@ -125,8 +143,12 @@ material = TMDMaterial(tmd_name)
 arpes_data = ARPESData(tmd_name, master_folder, pts=pts)
 fitter = ParameterFitter(material, arpes_data, args_minimization)
 
-result = fitter.run(maxiter=maxiter, seed=42)
+result = fitter.run(maxiter=3000, seed=42)
+result["idx"] = argc
+result["seed"] = 42
+
+fn = fitter.save(result, output_dir=run_dir)
 
 print(f"Final chi2: {result['fun']}")
-print(f"Final parameters: {result['x']}")
 print(f"Evaluations: {result['nfev']}")
+print(f"Saved to: {fn}")

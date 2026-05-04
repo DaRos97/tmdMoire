@@ -18,6 +18,7 @@ Chi-squared terms:
 """
 import numpy as np
 import scipy.linalg as la
+from pathlib import Path
 from .constants import (
     ORBITAL_CHARACTER, TVB2, TVB4, IND_ILC, ze_i, z2_i, xe_i, ye_i, x2_i, xy_i,
 )
@@ -242,6 +243,7 @@ class ParameterFitter:
             HSO = self.material.build_soc_hamiltonian()
             args_chi2 = (HSO, self.material.dft_params[-2:], False)
             bounds = self.get_bounds()[:-2]
+            initial_params = initial_params[:-2]
             func = lambda x: self.chi2(x, *args_chi2)
         else:
             args_chi2 = (False,)
@@ -256,10 +258,10 @@ class ParameterFitter:
             maxiter=maxiter,
             minimizer_kwargs={
                 "method": "Nelder-Mead",
-                "options": {"adaptive": True, "fatol": 1e-4, "maxiter": 1e6},
+                "options": {"adaptive": True, "fatol": 1e-4, "maxiter": 500},
             },
         )
-        return {"x": result.x, "fun": result.fun, "nfev": result.nfev, "method": "dual_annealing"}
+        return {"x": result.x, "fun": result.fun, "nfev": result.nfev, "method": "dual_annealing", "seed": seed}
 
     def compute_bands(self, params: np.ndarray | None = None) -> np.ndarray:
         """Compute TB band energies at ARPES k-points.
@@ -280,6 +282,146 @@ class ParameterFitter:
         SOC_pars = params[-2:]
         HSO = self.material.build_soc_hamiltonian(SOC_pars)
         return self.chi2(params[:-2], HSO, SOC_pars, return_energy=True)
+
+    def save(self, result: dict, output_dir: str = "Data") -> Path:
+        """Save fitting result to an npz file.
+
+        Parameters
+        ----------
+        result : dict
+            Dictionary from ``run()`` with keys: x, fun, nfev, method.
+            Must also contain ``idx`` for the filename.
+        output_dir : str
+            Directory to save the file.
+
+        Returns
+        -------
+        Path
+            Path to the saved file.
+        """
+        config = self.config
+        Ks = config["Ks"]
+        params = result["x"]
+
+        constraints = self._compute_constraint_breakdown(params)
+        tb_en = self.compute_bands(params)
+
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        fn = out_dir / f"fit_{self.material.name}_idx{result['idx']}.npz"
+        np.savez(fn,
+                 params=params,
+                 chi2=result["fun"],
+                 nfev=result["nfev"],
+                 Ks=Ks,
+                 Bs=config["Bs"],
+                 boundType=config["boundType"],
+                 seed=result.get("seed", 42),
+                 material=self.material.name,
+                 chi2_band=constraints["chi2_band"],
+                 K1_val=constraints["K1"],
+                 K2_val=constraints["K2"],
+                 K3_val=constraints["K3"],
+                 K4_val=constraints["K4"],
+                 K5_val=constraints["K5"],
+                 tb_en=tb_en,
+                 k_path=self.arpes_data.fit_data[:, 0],
+        )
+        return fn
+
+    def _compute_constraint_breakdown(self, params: np.ndarray) -> dict:
+        """Compute individual constraint values at given parameters.
+
+        Returns a dict with keys: chi2_band, K1, K2, K3, K4, K5.
+        These are the raw (unweighted) constraint terms.
+        """
+        K1, K2, K3, K4, K5, K6 = self.config["Ks"]
+
+        if self.config["Bs"][-1] == 0:
+            full_params = np.append(params, self.material.dft_params[-2:])
+        else:
+            full_params = params
+
+        hopping = self.material.build_hopping_matrices(full_params)
+        epsilon = self.material.build_onsite_energies(full_params)
+        offset = full_params[-3]
+        HSO = self.material.build_soc_hamiltonian(full_params[-2:])
+        args_H = (hopping, epsilon, HSO, offset)
+
+        k_pts = self.arpes_data.fit_data[:, 1:3]
+        all_H = self._build_hamiltonian(k_pts, args_H)
+        nbands = 6
+        tb_en = np.zeros((nbands, k_pts.shape[0]))
+        cond_en = np.zeros(k_pts.shape[0])
+        for i in range(k_pts.shape[0]):
+            energies = la.eigvalsh(all_H[i])
+            tb_en[:, i] = energies[14 - nbands:14][::-1]
+            cond_en[i] = energies[14]
+
+        # Band distance (unweighted by K6 for the stored value)
+        chi2_band_distance = 0.0
+        total_valid = 0
+        for ib in range(nbands):
+            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
+            chi2_band_distance += np.sum(
+                np.absolute(tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib])[valid] ** 2
+            )
+            total_valid += valid.sum()
+        chi2_band_distance /= total_valid
+
+        # K1
+        K1_par_dis = self.material.parameter_distance(full_params)
+
+        # K2
+        k_pts_bc = np.array([self.arpes_data.M, np.zeros(2), self.arpes_data.K])
+        Ham_bc = self._build_hamiltonian(k_pts_bc, args_H)
+        evals_M, evecs_M = np.linalg.eigh(Ham_bc[0])
+        bandsM = TVB4 if self.material.name == "WSe2" else TVB2
+        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2) / (len(IND_ILC) * len(bandsM))
+
+        # K3
+        evals_G, evecs_G = np.linalg.eigh(Ham_bc[1])
+        occ_ze, occ_z2 = ORBITAL_CHARACTER[self.material.name]["G"]
+        G_ze_tvb1 = np.absolute(evecs_G[ze_i, 13]) ** 2 + np.absolute(evecs_G[ze_i + 11, 13]) ** 2
+        G_ze_tvb2 = np.absolute(evecs_G[ze_i, 12]) ** 2 + np.absolute(evecs_G[ze_i + 11, 12]) ** 2
+        G_z2_tvb1 = np.absolute(evecs_G[z2_i, 13]) ** 2 + np.absolute(evecs_G[z2_i + 11, 13]) ** 2
+        G_z2_tvb2 = np.absolute(evecs_G[z2_i, 12]) ** 2 + np.absolute(evecs_G[z2_i + 11, 12]) ** 2
+
+        evals_K, evecs_K = np.linalg.eigh(Ham_bc[2])
+        occ_p1_tvb1, occ_p1_tvb2, occ_d2_tvb1, occ_d2_tvb2 = ORBITAL_CHARACTER[self.material.name]["K"]
+        K_p1_tvb1 = (np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i, 13] - 1j * evecs_K[ye_i, 13])) ** 2
+                     + np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i + 11, 13] - 1j * evecs_K[ye_i + 11, 13])) ** 2)
+        K_p1_tvb2 = (np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i, 12] - 1j * evecs_K[ye_i, 12])) ** 2
+                     + np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i + 11, 12] - 1j * evecs_K[ye_i + 11, 12])) ** 2)
+        K_d2_tvb1 = (np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i, 13] - 1j * evecs_K[xy_i, 13])) ** 2
+                     + np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i + 11, 13] - 1j * evecs_K[xy_i + 11, 13])) ** 2)
+        K_d2_tvb2 = (np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i, 12] - 1j * evecs_K[xy_i, 12])) ** 2
+                     + np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i + 11, 12] - 1j * evecs_K[xy_i + 11, 12])) ** 2)
+
+        K3_DFT = (abs(occ_ze - G_ze_tvb1) + abs(occ_ze - G_ze_tvb2)
+                  + abs(occ_z2 - G_z2_tvb1) + abs(occ_z2 - G_z2_tvb2)
+                  + abs(occ_p1_tvb1 - K_p1_tvb1) + abs(occ_p1_tvb2 - K_p1_tvb2)
+                  + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2)) / 8
+
+        # K4
+        cbm_idx = np.argmin(cond_en)
+        cbm_k = self.arpes_data.fit_data[cbm_idx, 0]
+        k_mod = np.linalg.norm(self.arpes_data.K)
+        K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
+
+        # K5
+        gap_p = evals_K[14] - evals_K[13]
+        K5_gap = abs(self._gap_DFT - gap_p) / self._gap_DFT
+
+        return {
+            "chi2_band": chi2_band_distance,
+            "K1": K1_par_dis,
+            "K2": K2_M,
+            "K3": K3_DFT,
+            "K4": K4_band_min,
+            "K5": K5_gap,
+        }
 
     def _compute_DFT_gap(self) -> float:
         """Precompute the DFT band gap at K (constant throughout fitting)."""

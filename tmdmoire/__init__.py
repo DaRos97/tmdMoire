@@ -12,6 +12,7 @@ from .material import TMDMaterial
 from .hamiltonian import MonolayerHamiltonian, MoireHamiltonian
 from .arpes_data import ARPESData
 from .fitter import ParameterFitter
+from .scoring import GridScorer
 from .edc_analyzer import EDCAnalyzer
 from .utils import detect_machine, get_master_folder, get_home_dn, get_filename, R_z, get_k_list
 
@@ -22,6 +23,7 @@ __all__ = [
     "MoireHamiltonian",
     "ARPESData",
     "ParameterFitter",
+    "GridScorer",
     "EDCAnalyzer",
     "detect_machine",
     "get_master_folder",

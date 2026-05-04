@@ -24,6 +24,9 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Two-stag
     - [K₅ — band gap at K](#k5--band-gap-at-k)
     - [K₆ — high-symmetry point weight](#k6--high-symmetry-point-weight)
   - [Quick start](#quick-start)
+  - [Grid search](#grid-search)
+  - [HPC workflow](#hpc-workflow)
+  - [Run management](#run-management)
   - [Programmatic usage](#programmatic-usage)
   - [Output](#output)
   - [Lattice constants](#lattice-constants)
@@ -34,7 +37,7 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Two-stag
 
 ### Overview
 
-The monolayer stage fits a 22×22 tight-binding Hamiltonian (11 orbitals × 2 spins) to reproduce ARPES-measured band dispersions along high-symmetry paths K′–Γ–K and K–M–K′. The fit optimizes 43 parameters against experimental data using Nelder-Mead minimization with multiple physical constraints.
+The monolayer stage fits a 22×22 tight-binding Hamiltonian (11 orbitals × 2 spins) to reproduce ARPES-measured band dispersions along high-symmetry paths K′–Γ–K and K–M–K′. The fit optimizes 43 parameters against experimental data using dual annealing (global search) followed by Nelder-Mead (local refinement), with multiple physical constraints.
 
 ### Experimental data processing
 
@@ -207,7 +210,86 @@ python scripts/fit_monolayer.py WSe2 0
 python scripts/fit_monolayer.py WS2 5
 ```
 
-The index selects a combination of constraint weights (K₁–K₆) from a parameter grid. There are 2×10×10×2×2×2 = 1600 combinations total.
+The index selects a combination of constraint weights (K₁–K₆) from the grid defined in `Inputs/grid_config.json`.
+
+### Grid search
+
+Instead of running individual fits, you can sweep over all combinations of constraint weights (K₁–K₆) defined in `Inputs/grid_config.json`:
+
+```bash
+# Run all combinations for WSe₂
+python scripts/run_grid.py WSe2
+
+# Run a subset (for chunking on HPC)
+python scripts/run_grid.py WSe2 --start 0 --end 100
+
+# Score existing results
+python scripts/run_grid.py WSe2 --score
+
+# Show top 20 results
+python scripts/run_grid.py WSe2 --score --top 20
+
+# Adjust the K4 hard filter threshold (default: 0.05)
+python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
+```
+
+The default grid has 3×5×5×4×4×3 = **3,600 combinations**. Each fit uses dual annealing (maxiter=3000, seed=42) followed by Nelder-Mead refinement.
+
+### HPC workflow
+
+For the full grid search on the HPC cluster (SGE/rademaker queue), use the scripts in `HPC/`:
+
+```bash
+# Submit 128 parallel tasks for WSe₂ (default run ID)
+./HPC/job.sh WSe2
+
+# Submit with a named run ID
+./HPC/job.sh WSe2 001
+
+# Submit for WS₂
+./HPC/job.sh WS2 002
+```
+
+Each job array submission creates 128 SGE tasks (one per CPU), with ~28 fits per task. Output goes to `Scratch/grid_<material>_<run_id>_task<N>.out`.
+
+After all tasks complete, score the results:
+
+```bash
+python scripts/run_grid.py WSe2 --score --run-id 001
+```
+
+### Run management
+
+Each run is stored in its own subdirectory under `Data/run_<id>/`. When you start a run, `Inputs/grid_config.json` is copied into the run directory as a snapshot, making each run fully self-contained and reproducible.
+
+```
+Data/
+  run_001/
+    grid_config.json          ← snapshot of config used for this run
+    fit_WSe2_idx0.npz
+    fit_WSe2_idx1.npz
+    ...
+  run_002/
+    grid_config.json          ← different config (e.g. finer grid)
+    fit_WSe2_idx0.npz
+    ...
+```
+
+**Iterative workflow:**
+
+1. Run the initial grid search: `./HPC/job.sh WSe2 001`
+2. Score results and inspect the best fits
+3. Edit `Inputs/grid_config.json` to refine the grid (e.g. narrower ranges, finer spacing)
+4. Run again with a new ID: `./HPC/job.sh WSe2 002`
+5. Compare runs: `python scripts/run_grid.py WSe2 --score --run-id 001` and `--run-id 002`
+
+The `--run-id` flag works with all scripts:
+
+```bash
+python scripts/run_grid.py WSe2 --start 0 --end 100 --run-id 002
+python scripts/run_grid.py WSe2 --score --run-id 002 --top 20
+python scripts/fit_monolayer.py WSe2 42 --run-id 002
+```
 
 ### Programmatic usage
 
@@ -229,7 +311,7 @@ config = {
 }
 
 fitter = ParameterFitter(material, arpes, config)
-result = fitter.run(material.dft_params, max_eval=int(5e6))
+result = fitter.run(maxiter=3000, seed=42)
 
 print(f"Final chi²: {result['fun']}")
 print(f"Optimized parameters: {result['x']}")
@@ -237,7 +319,7 @@ print(f"Optimized parameters: {result['x']}")
 
 ### Output
 
-Fitted parameters are saved as `.npy` files. Intermediate results during minimization are saved as `.npz` files in `Data/`. Symmetrized ARPES data is cached as `Data/sym_{TMD}.npz`.
+Fitted parameters from grid searches are saved as `.npz` files in `Data/run_<id>/`. Each file contains the optimized parameters, chi-squared values, individual constraint values, and the computed band energies. Symmetrized ARPES data is cached as `Data/sym_{TMD}.npz`.
 
 ### Lattice constants
 
