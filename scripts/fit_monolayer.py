@@ -40,7 +40,6 @@ Optimized parameters are saved to ``Data/run_<id>/fit_{TMD}_idx{N}.npz``.
 import sys
 import os
 import json
-import shutil
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -49,10 +48,8 @@ import numpy as np
 import itertools
 from tmdmoire import (
     TMDMaterial, ARPESData, ParameterFitter,
-    detect_machine, get_master_folder,
+    detect_machine, get_master_folder, prepare_run_dir,
 )
-
-SOURCE_CONFIG = "Inputs/grid_config.json"
 
 machine = detect_machine(os.getcwd())
 master_folder = get_master_folder(os.getcwd())
@@ -71,18 +68,6 @@ tmd_name = args.material
 argc = args.index
 if machine == "maf":
     argc -= 1
-
-
-def prepare_run_dir(run_id: str, material: str) -> str:
-    """Create the run output directory and copy grid_config.json into it."""
-    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
-    os.makedirs(run_dir, exist_ok=True)
-    dst = os.path.join(run_dir, "grid_config.json")
-    if not os.path.exists(dst):
-        shutil.copy2(SOURCE_CONFIG, dst)
-    elif os.path.getmtime(SOURCE_CONFIG) > os.path.getmtime(dst):
-        shutil.copy2(SOURCE_CONFIG, dst)
-    return run_dir
 
 
 def get_args(tmd: str, ind: int, run_dir: str) -> dict:
@@ -122,6 +107,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     return {
         "idx": ind,
         "pts": config.get("pts", 91),
+        "seed": config.get("seed", 42),
         "Ks": tuple(combo),
         "boundType": config["bounds"]["boundType"],
         "Bs": tuple(config["bounds"]["Bs"]),
@@ -154,9 +140,10 @@ debug_dir = None
 if args.debug_figures:
     debug_dir = os.path.join(run_dir, "debug", f"fit_idx{argc}")
 
-result = fitter.run(seed=42, debug_dir=debug_dir)
+seed = args_minimization.get("seed", 42)
+result = fitter.run(seed=seed, debug_dir=debug_dir)
 result["idx"] = argc
-result["seed"] = 42
+result["seed"] = seed
 
 fn = fitter.save(result, output_dir=run_dir)
 

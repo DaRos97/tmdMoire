@@ -7,6 +7,11 @@ character, parameter distance from DFT, band gap, etc.), then minimizes
 it using scipy's dual annealing algorithm chained with Nelder-Mead for
 local refinement.
 
+All constraint computation is centralized in
+:meth:`_compute_constraint_breakdown`, which serves as the single source
+of truth. Both :meth:`chi2` (objective function) and :meth:`save`
+(result storage) delegate to it.
+
 Chi-squared terms:
     - Band distance: Σ(TB band − ARPES band)² (always included)
     - K₁: Parameter distance from DFT values
@@ -15,6 +20,11 @@ Chi-squared terms:
     - K₄: Conduction band minimum position at K
     - K₅: Band gap at K vs DFT gap
     - K₆: Weight multiplier for high-symmetry points
+
+Stored ``chi2_band`` is the K6-weighted mean-squared band distance
+(the version that appears in the objective function). A separate
+``chi2_band_unweighted`` field (pure band distance, no K6 weights)
+is stored for cross-comparison across grid points with different K6.
 """
 import numpy as np
 import scipy.linalg as la
@@ -63,7 +73,7 @@ class _DebugCallback:
         material_name = self.fitter.material.name
 
         chi2_elements = [
-            constraints["chi2_band"], constraints["K1"], constraints["K2"],
+            constraints["chi2_band_weighted"], constraints["K1"], constraints["K2"],
             constraints["K3"], constraints["K4"], constraints["K5"],
         ]
         legend_info = (material_name, Ks, boundType, Bs, chi2_elements, None, self.idx)
@@ -93,7 +103,7 @@ class _DebugCallback:
         material_name = self.fitter.material.name
 
         chi2_elements = [
-            constraints["chi2_band"], constraints["K1"], constraints["K2"],
+            constraints["chi2_band_weighted"], constraints["K1"], constraints["K2"],
             constraints["K3"], constraints["K4"], constraints["K5"],
         ]
         legend_info = (material_name, Ks, boundType, Bs, chi2_elements, None, self.idx)
@@ -152,6 +162,11 @@ class ParameterFitter:
              return_energy: bool = False) -> float:
         """Compute chi-squared for a given set of TB parameters (excluding SOC).
 
+        When ``return_energy`` is False, delegates to
+        :meth:`_compute_constraint_breakdown` and combines the weighted terms.
+        When ``return_energy`` is True, computes and returns band energies
+        directly without the constraint overhead.
+
         Parameters
         ----------
         params_tb : np.ndarray
@@ -168,95 +183,28 @@ class ParameterFitter:
         float or np.ndarray
             Chi-squared value, or band energies if ``return_energy=True``.
         """
-        K1, K2, K3, K4, K5, K6 = self.config["Ks"]
         full_params = np.append(params_tb, SOC_pars)
 
-        hopping = self.material.build_hopping_matrices(full_params)
-        epsilon = self.material.build_onsite_energies(full_params)
-        offset = full_params[-3]
-        args_H = (hopping, epsilon, HSO, offset)
-
-        k_pts = self.arpes_data.fit_data[:, 1:3]
-        all_H = self._build_hamiltonian(k_pts, args_H)
-        nbands = 6
-        tb_en = np.zeros((nbands, k_pts.shape[0]))
-        cond_en = np.zeros(k_pts.shape[0])
-        for i in range(k_pts.shape[0]):
-            energies = la.eigvalsh(all_H[i])
-            tb_en[:, i] = energies[14 - nbands:14][::-1]
-            cond_en[i] = energies[14]
-
         if return_energy:
+            hopping = self.material.build_hopping_matrices(full_params)
+            epsilon = self.material.build_onsite_energies(full_params)
+            offset = full_params[-3]
+            args_H = (hopping, epsilon, HSO, offset)
+
+            k_pts = self.arpes_data.fit_data[:, 1:3]
+            all_H = self._build_hamiltonian(k_pts, args_H)
+            nbands = 6
+            tb_en = np.zeros((nbands, k_pts.shape[0]))
+            for i in range(k_pts.shape[0]):
+                energies = la.eigvalsh(all_H[i])
+                tb_en[:, i] = energies[14 - nbands:14][::-1]
             return tb_en
 
-        # Band distance term: global normalization over all valid points
-        chi2_band_distance = 0.0
-        total_valid = 0
-        special_indices = [0, np.argmax(self.arpes_data.fit_data[:, 3]),
-                           np.argmin(self.arpes_data.fit_data[:, 4]),
-                           self.arpes_data.fit_data.shape[0] - 1]
-        weights = np.ones(self.arpes_data.fit_data.shape[0])
-        weights[special_indices] = K6
-        for ib in range(nbands):
-            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
-            chi2_band_distance += np.sum(
-                np.absolute(
-                    (tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib]) * weights
-                )[valid] ** 2
-            )
-            total_valid += valid.sum()
-        chi2_band_distance /= total_valid
-
-        # K1: parameter distance from DFT
-        K1_par_dis = self.material.parameter_distance(full_params)
-
-        # K2: orbital band content at M (mean per orbital per band)
-        k_pts_bc = np.array([self.arpes_data.M, np.zeros(2), self.arpes_data.K])
-        Ham_bc = self._build_hamiltonian(k_pts_bc, args_H)
-        evals_M, evecs_M = np.linalg.eigh(Ham_bc[0])
-        bandsM = TVB4 if self.material.name == "WSe2" else TVB2
-        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2) / (len(IND_ILC) * len(bandsM))
-
-        # K3: orbital occupation at Gamma and K
-        evals_G, evecs_G = np.linalg.eigh(Ham_bc[1])
-        occ_ze, occ_z2 = ORBITAL_CHARACTER[self.material.name]["G"]
-        G_ze_tvb1 = np.absolute(evecs_G[ze_i, 13]) ** 2 + np.absolute(evecs_G[ze_i + 11, 13]) ** 2
-        G_ze_tvb2 = np.absolute(evecs_G[ze_i, 12]) ** 2 + np.absolute(evecs_G[ze_i + 11, 12]) ** 2
-        G_z2_tvb1 = np.absolute(evecs_G[z2_i, 13]) ** 2 + np.absolute(evecs_G[z2_i + 11, 13]) ** 2
-        G_z2_tvb2 = np.absolute(evecs_G[z2_i, 12]) ** 2 + np.absolute(evecs_G[z2_i + 11, 12]) ** 2
-
-        evals_K, evecs_K = np.linalg.eigh(Ham_bc[2])
-        occ_p1_tvb1, occ_p1_tvb2, occ_d2_tvb1, occ_d2_tvb2 = ORBITAL_CHARACTER[self.material.name]["K"]
-        K_p1_tvb1 = (np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i, 13] - 1j * evecs_K[ye_i, 13])) ** 2
-                     + np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i + 11, 13] - 1j * evecs_K[ye_i + 11, 13])) ** 2)
-        K_p1_tvb2 = (np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i, 12] - 1j * evecs_K[ye_i, 12])) ** 2
-                     + np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i + 11, 12] - 1j * evecs_K[ye_i + 11, 12])) ** 2)
-        K_d2_tvb1 = (np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i, 13] - 1j * evecs_K[xy_i, 13])) ** 2
-                     + np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i + 11, 13] - 1j * evecs_K[xy_i + 11, 13])) ** 2)
-        K_d2_tvb2 = (np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i, 12] - 1j * evecs_K[xy_i, 12])) ** 2
-                     + np.absolute(1 / np.sqrt(2) * (evecs_K[x2_i + 11, 12] - 1j * evecs_K[xy_i + 11, 12])) ** 2)
-
-        K3_DFT = (abs(occ_ze - G_ze_tvb1) + abs(occ_ze - G_ze_tvb2)
-                  + abs(occ_z2 - G_z2_tvb1) + abs(occ_z2 - G_z2_tvb2)
-                  + abs(occ_p1_tvb1 - K_p1_tvb1) + abs(occ_p1_tvb2 - K_p1_tvb2)
-                  + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2)) / 8
-
-        # K4: conduction band minimum at K
-        # Continuous penalty: squared relative distance of CBM from K point
-        cbm_idx = np.argmin(cond_en)
-        cbm_k = self.arpes_data.fit_data[cbm_idx, 0]
-        k_mod = np.linalg.norm(self.arpes_data.K)
-        K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
-
-        # K5: band gap at K vs DFT (relative error)
-        gap_DFT = self._gap_DFT
-        gap_p = evals_K[14] - evals_K[13]
-        K5_gap = abs(gap_DFT - gap_p) / gap_DFT
-
-        result = chi2_band_distance + (K1 * K1_par_dis + K2 * K2_M
-                                       + K3 * K3_DFT + K4 * K4_band_min + K5 * K5_gap)
-
-        return result
+        breakdown = self._compute_constraint_breakdown(full_params)
+        K1, K2, K3, K4, K5, K6 = self.config["Ks"]
+        return breakdown["chi2_band_weighted"] + (K1 * breakdown["K1"] + K2 * breakdown["K2"]
+                                                   + K3 * breakdown["K3"] + K4 * breakdown["K4"]
+                                                   + K5 * breakdown["K5"])
 
     def chi2_full(self, params_full: np.ndarray, return_energy: bool = False) -> float:
         """Wrapper that includes SOC parameters in the fit.
@@ -474,7 +422,8 @@ class ParameterFitter:
                  boundType=config["boundType"],
                  seed=result.get("seed", 42),
                  material=self.material.name,
-                 chi2_band=constraints["chi2_band"],
+                 chi2_band=constraints["chi2_band_weighted"],
+                 chi2_band_unweighted=constraints["chi2_band"],
                  K1_val=constraints["K1"],
                  K2_val=constraints["K2"],
                  K3_val=constraints["K3"],
@@ -486,17 +435,34 @@ class ParameterFitter:
         return fn
 
     def _compute_constraint_breakdown(self, params: np.ndarray) -> dict:
-        """Compute individual constraint values at given parameters.
+        """Compute all constraint terms at given parameters.
 
-        Returns a dict with keys: chi2_band, K1, K2, K3, K4, K5.
-        These are the raw (unweighted) constraint terms.
+        This is the single source of truth for constraint computation.
+        Both :meth:`chi2` (objective function) and :meth:`save` (result
+        storage) delegate to this method.
+
+        Parameters
+        ----------
+        params : np.ndarray
+            Parameter array. If ``Bs[-1] == 0`` (SOC frozen), pass 41 values
+            and DFT SOC values are appended automatically. Otherwise pass 43.
+
+        Returns
+        -------
+        dict
+            Keys:
+
+            - ``chi2_band``: unweighted mean-squared band distance (no K6)
+            - ``chi2_band_weighted``: K6-weighted mean-squared band distance
+            - ``K1``: parameter distance from DFT
+            - ``K2``: interlayer-coupling orbital content at M
+            - ``K3``: orbital occupation mismatch at Gamma and K
+            - ``K4``: squared relative CBM offset from K
+            - ``K5``: relative band-gap error at K
         """
         K1, K2, K3, K4, K5, K6 = self.config["Ks"]
 
-        if self.config["Bs"][-1] == 0:
-            full_params = np.append(params, self.material.dft_params[-2:])
-        else:
-            full_params = params
+        full_params = params if params.shape[0] == 43 else np.append(params, self.material.dft_params[-2:])
 
         hopping = self.material.build_hopping_matrices(full_params)
         epsilon = self.material.build_onsite_energies(full_params)
@@ -514,36 +480,52 @@ class ParameterFitter:
             tb_en[:, i] = energies[14 - nbands:14][::-1]
             cond_en[i] = energies[14]
 
-        # Band distance (unweighted by K6 for the stored value)
-        chi2_band_distance = 0.0
+        # Unweighted band distance
+        chi2_band_unweighted = 0.0
         total_valid = 0
         for ib in range(nbands):
             valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
-            chi2_band_distance += np.sum(
+            chi2_band_unweighted += np.sum(
                 np.absolute(tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib])[valid] ** 2
             )
             total_valid += valid.sum()
-        chi2_band_distance /= total_valid
+        chi2_band_unweighted /= total_valid
 
-        # K1
+        # K6-weighted band distance (matches the objective function)
+        chi2_band_weighted = 0.0
+        special_indices = [0, np.argmax(self.arpes_data.fit_data[:, 3]),
+                           np.argmin(self.arpes_data.fit_data[:, 4]),
+                           self.arpes_data.fit_data.shape[0] - 1]
+        weights = np.ones(self.arpes_data.fit_data.shape[0])
+        weights[special_indices] = K6
+        for ib in range(nbands):
+            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
+            chi2_band_weighted += np.sum(
+                np.absolute(
+                    (tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib]) * weights
+                )[valid] ** 2
+            )
+        chi2_band_weighted /= total_valid
+
+        # K1: parameter distance from DFT
         K1_par_dis = self.material.parameter_distance(full_params)
 
-        # K2
+        # K2: orbital band content at M
         k_pts_bc = np.array([self.arpes_data.M, np.zeros(2), self.arpes_data.K])
         Ham_bc = self._build_hamiltonian(k_pts_bc, args_H)
-        evals_M, evecs_M = np.linalg.eigh(Ham_bc[0])
+        evals_M, evecs_M = la.eigh(Ham_bc[0])
         bandsM = TVB4 if self.material.name == "WSe2" else TVB2
         K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2) / (len(IND_ILC) * len(bandsM))
 
-        # K3
-        evals_G, evecs_G = np.linalg.eigh(Ham_bc[1])
+        # K3: orbital occupation at Gamma and K
+        evals_G, evecs_G = la.eigh(Ham_bc[1])
         occ_ze, occ_z2 = ORBITAL_CHARACTER[self.material.name]["G"]
         G_ze_tvb1 = np.absolute(evecs_G[ze_i, 13]) ** 2 + np.absolute(evecs_G[ze_i + 11, 13]) ** 2
         G_ze_tvb2 = np.absolute(evecs_G[ze_i, 12]) ** 2 + np.absolute(evecs_G[ze_i + 11, 12]) ** 2
         G_z2_tvb1 = np.absolute(evecs_G[z2_i, 13]) ** 2 + np.absolute(evecs_G[z2_i + 11, 13]) ** 2
         G_z2_tvb2 = np.absolute(evecs_G[z2_i, 12]) ** 2 + np.absolute(evecs_G[z2_i + 11, 12]) ** 2
 
-        evals_K, evecs_K = np.linalg.eigh(Ham_bc[2])
+        evals_K, evecs_K = la.eigh(Ham_bc[2])
         occ_p1_tvb1, occ_p1_tvb2, occ_d2_tvb1, occ_d2_tvb2 = ORBITAL_CHARACTER[self.material.name]["K"]
         K_p1_tvb1 = (np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i, 13] - 1j * evecs_K[ye_i, 13])) ** 2
                      + np.absolute(-1 / np.sqrt(2) * (evecs_K[xe_i + 11, 13] - 1j * evecs_K[ye_i + 11, 13])) ** 2)
@@ -559,18 +541,19 @@ class ParameterFitter:
                   + abs(occ_p1_tvb1 - K_p1_tvb1) + abs(occ_p1_tvb2 - K_p1_tvb2)
                   + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2)) / 8
 
-        # K4
+        # K4: conduction band minimum at K
         cbm_idx = np.argmin(cond_en)
         cbm_k = self.arpes_data.fit_data[cbm_idx, 0]
         k_mod = np.linalg.norm(self.arpes_data.K)
         K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
 
-        # K5
+        # K5: band gap at K vs DFT (relative error)
         gap_p = evals_K[14] - evals_K[13]
         K5_gap = abs(self._gap_DFT - gap_p) / self._gap_DFT
 
         return {
-            "chi2_band": chi2_band_distance,
+            "chi2_band": chi2_band_unweighted,
+            "chi2_band_weighted": chi2_band_weighted,
             "K1": K1_par_dis,
             "K2": K2_M,
             "K3": K3_DFT,
@@ -586,7 +569,7 @@ class ParameterFitter:
                 self.material.build_soc_hamiltonian(DFT),
                 DFT[-3])
         Ham = self._build_hamiltonian(np.array([self.arpes_data.K]), args)
-        ev = np.linalg.eigvalsh(Ham[0])
+        ev = la.eigvalsh(Ham[0])
         return ev[14] - ev[13]
 
     def _build_hamiltonian(self, k_points, args_H):

@@ -1,6 +1,6 @@
 # SGE job array submission for monolayer grid search
 # Submits 128 parallel tasks (one per CPU on rademaker)
-# Each task runs ~28 fits from the 3600 total
+# Each task runs ~2 fits from the 243 total
 #
 # Usage: ./job.sh WSe2
 #        ./job.sh WSe2 001      # with run ID
@@ -9,7 +9,7 @@
 MATERIAL=$1
 RUN_ID=${2:-default}
 N_TASKS=128
-TOTAL=1536
+TOTAL=243
 
 qsub -N grid_${MATERIAL}_${RUN_ID} \
      -o HPC/out_${MATERIAL}_${RUN_ID}.out \

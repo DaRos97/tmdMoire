@@ -21,7 +21,8 @@
           "conda env*": "ask",
           "apt-get install*": "ask",
           "apt install*": "ask",
-          "brew install*": "ask"
+          "brew install*": "ask",
+          "rm *": "ask",
         }
       }
     },

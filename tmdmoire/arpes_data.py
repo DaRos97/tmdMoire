@@ -63,7 +63,7 @@ class ARPESData:
     (91, 9)
     """
 
-    def __init__(self, tmd: str, master_folder: str, pts: int = 61):
+    def __init__(self, tmd: str, master_folder: str, pts: int = 91):
         if tmd not in ("WSe2", "WS2"):
             raise ValueError(f"Unknown TMD: {tmd}")
         self.tmd = tmd

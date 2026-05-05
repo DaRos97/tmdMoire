@@ -14,7 +14,7 @@ from .arpes_data import ARPESData
 from .fitter import ParameterFitter
 from .scoring import GridScorer
 from .edc_analyzer import EDCAnalyzer
-from .utils import detect_machine, get_master_folder, get_home_dn, get_filename, R_z, get_k_list
+from .utils import detect_machine, get_master_folder, get_home_dn, get_filename, R_z, get_k_list, prepare_run_dir
 
 __all__ = [
     "MoireGeometry",
@@ -31,6 +31,7 @@ __all__ = [
     "get_filename",
     "R_z",
     "get_k_list",
+    "prepare_run_dir",
     "LATTICE_CONSTANTS",
     "TMD_NAMES",
     "PARAMETER_NAMES",

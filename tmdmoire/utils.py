@@ -2,7 +2,42 @@
 
 These functions are used by both the monolayer and bilayer workflows.
 """
+import os
+import shutil
 import numpy as np
+
+
+SOURCE_CONFIG = "Inputs/grid_config.json"
+"""Default path to the grid configuration file."""
+
+
+def prepare_run_dir(run_id: str, material: str) -> str:
+    """Create the run output directory and copy grid_config.json into it.
+
+    Creates ``Data/<material>_run_<run_id>/`` if it does not exist, and
+    copies ``Inputs/grid_config.json`` into it (only if the destination
+    does not exist or is older than the source).
+
+    Parameters
+    ----------
+    run_id : str
+        Run identifier.
+    material : str
+        Material name (e.g. "WSe2" or "WS2").
+
+    Returns
+    -------
+    str
+        Path to the run directory.
+    """
+    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
+    os.makedirs(run_dir, exist_ok=True)
+    dst = os.path.join(run_dir, "grid_config.json")
+    if not os.path.exists(dst):
+        shutil.copy2(SOURCE_CONFIG, dst)
+    elif os.path.getmtime(SOURCE_CONFIG) > os.path.getmtime(dst):
+        shutil.copy2(SOURCE_CONFIG, dst)
+    return run_dir
 
 
 def detect_machine(cwd: str) -> str:

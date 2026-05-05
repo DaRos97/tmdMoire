@@ -177,7 +177,7 @@ def plot_bands(tb_en, data, legend_info, save_path=None):
 
 
 def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
-    """Plot parameter values as bar chart.
+    """Plot parameter values as bar chart with DFT reference lines.
 
     Parameters
     ----------
@@ -192,8 +192,12 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
     save_path : str or Path, optional
         If given, save figure to this path and close.
     """
+    from .material import TMDMaterial
+
     npars = pars.shape[0]
-    DFT_pars = np.array([0] * npars)
+    mat = TMDMaterial(tmd)
+    DFT_pars = mat.dft_params[:npars]
+
     fig = plt.figure(figsize=(19, 9))
     gs = gridspec.GridSpec(1, 2, figure=fig, width_ratios=[10, 1], hspace=0)
     fig.patch.set_facecolor("#F7F7F7")
@@ -226,28 +230,25 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
         val = pars[i]
         ref = DFT_pars[i]
         c = param_colors[i]
-        ax.bar(i, abs(val), width=bar_w, bottom=min(0, val),
-               color=c, alpha=0.80, linewidth=0.3, edgecolor="white", zorder=3)
+        ax.bar(i, val, width=bar_w, color=c, alpha=0.80, linewidth=0.3, edgecolor="white", zorder=3)
         hw = bar_w * 0.48
         ax.plot([i - hw, i + hw], [ref, ref],
-                color="#111", lw=1.2, zorder=6, solid_capstyle="butt", linestyle="-")
-        label = f"{val:+.2f}"
-        if abs(val) > 0.20:
-            ax.text(i, val / 2, label, ha="center", va="center",
-                    fontsize=8, color="white", fontweight="bold", rotation=90, zorder=7)
-        else:
-            yo = val + (0.035 if val >= 0 else -0.035)
-            va_ = "bottom" if val >= 0 else "top"
-            ax.text(i, yo, label, ha="center", va=va_,
-                    fontsize=8, color="#333", rotation=90, zorder=7)
+                color="#111", lw=1.5, zorder=6, solid_capstyle="butt", linestyle="-")
+        diff = abs(val - ref)
+        label = f"{diff:.3f}"
+        y_pos = val
+        va_ = "bottom" if val >= ref else "top"
+        offset = 0.05 if val >= 0 else -0.05
+        ax.text(i, y_pos + offset, label, ha="center", va=va_,
+                fontsize=9, color="#333", rotation=90, zorder=7, fontweight="bold")
         if param_bound[i] is not None:
             b = param_bound[i]
             for sign in (1, -1):
                 ax.plot([i - 1 / 2, i + 1 / 2], [sign * b, sign * b],
-                        color="#111", lw=1.4, ls="-", zorder=5, alpha=0.75)
+                        color="#CC3311", lw=1.2, ls="--", zorder=5, alpha=0.8)
     s_, s_p = 12, 15
     ax.set_xticks(x)
-    ax.set_xticklabels(FORMATTED_NAMES[:npars], rotation=55, ha="right", fontsize=s_, fontfamily="monospace")
+    ax.set_xticklabels(FORMATTED_NAMES[:npars], rotation=55, ha="center", fontsize=s_, fontfamily="monospace")
     ax.set_xlim(-0.4, npars - 0.6)
     ax.set_ylabel("Value", fontsize=s_p, labelpad=6)
     ax.axhline(0, color="#555", lw=0.8, zorder=4)

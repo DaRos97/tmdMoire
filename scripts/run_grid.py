@@ -55,7 +55,6 @@ Score a specific run::
 import sys
 import os
 import json
-import shutil
 import argparse
 import itertools
 import time
@@ -65,40 +64,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from tmdmoire import (
     TMDMaterial, ARPESData, ParameterFitter, GridScorer,
-    detect_machine, get_master_folder,
+    detect_machine, get_master_folder, prepare_run_dir,
 )
 
-SOURCE_CONFIG = "Inputs/grid_config.json"
 
-
-def prepare_run_dir(run_id: str, material: str) -> str:
-    """Create the run output directory and copy grid_config.json into it.
-
-    Reads the source config from ``Inputs/grid_config.json`` and writes
-    a snapshot to ``Data/<material>_run_<id>/grid_config.json``.
-
-    Parameters
-    ----------
-    run_id : str
-        Run identifier.
-    material : str
-        Material name (WSe2 or WS2).
-
-    Returns
-    -------
-    str
-        Path to the run directory.
-    """
-    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
-    os.makedirs(run_dir, exist_ok=True)
-
-    dst = os.path.join(run_dir, "grid_config.json")
-    if not os.path.exists(dst):
-        shutil.copy2(SOURCE_CONFIG, dst)
-    elif os.path.getmtime(SOURCE_CONFIG) > os.path.getmtime(dst):
-        shutil.copy2(SOURCE_CONFIG, dst)
-
-    return run_dir
 
 
 def load_grid_config(run_dir: str) -> dict:
@@ -144,8 +113,10 @@ def build_grid(config: dict) -> list[dict]:
             "idx": idx,
             "Ks": combo,
             "pts": config.get("pts", 91),
+            "seed": config.get("seed", 42),
             "boundType": config["bounds"]["boundType"],
             "Bs": tuple(config["bounds"]["Bs"]),
+            "optimizer": config.get("optimizer", {}),
         })
     return configs
 
@@ -183,21 +154,15 @@ def run_chunk(material_name: str, master_folder: str,
     pts = config.get("pts", 91)
     arpes_data = ARPESData(material_name, master_folder, pts=pts)
 
-    opt = config.get("optimizer", {})
-    da_maxiter = opt.get("da_maxiter", 100)
-    nm_maxiter = opt.get("nm_maxiter", 50)
-    nm_fatol = opt.get("nm_fatol", 1e-3)
-
     print(f"Running indices {start} to {end - 1} / {total}")
     print(f"Material: {material_name}, pts: {pts}, seed: {seed}")
-    print(f"Optimizer: da_maxiter={da_maxiter}, nm_maxiter={nm_maxiter}, nm_fatol={nm_fatol}")
     print(f"Output directory: {run_dir}")
     print()
 
     t_start = time.time()
     for i in range(start, end):
         cfg = all_configs[i]
-        fitter = ParameterFitter(material, arpes_data, cfg)
+        fitter = ParameterFitter(material, arpes_data, cfg, idx=i)
 
         t_fit = time.time()
         result = fitter.run(seed=seed)
@@ -274,6 +239,11 @@ def main():
 
     machine = detect_machine(os.getcwd())
     master_folder = get_master_folder(os.getcwd())
+
+    if machine == "maf":
+        args.start = max(args.start - 1, 0)
+        if args.end is not None:
+            args.end = max(args.end - 1, 0)
 
     run_dir = os.path.join("Data", f"{args.material}_run_{args.run_id}")
 
