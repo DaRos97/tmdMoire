@@ -2,8 +2,8 @@
     "description": "Grid of constraint weights (K1-K6) for monolayer fitting.",
     "grid": {
         "K1": [0, 0.01, 0.1],
-        "K2": [0.01, 0.1, 1.0, 10.0],
-        "K3": [0.01, 0.1, 1.0, 10.0],
+        "K2": [0.1, 0.1, 1.0, 10.0],
+        "K3": [0.1, 0.1, 1.0, 10.0],
         "K4": [0, 0.5, 1.0, 5.0],
         "K5": [0, 0.1, 0.5, 1.0],
         "K6": [5, 10]
@@ -15,8 +15,14 @@
     "pts": 91,
     "seed": 42,
     "optimizer": {
+        "method": "differential_evolution",
         "da_maxiter": 100,
-        "nm_maxiter": 50,
-        "nm_fatol": 1e-3
+        "de_maxiter": 50,
+        "de_popsize": 30,
+        "de_strategy": "best1exp",
+        "de_mutation": [0.5, 1.0],
+        "de_recombination": 0.7,
+        "nm_maxiter": 500,
+        "nm_fatol": 1e-4
     }
 }

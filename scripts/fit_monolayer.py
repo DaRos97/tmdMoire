@@ -63,6 +63,8 @@ parser.add_argument("material", choices=["WSe2", "WS2"], help="Target material."
 parser.add_argument("index", type=int, help="Grid index.")
 parser.add_argument("--run-id", type=str, default="default",
                     help="Run identifier for output subdirectory.")
+parser.add_argument("--debug-figures", action="store_true",
+                    help="Save debug figures for each new best during minimization.")
 args = parser.parse_args()
 
 tmd_name = args.material
@@ -146,9 +148,13 @@ if disp:
 
 material = TMDMaterial(tmd_name)
 arpes_data = ARPESData(tmd_name, master_folder, pts=pts)
-fitter = ParameterFitter(material, arpes_data, args_minimization)
+fitter = ParameterFitter(material, arpes_data, args_minimization, idx=argc)
 
-result = fitter.run(seed=42)
+debug_dir = None
+if args.debug_figures:
+    debug_dir = os.path.join(run_dir, "debug", f"fit_idx{argc}")
+
+result = fitter.run(seed=42, debug_dir=debug_dir)
 result["idx"] = argc
 result["seed"] = 42
 

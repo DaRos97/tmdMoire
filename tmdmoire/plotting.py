@@ -276,7 +276,7 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     Parameters
     ----------
     pars : np.ndarray
-        43 tight-binding parameters.
+        43 tight-binding parameters (or 41 if SOC is frozen).
     tmd : str
         Material name.
     legend_info : tuple
@@ -286,6 +286,13 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     """
     from .material import _find_t, _find_e, _find_HSO
     from .constants import LATTICE_CONSTANTS, IND_OPO, IND_IPO
+    from .material import TMDMaterial
+
+    if pars.shape[0] == 41:
+        mat_dft = TMDMaterial(tmd)
+        full_pars = np.append(pars, mat_dft.dft_params[-2:])
+    else:
+        full_pars = pars
 
     Ngk = 200
     Nkm = int(Ngk / 2)
@@ -301,10 +308,10 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     for ik in range(Nmg + 1):
         data_k[Ngk + Nkm + ik] = M + M / Nmg * ik
 
-    hopping = _find_t(pars)
-    epsilon = _find_e(pars)
-    offset = pars[-3]
-    HSO = _find_HSO(pars[-2:])
+    hopping = _find_t(full_pars)
+    epsilon = _find_e(full_pars)
+    offset = full_pars[-3]
+    HSO = _find_HSO(full_pars[-2:])
     args_H = (hopping, epsilon, HSO, offset)
 
     from .hamiltonian import MonolayerHamiltonian
