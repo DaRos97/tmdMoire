@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 
 
-SOURCE_CONFIG = "Inputs/grid_config.json"
+SOURCE_CONFIG = "Inputs/monolayer_fitting/grid_config.json"
 """Default path to the grid configuration file."""
 
 
@@ -15,7 +15,7 @@ def prepare_run_dir(run_id: str, material: str) -> str:
     """Create the run output directory and copy grid_config.json into it.
 
     Creates ``Data/<material>_run_<run_id>/`` if it does not exist, and
-    copies ``Inputs/grid_config.json`` into it (only if the destination
+    copies ``Inputs/monolayer_fitting/grid_config.json`` into it (only if the destination
     does not exist or is older than the source).
 
     Parameters
@@ -74,7 +74,7 @@ def get_master_folder(cwd: str) -> str:
     Returns
     -------
     str
-        Path to the repository root (contains ``Inputs/`` subdirectory).
+        Path to the repository root (contains ``Inputs/monolayer_fitting/`` subdirectory).
     """
     if cwd[6:11] == "dario":
         return cwd[:40]

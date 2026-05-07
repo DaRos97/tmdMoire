@@ -63,8 +63,8 @@ stacking = "P"
 w2p = w2d = 0
 
 monolayer_fns = {
-    "WSe2": master_folder + "Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy",
-    "WS2": master_folder + "Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
+    "WSe2": master_folder + "/Inputs/monolayer_fitting/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy",
+    "WS2": master_folder + "/Inputs/monolayer_fitting/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
 }
 
 pars_interlayer = {"stacking": stacking, "w1p": w1p, "w2p": w2p, "w1d": w1d, "w2d": w2d}

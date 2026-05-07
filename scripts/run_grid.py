@@ -1,7 +1,7 @@
 """Run monolayer fitting across a grid of constraint weights.
 
 Executes the full fitting pipeline for each combination of constraint
-weights (K1-K6) defined in ``Inputs/grid_config.json``. A snapshot of
+weights (K1-K6) defined in ``Inputs/monolayer_fitting/grid_config.json``. A snapshot of
 the config is copied to ``Data/run_<id>/grid_config.json`` for
 reproducibility. Results are saved as
 ``Data/run_<id>/fit_{TMD}_idx{N}.npz`` files.
@@ -19,6 +19,7 @@ Usage
     python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
     python scripts/run_grid.py WSe2 --score --plot              # Score + generate plots
     python scripts/run_grid.py WSe2 --score --plot --top 5      # Plots for top 5
+    python scripts/run_grid.py WSe2 --score --export             # Score + export best params for bilayer
 
 Arguments
 ---------
@@ -29,6 +30,7 @@ Arguments
 - ``--score``: Skip fitting, just score and display existing results.
 - ``--top N``: Show top N results when scoring (default: 10).
 - ``--k4-threshold``: K4 hard filter threshold for scoring (default: 0.05).
+- ``--export``: Save best params and metadata to ``Inputs/bilayer_fitting/`` for bilayer fitting.
 
 Examples
 --------
@@ -58,6 +60,7 @@ import json
 import argparse
 import itertools
 import time
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -183,7 +186,8 @@ def run_chunk(material_name: str, master_folder: str,
 
 
 def do_score(material_name: str, top_n: int, k4_threshold: float,
-             run_dir: str = "Data", master_folder: str = "", plot: bool = False) -> None:
+             run_dir: str = "Data", master_folder: str = "", plot: bool = False,
+             export: bool = False) -> None:
     """Load and score existing results.
 
     Parameters
@@ -200,6 +204,8 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
         Repository root (needed for plotting).
     plot : bool
         If True, generate figures for top results.
+    export : bool
+        If True, save best params and metadata to Inputs/bilayer_fitting/.
     """
     scorer = GridScorer(material_name, data_dir=run_dir)
     print(scorer.summary(k4_threshold=k4_threshold, top_n=top_n))
@@ -210,6 +216,49 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
             print(f"\nGenerating plots for top {len(ranked)} results...")
             from tmdmoire.plotting import plot_top_results
             plot_top_results(ranked, material_name, master_folder, run_dir)
+
+    if export:
+        ranked = scorer.score(k4_threshold=k4_threshold, top_n=1)
+        if ranked.empty:
+            print("\nNo results pass the K4 filter — cannot export.")
+            return
+        row = ranked.iloc[0]
+        out_dir = Path(master_folder) / "Inputs" / "bilayer_fitting"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        params = row["params"]
+        np.save(out_dir / f"tb_{material_name}.npy", params)
+
+        import datetime
+        metadata = {
+            "material": material_name,
+            "idx": int(row["idx"]),
+            "rank": int(row["rank"]),
+            "chi2": float(row["chi2"]),
+            "chi2_band_unweighted": float(row["chi2_band_unweighted"]),
+            "chi2_band": float(row["chi2_band"]),
+            "K1_val": float(row["K1_val"]),
+            "K2_val": float(row["K2_val"]),
+            "K3_val": float(row["K3_val"]),
+            "K4_val": float(row["K4_val"]),
+            "K5_val": float(row["K5_val"]),
+            "K1_w": float(row["K1_w"]),
+            "K2_w": float(row["K2_w"]),
+            "K3_w": float(row["K3_w"]),
+            "K4_w": float(row["K4_w"]),
+            "K5_w": float(row["K5_w"]),
+            "K6_w": float(row["K6_w"]),
+            "nfev": int(row["nfev"]),
+            "k4_threshold": k4_threshold,
+            "run_id": run_dir,
+            "timestamp": datetime.datetime.now().isoformat(),
+        }
+        import json
+        meta_fn = out_dir / f"tb_{material_name}_metadata.json"
+        with open(meta_fn, "w") as f:
+            json.dump(metadata, f, indent=2)
+        print(f"\nExported best params to {out_dir / f'tb_{material_name}.npy'}")
+        print(f"Exported metadata to {meta_fn}")
 
 
 def main():
@@ -234,6 +283,8 @@ def main():
                         help="Random seed for fitting.")
     parser.add_argument("--plot", action="store_true",
                         help="When scoring, also generate plots for top results.")
+    parser.add_argument("--export", action="store_true",
+                        help="When scoring, export best params and metadata to Inputs/bilayer_fitting/.")
 
     args = parser.parse_args()
 
@@ -249,7 +300,8 @@ def main():
 
     if args.score:
         do_score(args.material, args.top, args.k4_threshold,
-                 run_dir=run_dir, master_folder=master_folder, plot=args.plot)
+                 run_dir=run_dir, master_folder=master_folder, plot=args.plot,
+                 export=args.export)
         return
 
     run_dir = prepare_run_dir(args.run_id, args.material)

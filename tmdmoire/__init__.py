@@ -11,10 +11,12 @@ from .moire_geometry import MoireGeometry
 from .material import TMDMaterial
 from .hamiltonian import MonolayerHamiltonian, MoireHamiltonian
 from .arpes_data import ARPESData
+from .bilayer_data import BilayerData
 from .fitter import ParameterFitter
 from .scoring import GridScorer
 from .edc_analyzer import EDCAnalyzer
 from .utils import detect_machine, get_master_folder, get_home_dn, get_filename, R_z, get_k_list, prepare_run_dir
+from .plotting import plot_bilayer_data
 
 __all__ = [
     "MoireGeometry",
@@ -22,6 +24,7 @@ __all__ = [
     "MonolayerHamiltonian",
     "MoireHamiltonian",
     "ARPESData",
+    "BilayerData",
     "ParameterFitter",
     "GridScorer",
     "EDCAnalyzer",
@@ -32,6 +35,7 @@ __all__ = [
     "R_z",
     "get_k_list",
     "prepare_run_dir",
+    "plot_bilayer_data",
     "LATTICE_CONSTANTS",
     "TMD_NAMES",
     "PARAMETER_NAMES",

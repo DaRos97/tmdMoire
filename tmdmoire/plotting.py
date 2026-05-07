@@ -486,3 +486,80 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         print(f"  Plots saved for rank {rank} (idx {idx})")
 
     print(f"All figures saved to {fig_dir}/")
+
+
+def plot_bilayer_data(bilayer_data, save_dir=None):
+    """Plot bilayer ARPES raw data, symmetrized data, and interpolated fitting grid.
+
+    Produces a 3-column figure showing:
+    - Left: raw experimental data (signed momentum vs energy) for all 3 bands
+    - Center: symmetrized data (|k|, averaged K' and K sides)
+    - Right: interpolated data on the uniform |k| fitting grid
+
+    Parameters
+    ----------
+    bilayer_data : BilayerData
+        BilayerData instance with raw_data, sym_data, and fit_data populated.
+    save_dir : str or Path, optional
+        Directory to save the figure. If None, uses ``Figures/`` relative to
+        the repository root.
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6), sharey=True, constrained_layout=True)
+    ax_raw, ax_sym, ax_interp = axes
+
+    colors_raw = ["steelblue", "darkorange", "forestgreen"]
+    colors_sym = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+    colors_interp = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+    band_labels = [r"Band 1", r"Band 2", r"Band 3"]
+
+    for ib in range(bilayer_data.n_bands):
+        rd = bilayer_data.raw_data[ib]
+        valid = ~np.isnan(rd[:, 1])
+        ax_raw.scatter(rd[valid, 0], rd[valid, 1], s=6, c=colors_raw[ib],
+                       alpha=0.6, label=band_labels[ib])
+
+    ax_raw.axhline(0, color="gray", lw=0.5, ls="--")
+    ax_raw.axvline(0, color="k", lw=0.8, ls=":")
+    ax_raw.set_xlabel("Momentum (Å⁻¹)", fontsize=12)
+    ax_raw.set_ylabel("Energy (eV)", fontsize=12)
+    ax_raw.set_title("Raw bilayer ARPES data", fontsize=13, fontweight="bold")
+    ax_raw.legend(fontsize=10)
+    ax_raw.text(0, ax_raw.get_ylim()[1] * 0.95, r"$\Gamma$",
+                ha="center", va="top", fontsize=10, fontweight="bold")
+
+    for ib in range(bilayer_data.n_bands):
+        sd = bilayer_data.sym_data[ib]
+        valid = ~np.isnan(sd[:, 1])
+        ax_sym.scatter(sd[valid, 0], sd[valid, 1], s=8, c=colors_sym[ib],
+                       alpha=0.7, label=band_labels[ib])
+
+    ax_sym.axhline(0, color="gray", lw=0.5, ls="--")
+    ax_sym.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
+    ax_sym.set_title("Symmetrized (K'↔K averaged)", fontsize=13, fontweight="bold")
+    ax_sym.legend(fontsize=10)
+
+    fd = bilayer_data.fit_data
+    k_grid = fd[:, 0]
+    for ib in range(bilayer_data.n_bands):
+        energies = fd[:, ib + 1]
+        valid = ~np.isnan(energies)
+        ax_interp.scatter(k_grid[valid], energies[valid], s=10,
+                          c=colors_interp[ib], alpha=0.8, zorder=3,
+                          label=band_labels[ib])
+
+    ax_interp.axhline(0, color="gray", lw=0.5, ls="--")
+    ax_interp.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
+    ax_interp.set_title("Interpolated (fitting grid)", fontsize=13, fontweight="bold")
+    ax_interp.legend(fontsize=10)
+
+    fig.suptitle("WSe2/WS2 bilayer ARPES data — K'→Γ→K path",
+                 fontsize=14, fontweight="bold", y=1.01)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[1] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "bilayer_data.png"
+    fig.savefig(fn, dpi=150, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)

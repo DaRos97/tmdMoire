@@ -1,13 +1,13 @@
 """ARPES data loading, symmetrization, and interpolation.
 
 The ``ARPESData`` class reads experimental band dispersion data from
-tab-delimited text files in the ``Inputs/`` directory, symmetrizes
+tab-delimited text files in the ``Inputs/monolayer_fitting/`` directory, symmetrizes
 the K→Γ and Γ→K segments, and interpolates onto a uniform grid for
 use in the tight-binding fitting procedure.
 
 Data pipeline
 -------------
-1. **Load raw** — read ``Inputs/{path}_{TMD}_band{N}.txt`` files as-is.
+1. **Load raw** — read ``Inputs/monolayer_fitting/{path}_{TMD}_band{N}.txt`` files as-is.
    No transformation is applied; the loader preserves the original
    momentum sign and ordering from the experiment.
 2. **Symmetrize** — average equivalent K→Γ and Γ→K segments, handle
@@ -32,7 +32,7 @@ from .constants import LATTICE_CONSTANTS, MONOLAYER_OFFSETS
 class ARPESData:
     """Loads and processes ARPES band dispersion data for a TMD monolayer.
 
-    Reads raw momentum-energy data from ``Inputs/{path}_{TMD}_band{N}.txt``,
+    Reads raw momentum-energy data from ``Inputs/monolayer_fitting/{path}_{TMD}_band{N}.txt``,
     symmetrizes equivalent path segments, and interpolates onto a uniform
     grid of ``pts`` points for fitting.
 
@@ -41,7 +41,7 @@ class ARPESData:
     tmd : str
         Material name, "WSe2" or "WS2".
     master_folder : str
-        Path to the repository root (must contain ``Inputs/`` subdirectory).
+        Path to the repository root (must contain ``Inputs/monolayer_fitting/`` subdirectory).
     pts : int
         Number of interpolation points along the combined path.
         Should be of the form 3n + 1 for even segment division.
@@ -95,7 +95,7 @@ class ARPESData:
         return self.M.copy()
 
     def _load_manifest(self) -> dict:
-        """Read band counts from Inputs/manifest.json.
+        """Read band counts from Inputs/monolayer_fitting/manifest.json.
 
         Returns
         -------
@@ -103,7 +103,7 @@ class ARPESData:
             Mapping of path name to number of bands, e.g.
             ``{"KpGK": 6, "KMKp": 4}``.
         """
-        manifest_path = Path(self.master_folder) / "Inputs" / "manifest.json"
+        manifest_path = Path(self.master_folder) / "Inputs" / "monolayer_fitting" / "manifest.json"
         if manifest_path.exists():
             with open(manifest_path) as f:
                 manifest = json.load(f)
@@ -130,7 +130,7 @@ class ARPESData:
         for path in self.paths:
             raw[path] = []
             for ib in range(self.nbands[path]):
-                fn = Path(self.master_folder) / "Inputs" / f"{path}_{self.tmd}_band{ib + 1}.txt"
+                fn = Path(self.master_folder) / "Inputs" / "monolayer_fitting" / f"{path}_{self.tmd}_band{ib + 1}.txt"
                 with open(fn) as f:
                     lines = f.readlines()
                 temp = []
@@ -165,7 +165,7 @@ class ARPESData:
             all_raw_newer = False
             for path in self.paths:
                 for ib in range(self.nbands[path]):
-                    raw_fn = Path(self.master_folder) / "Inputs" / f"{path}_{self.tmd}_band{ib + 1}.txt"
+                    raw_fn = Path(self.master_folder) / "Inputs" / "monolayer_fitting" / f"{path}_{self.tmd}_band{ib + 1}.txt"
                     if raw_fn.stat().st_mtime > cache_mtime:
                         all_raw_newer = True
                         break

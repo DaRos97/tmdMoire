@@ -20,7 +20,7 @@ Arguments
 ---------
 - ``WSe2`` or ``WS2``: Target material.
 - ``index``: Integer selecting a combination of constraint weights (K1-K6)
-  from the grid defined in ``Inputs/grid_config.json``.
+  from the grid defined in ``Inputs/monolayer_fitting/grid_config.json``.
 - ``--run-id``: Run identifier. Results saved to Data/run_<id>/ (default: 'default').
 
 Examples
