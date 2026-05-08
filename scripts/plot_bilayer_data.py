@@ -8,10 +8,9 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tmdmoire import BilayerData, detect_machine, get_master_folder, plot_bilayer_data
+from tmdmoire import BilayerData, get_repo_root, plot_bilayer_data
 
-machine = detect_machine(os.getcwd())
-master_folder = get_master_folder(os.getcwd())
+master_folder = get_repo_root()
 
 bilayer = BilayerData(master_folder, pts=200)
 

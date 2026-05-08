@@ -66,45 +66,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 from tmdmoire import (
-    TMDMaterial, ARPESData, ParameterFitter, GridScorer,
-    detect_machine, get_master_folder, prepare_run_dir,
+    TMDMaterial, MonolayerData, ParameterFitter, GridScorer,
+    get_repo_root, prepare_run_dir,
 )
 
 
-
-
 def load_grid_config(run_dir: str) -> dict:
-    """Load grid configuration from the run directory.
-
-    Parameters
-    ----------
-    run_dir : str
-        Path to the run directory containing grid_config.json.
-
-    Returns
-    -------
-    dict
-        Configuration with keys: grid, bounds, pts, seed, optimizer.
-    """
+    """Load grid configuration from the run directory."""
     config_path = os.path.join(run_dir, "grid_config.json")
     with open(config_path) as f:
         return json.load(f)
 
 
 def build_grid(config: dict) -> list[dict]:
-    """Build the full list of parameter configurations from the grid spec.
-
-    Parameters
-    ----------
-    config : dict
-        Grid configuration from ``load_grid_config()``.
-
-    Returns
-    -------
-    list[dict]
-        List of configuration dicts, each with keys: idx, Ks, pts,
-        boundType, Bs.
-    """
+    """Build the full list of parameter configurations from the grid spec."""
     grid = config["grid"]
     keys = ["K1", "K2", "K3", "K4", "K5", "K6"]
     values = [grid[k] for k in keys]
@@ -127,23 +102,7 @@ def build_grid(config: dict) -> list[dict]:
 def run_chunk(material_name: str, master_folder: str,
               start: int, end: int, seed: int = 42,
               run_dir: str = "Data") -> None:
-    """Run fitting for a chunk of grid indices.
-
-    Parameters
-    ----------
-    material_name : str
-        "WSe2" or "WS2".
-    master_folder : str
-        Root directory of the project.
-    start : int
-        First index (inclusive).
-    end : int
-        Last index (exclusive).
-    seed : int
-        Random seed for reproducibility.
-    run_dir : str
-        Directory to save .npz results and read grid_config.json from.
-    """
+    """Run fitting for a chunk of grid indices."""
     config = load_grid_config(run_dir)
     all_configs = build_grid(config)
     total = len(all_configs)
@@ -155,7 +114,7 @@ def run_chunk(material_name: str, master_folder: str,
 
     material = TMDMaterial(material_name)
     pts = config.get("pts", 91)
-    arpes_data = ARPESData(material_name, master_folder, pts=pts)
+    data = MonolayerData(material_name, master_folder, pts=pts)
 
     print(f"Running indices {start} to {end - 1} / {total}")
     print(f"Material: {material_name}, pts: {pts}, seed: {seed}")
@@ -165,7 +124,7 @@ def run_chunk(material_name: str, master_folder: str,
     t_start = time.time()
     for i in range(start, end):
         cfg = all_configs[i]
-        fitter = ParameterFitter(material, arpes_data, cfg, idx=i)
+        fitter = ParameterFitter(material, data, cfg, idx=i)
 
         t_fit = time.time()
         result = fitter.run(seed=seed)
@@ -188,25 +147,7 @@ def run_chunk(material_name: str, master_folder: str,
 def do_score(material_name: str, top_n: int, k4_threshold: float,
              run_dir: str = "Data", master_folder: str = "", plot: bool = False,
              export: bool = False) -> None:
-    """Load and score existing results.
-
-    Parameters
-    ----------
-    material_name : str
-        "WSe2" or "WS2".
-    top_n : int
-        Number of top results to display.
-    k4_threshold : float
-        K4 hard filter threshold.
-    run_dir : str
-        Directory containing fit_*.npz files and grid_config.json.
-    master_folder : str
-        Repository root (needed for plotting).
-    plot : bool
-        If True, generate figures for top results.
-    export : bool
-        If True, save best params and metadata to Inputs/bilayer_fitting/.
-    """
+    """Load and score existing results."""
     scorer = GridScorer(material_name, data_dir=run_dir)
     print(scorer.summary(k4_threshold=k4_threshold, top_n=top_n))
 
@@ -214,7 +155,7 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
         ranked = scorer.score(k4_threshold=k4_threshold, top_n=top_n)
         if not ranked.empty:
             print(f"\nGenerating plots for top {len(ranked)} results...")
-            from tmdmoire.plotting import plot_top_results
+            from tmdmoire.plotting.monolayer import plot_top_results
             plot_top_results(ranked, material_name, master_folder, run_dir)
 
     if export:
@@ -288,13 +229,7 @@ def main():
 
     args = parser.parse_args()
 
-    machine = detect_machine(os.getcwd())
-    master_folder = get_master_folder(os.getcwd())
-
-    if machine == "maf":
-        args.start = max(args.start - 1, 0)
-        if args.end is not None:
-            args.end = max(args.end - 1, 0)
+    master_folder = get_repo_root()
 
     run_dir = os.path.join("Data", f"{args.material}_run_{args.run_id}")
 

@@ -36,14 +36,7 @@ class GridScorer:
         self.data_dir = Path(data_dir)
 
     def load_results(self) -> pd.DataFrame:
-        """Load all fit_{material}_idx*.npz files into a DataFrame.
-
-        Returns
-        -------
-        pd.DataFrame
-            One row per result, with columns for chi2, individual constraint
-            values, K weights, and the parameter array.
-        """
+        """Load all fit_{material}_idx*.npz files into a DataFrame."""
         rows = []
         pattern = "fit_idx*.npz"
         for fn in sorted(self.data_dir.glob(pattern)):
@@ -80,27 +73,7 @@ class GridScorer:
     def score(self, df: pd.DataFrame | None = None,
               k4_threshold: float = 0.05,
               top_n: int = 50) -> pd.DataFrame:
-        """Apply multi-stage scoring and return ranked results.
-
-        Stage 1: Hard filter — reject if K4 > k4_threshold (CBM not at K).
-        Stage 2: Primary rank — sort by chi2_band_unweighted ascending.
-        Stage 3: Tiebreak — for similar chi2_band_unweighted, prefer lower
-                 K3_val + K2_val + K5_val.
-
-        Parameters
-        ----------
-        df : pd.DataFrame, optional
-            Pre-loaded results. If None, loads from disk.
-        k4_threshold : float
-            Maximum acceptable K4 value (squared relative CBM offset).
-        top_n : int
-            Maximum number of results to return.
-
-        Returns
-        -------
-        pd.DataFrame
-            Scored and ranked results with a ``rank`` column.
-        """
+        """Apply multi-stage scoring and return ranked results."""
         if df is None:
             df = self.load_results()
 
@@ -121,22 +94,7 @@ class GridScorer:
     def summary(self, df: pd.DataFrame | None = None,
                 k4_threshold: float = 0.05,
                 top_n: int = 10) -> str:
-        """Generate a human-readable summary of top results.
-
-        Parameters
-        ----------
-        df : pd.DataFrame, optional
-            Pre-loaded results. If None, loads from disk.
-        k4_threshold : float
-            K4 hard filter threshold.
-        top_n : int
-            Number of top results to display.
-
-        Returns
-        -------
-        str
-            Formatted summary table.
-        """
+        """Generate a human-readable summary of top results."""
         ranked = self.score(df, k4_threshold=k4_threshold, top_n=top_n)
         if ranked.empty:
             return "No results pass the K4 filter."
@@ -158,20 +116,7 @@ class GridScorer:
 
     def get_best_params(self, df: pd.DataFrame | None = None,
                         k4_threshold: float = 0.05) -> np.ndarray | None:
-        """Return the parameter array of the best-scoring result.
-
-        Parameters
-        ----------
-        df : pd.DataFrame, optional
-            Pre-loaded results. If None, loads from disk.
-        k4_threshold : float
-            K4 hard filter threshold.
-
-        Returns
-        -------
-        np.ndarray or None
-            Best parameter array, or None if no results pass the filter.
-        """
+        """Return the parameter array of the best-scoring result."""
         ranked = self.score(df, k4_threshold=k4_threshold, top_n=1)
         if ranked.empty:
             return None

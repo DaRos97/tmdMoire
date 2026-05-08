@@ -10,11 +10,11 @@ with a penalty for out-of-bounds excursions.
 """
 import numpy as np
 import scipy.optimize as opt
-from .material import TMDMaterial
-from .bilayer_data import BilayerData
+from ..material import TMDMaterial
+from .data import BilayerData
 from .hamiltonian import MoireHamiltonian
-from .moire_geometry import MoireGeometry
-from .constants import ENERGY_OFFSETS
+from .geometry import MoireGeometry
+from ..constants import ENERGY_OFFSETS
 
 
 class BilayerFitter:
@@ -60,18 +60,7 @@ class BilayerFitter:
         self.exp_energies = self.exp_data[:, 1:]
 
     def _build_hamiltonian(self, interlayer_params: dict) -> tuple:
-        """Build 44×44 bilayer Hamiltonian at all k-points.
-
-        Parameters
-        ----------
-        interlayer_params : dict
-            Keys: stacking, w1p, w1d, w2p, w2d.
-
-        Returns
-        -------
-        tuple[np.ndarray, np.ndarray]
-            Eigenvalues (n_kpts, 44) and eigenvectors (n_kpts, 44, 44).
-        """
+        """Build 44×44 bilayer Hamiltonian at all k-points."""
         geometry = MoireGeometry(0.0)
         ham = MoireHamiltonian(self.wse2, self.ws2, geometry)
         pars_V = (0.0, 0.0, 0.0, 0.0)
@@ -80,21 +69,7 @@ class BilayerFitter:
                                pars_V=pars_V)
 
     def chi2(self, params: np.ndarray) -> float:
-        """Chi-squared objective: sum of squared energy differences.
-
-        Parameters are clipped to [-10, 10] eV. A penalty is added
-        for any parameter outside bounds to keep the optimizer within range.
-
-        Parameters
-        ----------
-        params : np.ndarray
-            [w1p, w1d, w2p, w2d] in eV.
-
-        Returns
-        -------
-        float
-            Mean squared error + penalty for out-of-bounds.
-        """
+        """Chi-squared objective: sum of squared energy differences."""
         lo, hi = self.BOUNDS
         penalty = 0.0
         clipped = np.clip(params, lo, hi)
@@ -111,15 +86,9 @@ class BilayerFitter:
 
         evals, _ = self._build_hamiltonian(interlayer_params)
 
-        # Apply S11 sample energy offset (-0.47 eV) to match experimental reference frame
         energy_offset = ENERGY_OFFSETS["S11"]
         evals_shifted = evals + energy_offset
 
-        # Top 3 valence bands (one from each spin-degenerate pair):
-        # Band 1 (top, ~-0.9 eV at Γ): index 27
-        # Band 2 (middle, ~-1.3 eV at Γ): index 25
-        # Band 3 (lower, ~-1.8 eV at Γ): index 23
-        # Order matches experimental: Band 1 (top) first, Band 3 (lowest) last
         band_indices = [27, 25, 23]
         computed = evals_shifted[:, band_indices]
 
@@ -138,21 +107,7 @@ class BilayerFitter:
         return mse + penalty
 
     def run(self, n_starts: int = 10, seed: int = 42) -> dict:
-        """Run optimization from multiple starting points.
-
-        Parameters
-        ----------
-        n_starts : int
-            Number of random starting points.
-        seed : int
-            Random seed for reproducibility.
-
-        Returns
-        -------
-        dict
-            Keys: x (best params), fun (best chi2), nfev, success, all_results,
-            k_list, evals (for plotting).
-        """
+        """Run optimization from multiple starting points."""
         rng = np.random.default_rng(seed)
         lo, hi = self.BOUNDS
         all_results = []
@@ -197,20 +152,7 @@ class BilayerFitter:
         }
 
     def save(self, result: dict, output_dir: str) -> str:
-        """Save fitted interlayer parameters.
-
-        Parameters
-        ----------
-        result : dict
-            Output from ``run()``.
-        output_dir : str
-            Directory to save files.
-
-        Returns
-        -------
-        str
-            Path to saved .npy file.
-        """
+        """Save fitted interlayer parameters."""
         from pathlib import Path
         import json
         import datetime

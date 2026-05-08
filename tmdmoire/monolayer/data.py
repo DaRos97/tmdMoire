@@ -1,6 +1,6 @@
-"""ARPES data loading, symmetrization, and interpolation.
+"""Monolayer ARPES data loading, symmetrization, and interpolation.
 
-The ``ARPESData`` class reads experimental band dispersion data from
+The ``MonolayerData`` class reads experimental band dispersion data from
 tab-delimited text files in the ``Inputs/monolayer_fitting/`` directory, symmetrizes
 the K→Γ and Γ→K segments, and interpolates onto a uniform grid for
 use in the tight-binding fitting procedure.
@@ -26,10 +26,10 @@ import numpy as np
 import scipy.linalg as la
 from pathlib import Path
 import json
-from .constants import LATTICE_CONSTANTS, MONOLAYER_OFFSETS
+from ..constants import LATTICE_CONSTANTS, MONOLAYER_OFFSETS
 
 
-class ARPESData:
+class MonolayerData:
     """Loads and processes ARPES band dispersion data for a TMD monolayer.
 
     Reads raw momentum-energy data from ``Inputs/monolayer_fitting/{path}_{TMD}_band{N}.txt``,
@@ -58,8 +58,8 @@ class ARPESData:
 
     Examples
     --------
-    >>> arpes = ARPESData("WSe2", master_folder="/path/to/repo/", pts=91)
-    >>> arpes.fit_data.shape
+    >>> data = MonolayerData("WSe2", master_folder="/path/to/repo/", pts=91)
+    >>> data.fit_data.shape
     (91, 9)
     """
 
@@ -108,7 +108,6 @@ class ARPESData:
             with open(manifest_path) as f:
                 manifest = json.load(f)
             return dict(manifest[self.tmd])
-        # Fallback to hardcoded defaults if manifest is missing
         return {"KpGK": 6, "KMKp": 4}
 
     def _load_raw(self) -> dict:
@@ -209,7 +208,6 @@ class ARPESData:
             for ib in range(self.nbands[path]):
                 rd = self.raw_data[path][ib]
 
-                # KpGK bands 3+: sparse data with only negative momenta
                 if ib > 1 and path == "KpGK":
                     data = rd.copy()
                     data[:, 0] = np.abs(data[:, 0])
@@ -217,7 +215,6 @@ class ARPESData:
                     sym[path].append(data)
                     continue
 
-                # WS2 KMKp bands 3+: use only left segment (K→M)
                 if ib > 1 and path == "KMKp" and self.tmd == "WS2":
                     left = rd[: rd.shape[0] // 2].copy()
                     left[:, 0] = np.abs(left[:, 0])
@@ -225,7 +222,6 @@ class ARPESData:
                     sym[path].append(left)
                     continue
 
-                # General case: average left and right segments
                 nk = rd.shape[0]
                 nkl = nk // 2
                 nkr = nk // 2 if nk % 2 == 0 else nk // 2 + 1
@@ -277,55 +273,55 @@ class ARPESData:
         np.ndarray
             Interpolated data of shape ``(pts, 9)``.
         """
-        modKM = la.norm(self.M - self.K)
-        modK = la.norm(self.K)
+        mod_km = la.norm(self.M - self.K)
+        mod_k = la.norm(self.K)
         data = np.zeros((pts, 9))
 
         if "KpGK" in self.paths:
-            ptsGK = pts // 3 * 2 if "KMKp" in self.paths else pts
-            data[:ptsGK, 0] = np.linspace(0, modK, ptsGK, endpoint=False)
-            data[:ptsGK, 1] = np.linspace(0, modK, ptsGK, endpoint=False)
-            data[:ptsGK, 2] = np.zeros(ptsGK)
+            pts_gk = pts // 3 * 2 if "KMKp" in self.paths else pts
+            data[:pts_gk, 0] = np.linspace(0, mod_k, pts_gk, endpoint=False)
+            data[:pts_gk, 1] = np.linspace(0, mod_k, pts_gk, endpoint=False)
+            data[:pts_gk, 2] = np.zeros(pts_gk)
             for ib in range(self.nbands["KpGK"]):
                 sd = self.sym_data["KpGK"][ib]
-                ind = np.searchsorted(data[:ptsGK, 0], np.max(sd[:, 0]), side="left")
-                ikmax = min(ind, ptsGK)
-                data[:ikmax, 3 + ib] = np.interp(
-                    data[:ikmax, 0], sd[~np.isnan(sd[:, 1]), 0], sd[~np.isnan(sd[:, 1]), 1]
+                ind = np.searchsorted(data[:pts_gk, 0], np.max(sd[:, 0]), side="left")
+                ik_max = min(ind, pts_gk)
+                data[:ik_max, 3 + ib] = np.interp(
+                    data[:ik_max, 0], sd[~np.isnan(sd[:, 1]), 0], sd[~np.isnan(sd[:, 1]), 1]
                 )
-                data[ikmax:ptsGK, 3 + ib] = np.nan
+                data[ik_max:pts_gk, 3 + ib] = np.nan
 
         if "KMKp" in self.paths:
             if "KpGK" in self.paths:
-                ptsKM = pts - ptsGK
+                pts_km = pts - pts_gk
             else:
-                ptsGK = 0
-                ptsKM = pts
-            data[ptsGK:, 0] = np.linspace(modK, modK + modKM, ptsKM, endpoint=True)
-            data[ptsGK:, 1] = np.linspace(self.K[0], self.M[0], ptsKM, endpoint=True)
-            data[ptsGK:, 2] = np.linspace(self.K[1], self.M[1], ptsKM, endpoint=True)
+                pts_gk = 0
+                pts_km = pts
+            data[pts_gk:, 0] = np.linspace(mod_k, mod_k + mod_km, pts_km, endpoint=True)
+            data[pts_gk:, 1] = np.linspace(self.K[0], self.M[0], pts_km, endpoint=True)
+            data[pts_gk:, 2] = np.linspace(self.K[1], self.M[1], pts_km, endpoint=True)
             for ib in range(self.nbands["KMKp"]):
                 sd = self.sym_data["KMKp"][ib]
-                indmax = np.searchsorted(data[ptsGK:, 0], modK + modKM - np.min(sd[:, 0]), side="left") + 1
-                ikmax = min(indmax, ptsKM)
-                indmin = np.searchsorted(data[ptsGK:, 0], modK + modKM - np.max(sd[:, 0]), side="right")
-                ikmin = min(indmin, ptsKM)
-                data[ptsGK + ikmin:ptsGK + ikmax, 3 + ib] = np.interp(
-                    data[ptsGK + ikmin:ptsGK + ikmax, 0],
-                    modK + modKM - sd[~np.isnan(sd[:, 1]), 0][::-1],
+                ind_max = np.searchsorted(data[pts_gk:, 0], mod_k + mod_km - np.min(sd[:, 0]), side="left") + 1
+                ik_max = min(ind_max, pts_km)
+                ind_min = np.searchsorted(data[pts_gk:, 0], mod_k + mod_km - np.max(sd[:, 0]), side="right")
+                ik_min = min(ind_min, pts_km)
+                data[pts_gk + ik_min:pts_gk + ik_max, 3 + ib] = np.interp(
+                    data[pts_gk + ik_min:pts_gk + ik_max, 0],
+                    mod_k + mod_km - sd[~np.isnan(sd[:, 1]), 0][::-1],
                     sd[~np.isnan(sd[:, 1]), 1][::-1],
                 )
-                data[ptsGK:ptsGK + ikmin, 3 + ib] = np.nan
-                data[ptsGK + ikmax:, 3 + ib] = np.nan
-            data[ptsGK:, 7] = np.nan
-            data[ptsGK:, 8] = np.nan
-            mask = data[ptsGK:, 4] < data[ptsGK:, 5]
-            data[ptsGK:, 4][mask], data[ptsGK:, 5][mask] = data[ptsGK:, 5][mask], data[ptsGK:, 4][mask]
+                data[pts_gk:pts_gk + ik_min, 3 + ib] = np.nan
+                data[pts_gk + ik_max:, 3 + ib] = np.nan
+            data[pts_gk:, 7] = np.nan
+            data[pts_gk:, 8] = np.nan
+            mask = data[pts_gk:, 4] < data[pts_gk:, 5]
+            data[pts_gk:, 4][mask], data[pts_gk:, 5][mask] = data[pts_gk:, 5][mask], data[pts_gk:, 4][mask]
             offset = MONOLAYER_OFFSETS[self.tmd]
-            data[ptsGK:, 3] += offset
-            data[ptsGK:, 4] += offset
-            data[ptsGK:, 5] += offset
-            data[ptsGK:, 6] += offset
+            data[pts_gk:, 3] += offset
+            data[pts_gk:, 4] += offset
+            data[pts_gk:, 5] += offset
+            data[pts_gk:, 6] += offset
 
         return data
 
@@ -333,12 +329,7 @@ class ARPESData:
 # ─── Cache helpers ────────────────────────────────────────────────────────────
 
 def _save_sym_cache(fn: Path, sym: dict, paths: list, nbands: dict):
-    """Save symmetrized data to an npz file.
-
-    Each band is stored as a 1D flattened array with a companion shape
-    array. Keys follow the pattern ``{path}_band{ib}_data`` and
-    ``{path}_band{ib}_shape``.
-    """
+    """Save symmetrized data to an npz file."""
     save_dict = {}
     for path in paths:
         for ib in range(nbands[path]):
@@ -349,22 +340,7 @@ def _save_sym_cache(fn: Path, sym: dict, paths: list, nbands: dict):
 
 
 def _load_sym_cache(fn: Path, paths: list, nbands: dict) -> dict:
-    """Load symmetrized data from an npz cache file.
-
-    Parameters
-    ----------
-    fn : Path
-        Path to the .npz cache file.
-    paths : list
-        List of path names (e.g. ["KpGK", "KMKp"]).
-    nbands : dict
-        Mapping of path name to number of bands.
-
-    Returns
-    -------
-    dict
-        Symmetrized data with same structure as ``raw_data``.
-    """
+    """Load symmetrized data from an npz cache file."""
     data = np.load(fn, allow_pickle=True)
     sym = {}
     for path in paths:

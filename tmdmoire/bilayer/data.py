@@ -72,17 +72,7 @@ class BilayerData:
         return max(s[:, 0].max() for s in self.sym_data)
 
     def _load_raw(self) -> list[np.ndarray]:
-        """Read raw bilayer ARPES data from tab-delimited text files.
-
-        Each file contains two tab-separated columns: momentum and energy.
-        Missing energy values are encoded as "NAN" or empty lines and
-        stored as ``np.nan``.
-
-        Returns
-        -------
-        list[np.ndarray]
-            List of (N, 2) arrays, one per band, columns [momentum, energy].
-        """
+        """Read raw bilayer ARPES data from tab-delimited text files."""
         raw = []
         for ib in range(1, self.n_bands + 1):
             fn = Path(self.master_folder) / "Inputs" / "bilayer_fitting" / f"WSe2WS2_Band{ib}.txt"
@@ -101,20 +91,7 @@ class BilayerData:
         return raw
 
     def _symmetrize(self) -> list[np.ndarray]:
-        """Symmetrize K'→Γ and Γ→K segments by averaging.
-
-        For each band:
-        1. Split data at k=0 into negative (K' side) and positive (K side).
-        2. Mirror the negative side to positive |k|.
-        3. Average energies where both sides have valid (non-NaN) data.
-        4. Keep one-sided values where only one side has data.
-        5. Discard points where both sides are NaN.
-
-        Returns
-        -------
-        list[np.ndarray]
-            Symmetrized data per band, each a (M, 2) array of [|k|, energy].
-        """
+        """Symmetrize K'→Γ and Γ→K segments by averaging."""
         sym = []
         for ib in range(self.n_bands):
             rd = self.raw_data[ib]
@@ -166,18 +143,7 @@ class BilayerData:
         return sym
 
     def _load_or_symmetrize(self) -> list[np.ndarray]:
-        """Load symmetrized data from cache or compute and save it.
-
-        Checks ``Data/sym_bilayer.npz`` for a previously computed
-        symmetrized dataset. If found and the file is newer than all
-        raw input files, it is loaded directly. Otherwise, symmetrization
-        is performed and the result is saved.
-
-        Returns
-        -------
-        list[np.ndarray]
-            Symmetrized data with same structure as ``raw_data``.
-        """
+        """Load symmetrized data from cache or compute and save it."""
         data_dir = Path("Data")
         cache_fn = data_dir / "sym_bilayer.npz"
 
@@ -198,25 +164,7 @@ class BilayerData:
         return sym
 
     def _interpolate(self, pts: int) -> np.ndarray:
-        """Interpolate symmetrized data onto a uniform |k| grid.
-
-        The output array has ``pts`` rows and ``n_bands + 1`` columns:
-        [|k|, E_band1, E_band2, E_band3].
-
-        Each band is only defined within its own symmetrized |k| range.
-        Band 3 has a shorter range (~0.76 Å⁻¹) than Bands 1–2 (~1.26 Å⁻¹),
-        so values beyond Band 3's range are NaN.
-
-        Parameters
-        ----------
-        pts : int
-            Number of points along the |k| axis.
-
-        Returns
-        -------
-        np.ndarray
-            Interpolated data of shape (pts, n_bands + 1).
-        """
+        """Interpolate symmetrized data onto a uniform |k| grid."""
         max_k = self.max_abs_k
         k_grid = np.linspace(0, max_k, pts)
 

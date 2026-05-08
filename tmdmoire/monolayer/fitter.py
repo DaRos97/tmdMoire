@@ -29,11 +29,12 @@ is stored for cross-comparison across grid points with different K6.
 import numpy as np
 import scipy.linalg as la
 from pathlib import Path
-from .constants import (
+from ..constants import (
     ORBITAL_CHARACTER, TVB2, TVB4, IND_ILC, ze_i, z2_i, xe_i, ye_i, x2_i, xy_i,
 )
-from .material import TMDMaterial
-from .arpes_data import ARPESData
+from ..material import TMDMaterial
+from .data import MonolayerData
+from .hamiltonian import MonolayerHamiltonian
 
 
 class _DebugCallback:
@@ -57,7 +58,7 @@ class _DebugCallback:
             print(f"  [fit_idx{self.idx}] New best: chi2={f:.6f} at iter {self.iteration}")
 
     def _save_figures(self):
-        from .plotting import plot_bands, plot_parameters_absolute, plot_orbital_content
+        from ..plotting.monolayer import plot_bands, plot_parameters_absolute, plot_orbital_content
 
         params = self.best_params
         if self.fitter.config["Bs"][-1] == 0:
@@ -69,17 +70,17 @@ class _DebugCallback:
         constraints = self.fitter._compute_constraint_breakdown(params)
         Ks = self.fitter.config["Ks"]
         Bs = self.fitter.config["Bs"]
-        boundType = self.fitter.config["boundType"]
+        bound_type = self.fitter.config["boundType"]
         material_name = self.fitter.material.name
 
         chi2_elements = [
             constraints["chi2_band_weighted"], constraints["K1"], constraints["K2"],
             constraints["K3"], constraints["K4"], constraints["K5"],
         ]
-        legend_info = (material_name, Ks, boundType, Bs, chi2_elements, None, self.idx)
+        legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, None, self.idx)
 
         prefix = f"iter_{self.iteration:04d}_chi2_{self.best_f:.6f}"
-        plot_bands(tb_en, self.fitter.arpes_data, legend_info,
+        plot_bands(tb_en, self.fitter.data, legend_info,
                    save_path=self.debug_dir / f"{prefix}_bands.png")
         plot_parameters_absolute(full_params, material_name, Bs, legend_info,
                                  save_path=self.debug_dir / f"{prefix}_params.png")
@@ -88,7 +89,7 @@ class _DebugCallback:
 
     def _save_final_figures(self, params: np.ndarray, f: float):
         """Save figures for the final polished result."""
-        from .plotting import plot_bands, plot_parameters_absolute, plot_orbital_content
+        from ..plotting.monolayer import plot_bands, plot_parameters_absolute, plot_orbital_content
 
         if self.fitter.config["Bs"][-1] == 0:
             full_params = np.append(params, self.fitter.material.dft_params[-2:])
@@ -99,17 +100,17 @@ class _DebugCallback:
         constraints = self.fitter._compute_constraint_breakdown(params)
         Ks = self.fitter.config["Ks"]
         Bs = self.fitter.config["Bs"]
-        boundType = self.fitter.config["boundType"]
+        bound_type = self.fitter.config["boundType"]
         material_name = self.fitter.material.name
 
         chi2_elements = [
             constraints["chi2_band_weighted"], constraints["K1"], constraints["K2"],
             constraints["K3"], constraints["K4"], constraints["K5"],
         ]
-        legend_info = (material_name, Ks, boundType, Bs, chi2_elements, None, self.idx)
+        legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, None, self.idx)
 
         prefix = f"final_chi2_{f:.6f}"
-        plot_bands(tb_en, self.fitter.arpes_data, legend_info,
+        plot_bands(tb_en, self.fitter.data, legend_info,
                    save_path=self.debug_dir / f"{prefix}_bands.png")
         plot_parameters_absolute(full_params, material_name, Bs, legend_info,
                                  save_path=self.debug_dir / f"{prefix}_params.png")
@@ -125,7 +126,7 @@ class ParameterFitter:
     ----------
     material : TMDMaterial
         The TMD material to fit (WSe2 or WS2).
-    arpes_data : ARPESData
+    data : MonolayerData
         Experimental ARPES data for the material.
     config : dict
         Fitting configuration with keys:
@@ -141,48 +142,26 @@ class ParameterFitter:
     Examples
     --------
     >>> material = TMDMaterial("WSe2")
-    >>> arpes = ARPESData("WSe2", master_folder="/path/", pts=91)
+    >>> data = MonolayerData("WSe2", master_folder="/path/", pts=91)
     >>> config = {
     ...     "Ks": (1e-5, 0.5, 1.0, 1.0, 0.5, 5.0),
     ...     "boundType": "absolute",
     ...     "Bs": (5, 2, 4, 1, 0),
     ... }
-    >>> fitter = ParameterFitter(material, arpes, config)
+    >>> fitter = ParameterFitter(material, data, config)
     >>> result = fitter.run(maxiter=int(1e4), seed=42)
     """
 
-    def __init__(self, material: TMDMaterial, arpes_data: ARPESData, config: dict, idx: int = 0):
+    def __init__(self, material: TMDMaterial, data: MonolayerData, config: dict, idx: int = 0):
         self.material = material
-        self.arpes_data = arpes_data
+        self.data = data
         self.config = config
         self._gap_DFT = self._compute_DFT_gap()
         self._idx = idx
 
     def chi2(self, params_tb: np.ndarray, HSO: np.ndarray, SOC_pars: np.ndarray,
              return_energy: bool = False) -> float:
-        """Compute chi-squared for a given set of TB parameters (excluding SOC).
-
-        When ``return_energy`` is False, delegates to
-        :meth:`_compute_constraint_breakdown` and combines the weighted terms.
-        When ``return_energy`` is True, computes and returns band energies
-        directly without the constraint overhead.
-
-        Parameters
-        ----------
-        params_tb : np.ndarray
-            Tight-binding parameters (41 values, excluding SOC).
-        HSO : np.ndarray
-            Pre-computed 22×22 SOC Hamiltonian.
-        SOC_pars : np.ndarray
-            SOC parameters [L_W, L_S].
-        return_energy : bool
-            If True, return band energies instead of chi-squared.
-
-        Returns
-        -------
-        float or np.ndarray
-            Chi-squared value, or band energies if ``return_energy=True``.
-        """
+        """Compute chi-squared for a given set of TB parameters (excluding SOC)."""
         full_params = np.append(params_tb, SOC_pars)
 
         if return_energy:
@@ -191,7 +170,7 @@ class ParameterFitter:
             offset = full_params[-3]
             args_H = (hopping, epsilon, HSO, offset)
 
-            k_pts = self.arpes_data.fit_data[:, 1:3]
+            k_pts = self.data.fit_data[:, 1:3]
             all_H = self._build_hamiltonian(k_pts, args_H)
             nbands = 6
             tb_en = np.zeros((nbands, k_pts.shape[0]))
@@ -207,32 +186,13 @@ class ParameterFitter:
                                                    + K5 * breakdown["K5"])
 
     def chi2_full(self, params_full: np.ndarray, return_energy: bool = False) -> float:
-        """Wrapper that includes SOC parameters in the fit.
-
-        Parameters
-        ----------
-        params_full : np.ndarray
-            Full 43-parameter array (including SOC).
-        return_energy : bool
-            If True, return band energies instead of chi-squared.
-
-        Returns
-        -------
-        float or np.ndarray
-            Chi-squared value or band energies.
-        """
+        """Wrapper that includes SOC parameters in the fit."""
         SOC_pars = params_full[-2:]
         HSO = self.material.build_soc_hamiltonian(SOC_pars)
         return self.chi2(params_full[:-2], HSO, SOC_pars, return_energy)
 
     def get_bounds(self) -> list[tuple]:
-        """Generate parameter bounds based on the configured bound type.
-
-        Returns
-        -------
-        list[tuple]
-            List of (lower, upper) bounds for each parameter.
-        """
+        """Generate parameter bounds based on the configured bound type."""
         bt = self.config["boundType"]
         Bs = self.config["Bs"]
         if bt == "relative":
@@ -243,24 +203,7 @@ class ParameterFitter:
 
     def run(self, initial_params: np.ndarray | None = None, seed: int = 42,
             debug_dir: str | None = None) -> dict:
-        """Run global optimization via dual annealing or differential evolution + Nelder-Mead refinement.
-
-        Parameters
-        ----------
-        initial_params : np.ndarray, optional
-            Starting point (used by dual annealing, ignored by DE). Defaults to DFT params.
-        seed : int
-            Random seed for reproducibility.
-
-        Returns
-        -------
-        dict
-            Dictionary with keys:
-            - ``x``: optimized parameter array
-            - ``fun``: final chi-squared value
-            - ``nfev``: total number of function evaluations
-            - ``method``: optimization method used
-        """
+        """Run global optimization via dual annealing or differential evolution + Nelder-Mead refinement."""
         opt = self.config.get("optimizer", {})
         method = opt.get("method", "dual_annealing")
 
@@ -362,18 +305,7 @@ class ParameterFitter:
         return de_callback
 
     def compute_bands(self, params: np.ndarray | None = None) -> np.ndarray:
-        """Compute TB band energies at ARPES k-points.
-
-        Parameters
-        ----------
-        params : np.ndarray, optional
-            43-parameter array (or 41 if SOC is frozen). Defaults to DFT params.
-
-        Returns
-        -------
-        np.ndarray
-            Shape ``(6, n_kpts)`` — top 6 valence band energies.
-        """
+        """Compute TB band energies at ARPES k-points."""
         if params is None:
             params = self.material.dft_params
 
@@ -387,21 +319,7 @@ class ParameterFitter:
         return self.chi2(full_params[:-2], HSO, SOC_pars, return_energy=True)
 
     def save(self, result: dict, output_dir: str = "Data") -> Path:
-        """Save fitting result to an npz file.
-
-        Parameters
-        ----------
-        result : dict
-            Dictionary from ``run()`` with keys: x, fun, nfev, method.
-            Must also contain ``idx`` for the filename.
-        output_dir : str
-            Directory to save the file.
-
-        Returns
-        -------
-        Path
-            Path to the saved file.
-        """
+        """Save fitting result to an npz file."""
         config = self.config
         Ks = config["Ks"]
         params = result["x"]
@@ -430,36 +348,12 @@ class ParameterFitter:
                  K4_val=constraints["K4"],
                  K5_val=constraints["K5"],
                  tb_en=tb_en,
-                 k_path=self.arpes_data.fit_data[:, 0],
+                 k_path=self.data.fit_data[:, 0],
         )
         return fn
 
     def _compute_constraint_breakdown(self, params: np.ndarray) -> dict:
-        """Compute all constraint terms at given parameters.
-
-        This is the single source of truth for constraint computation.
-        Both :meth:`chi2` (objective function) and :meth:`save` (result
-        storage) delegate to this method.
-
-        Parameters
-        ----------
-        params : np.ndarray
-            Parameter array. If ``Bs[-1] == 0`` (SOC frozen), pass 41 values
-            and DFT SOC values are appended automatically. Otherwise pass 43.
-
-        Returns
-        -------
-        dict
-            Keys:
-
-            - ``chi2_band``: unweighted mean-squared band distance (no K6)
-            - ``chi2_band_weighted``: K6-weighted mean-squared band distance
-            - ``K1``: parameter distance from DFT
-            - ``K2``: interlayer-coupling orbital content at M
-            - ``K3``: orbital occupation mismatch at Gamma and K
-            - ``K4``: squared relative CBM offset from K
-            - ``K5``: relative band-gap error at K
-        """
+        """Compute all constraint terms at given parameters."""
         K1, K2, K3, K4, K5, K6 = self.config["Ks"]
 
         full_params = params if params.shape[0] == 43 else np.append(params, self.material.dft_params[-2:])
@@ -470,7 +364,7 @@ class ParameterFitter:
         HSO = self.material.build_soc_hamiltonian(full_params[-2:])
         args_H = (hopping, epsilon, HSO, offset)
 
-        k_pts = self.arpes_data.fit_data[:, 1:3]
+        k_pts = self.data.fit_data[:, 1:3]
         all_H = self._build_hamiltonian(k_pts, args_H)
         nbands = 6
         tb_en = np.zeros((nbands, k_pts.shape[0]))
@@ -480,44 +374,39 @@ class ParameterFitter:
             tb_en[:, i] = energies[14 - nbands:14][::-1]
             cond_en[i] = energies[14]
 
-        # Unweighted band distance
         chi2_band_unweighted = 0.0
         total_valid = 0
         for ib in range(nbands):
-            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
+            valid = ~np.isnan(self.data.fit_data[:, 3 + ib])
             chi2_band_unweighted += np.sum(
-                np.absolute(tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib])[valid] ** 2
+                np.absolute(tb_en[ib] - self.data.fit_data[:, 3 + ib])[valid] ** 2
             )
             total_valid += valid.sum()
         chi2_band_unweighted /= total_valid
 
-        # K6-weighted band distance (matches the objective function)
         chi2_band_weighted = 0.0
-        special_indices = [0, np.argmax(self.arpes_data.fit_data[:, 3]),
-                           np.argmin(self.arpes_data.fit_data[:, 4]),
-                           self.arpes_data.fit_data.shape[0] - 1]
-        weights = np.ones(self.arpes_data.fit_data.shape[0])
+        special_indices = [0, np.argmax(self.data.fit_data[:, 3]),
+                           np.argmin(self.data.fit_data[:, 4]),
+                           self.data.fit_data.shape[0] - 1]
+        weights = np.ones(self.data.fit_data.shape[0])
         weights[special_indices] = K6
         for ib in range(nbands):
-            valid = ~np.isnan(self.arpes_data.fit_data[:, 3 + ib])
+            valid = ~np.isnan(self.data.fit_data[:, 3 + ib])
             chi2_band_weighted += np.sum(
                 np.absolute(
-                    (tb_en[ib] - self.arpes_data.fit_data[:, 3 + ib]) * weights
+                    (tb_en[ib] - self.data.fit_data[:, 3 + ib]) * weights
                 )[valid] ** 2
             )
         chi2_band_weighted /= total_valid
 
-        # K1: parameter distance from DFT
         K1_par_dis = self.material.parameter_distance(full_params)
 
-        # K2: orbital band content at M
-        k_pts_bc = np.array([self.arpes_data.M, np.zeros(2), self.arpes_data.K])
+        k_pts_bc = np.array([self.data.M, np.zeros(2), self.data.K])
         Ham_bc = self._build_hamiltonian(k_pts_bc, args_H)
         evals_M, evecs_M = la.eigh(Ham_bc[0])
-        bandsM = TVB4 if self.material.name == "WSe2" else TVB2
-        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bandsM]) ** 2) / (len(IND_ILC) * len(bandsM))
+        bands_m = TVB4 if self.material.name == "WSe2" else TVB2
+        K2_M = np.sum(np.absolute(evecs_M[IND_ILC, :][:, bands_m]) ** 2) / (len(IND_ILC) * len(bands_m))
 
-        # K3: orbital occupation at Gamma and K
         evals_G, evecs_G = la.eigh(Ham_bc[1])
         occ_ze, occ_z2 = ORBITAL_CHARACTER[self.material.name]["G"]
         G_ze_tvb1 = np.absolute(evecs_G[ze_i, 13]) ** 2 + np.absolute(evecs_G[ze_i + 11, 13]) ** 2
@@ -541,13 +430,11 @@ class ParameterFitter:
                   + abs(occ_p1_tvb1 - K_p1_tvb1) + abs(occ_p1_tvb2 - K_p1_tvb2)
                   + abs(occ_d2_tvb1 - K_d2_tvb1) + abs(occ_d2_tvb2 - K_d2_tvb2)) / 8
 
-        # K4: conduction band minimum at K
         cbm_idx = np.argmin(cond_en)
-        cbm_k = self.arpes_data.fit_data[cbm_idx, 0]
-        k_mod = np.linalg.norm(self.arpes_data.K)
+        cbm_k = self.data.fit_data[cbm_idx, 0]
+        k_mod = np.linalg.norm(self.data.K)
         K4_band_min = ((cbm_k - k_mod) / k_mod) ** 2
 
-        # K5: band gap at K vs DFT (relative error)
         gap_p = evals_K[14] - evals_K[13]
         K5_gap = abs(self._gap_DFT - gap_p) / self._gap_DFT
 
@@ -568,12 +455,11 @@ class ParameterFitter:
                 self.material.build_onsite_energies(DFT),
                 self.material.build_soc_hamiltonian(DFT),
                 DFT[-3])
-        Ham = self._build_hamiltonian(np.array([self.arpes_data.K]), args)
+        Ham = self._build_hamiltonian(np.array([self.data.K]), args)
         ev = la.eigvalsh(Ham[0])
         return ev[14] - ev[13]
 
     def _build_hamiltonian(self, k_points, args_H):
         """Build the monolayer Hamiltonian at given k-points (internal)."""
-        from .hamiltonian import MonolayerHamiltonian
         ham = MonolayerHamiltonian(self.material)
         return ham.build(k_points, *args_H)

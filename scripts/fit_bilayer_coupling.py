@@ -33,13 +33,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 from tmdmoire import (
     TMDMaterial, BilayerFitter,
-    detect_machine, get_master_folder,
+    get_repo_root,
 )
-from tmdmoire.plotting import plot_bilayer_fit
+from tmdmoire.plotting.bilayer import plot_bilayer_fit
 
-machine = detect_machine(os.getcwd())
-master_folder = get_master_folder(os.getcwd())
-disp = machine == "loc"
+master_folder = get_repo_root()
 
 parser = argparse.ArgumentParser(description="Fit bilayer interlayer coupling.")
 parser.add_argument("--stacking", type=str, default="P", choices=["P", "AP"],
@@ -50,6 +48,8 @@ parser.add_argument("--seed", type=int, default=42,
                     help="Random seed.")
 parser.add_argument("--n-kpts", type=int, default=51,
                     help="Number of equidistant k-points between Γ and K.")
+parser.add_argument("--verbose", action="store_true",
+                    help="Print fit configuration before starting.")
 args = parser.parse_args()
 
 monolayer_fns = {
@@ -57,7 +57,7 @@ monolayer_fns = {
     "WS2": master_folder + "/Inputs/bilayer_fitting/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
 }
 
-if disp:
+if args.verbose:
     print("------------BILAYER INTERLAYER COUPLING FIT------------")
     print(f" Stacking: {args.stacking}")
     print(f" k-points: {args.n_kpts} (Γ to K, equidistant)")

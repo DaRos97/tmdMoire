@@ -47,13 +47,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import itertools
 from tmdmoire import (
-    TMDMaterial, ARPESData, ParameterFitter,
-    detect_machine, get_master_folder, prepare_run_dir,
+    TMDMaterial, MonolayerData, ParameterFitter,
+    get_repo_root, prepare_run_dir,
 )
 
-machine = detect_machine(os.getcwd())
-master_folder = get_master_folder(os.getcwd())
-disp = machine == "loc"
+master_folder = get_repo_root()
 
 parser = argparse.ArgumentParser(description="Fit monolayer TB parameters.")
 parser.add_argument("material", choices=["WSe2", "WS2"], help="Target material.")
@@ -62,33 +60,16 @@ parser.add_argument("--run-id", type=str, default="default",
                     help="Run identifier for output subdirectory.")
 parser.add_argument("--debug-figures", action="store_true",
                     help="Save debug figures for each new best during minimization.")
+parser.add_argument("--verbose", action="store_true",
+                    help="Print chosen parameters before fitting.")
 args = parser.parse_args()
 
 tmd_name = args.material
 argc = args.index
-if machine == "maf":
-    argc -= 1
 
 
 def get_args(tmd: str, ind: int, run_dir: str) -> dict:
-    """Select constraint weights and bound parameters for a given index.
-
-    Reads the grid definition from the run directory's grid_config.json.
-
-    Parameters
-    ----------
-    tmd : str
-        Material name (unused, kept for API compatibility).
-    ind : int
-        Index into the parameter grid.
-    run_dir : str
-        Directory containing grid_config.json.
-
-    Returns
-    -------
-    dict
-        Configuration with keys: ``idx``, ``pts``, ``Ks``, ``boundType``, ``Bs``, ``optimizer``.
-    """
+    """Select constraint weights and bound parameters for a given index."""
     config_path = os.path.join(run_dir, "grid_config.json")
     with open(config_path) as f:
         config = json.load(f)
@@ -120,7 +101,7 @@ run_dir = prepare_run_dir(args.run_id, tmd_name)
 args_minimization = get_args(tmd_name, argc, run_dir)
 pts = args_minimization["pts"]
 
-if disp:
+if args.verbose:
     print("------------CHOSEN PARAMETERS------------")
     print(f" TMD: {tmd_name}")
     for i in range(6):
@@ -133,8 +114,8 @@ if disp:
     print("-" * 15)
 
 material = TMDMaterial(tmd_name)
-arpes_data = ARPESData(tmd_name, master_folder, pts=pts)
-fitter = ParameterFitter(material, arpes_data, args_minimization, idx=argc)
+data = MonolayerData(tmd_name, master_folder, pts=pts)
+fitter = ParameterFitter(material, data, args_minimization, idx=argc)
 
 debug_dir = None
 if args.debug_figures:

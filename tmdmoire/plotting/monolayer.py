@@ -1,3 +1,4 @@
+"""Monolayer plotting: data pipeline, band comparison, parameters, orbital content."""
 import numpy as np
 import copy
 import matplotlib
@@ -7,29 +8,13 @@ from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
 import matplotlib.ticker as ticker
 from pathlib import Path
-from .constants import (
+from ..constants import (
     FORMATTED_NAMES, IND_OFF, IND_PZ, IND_PXY, IND_SOC,
 )
 
 
 def plot_data_pipeline(arpes, tmd=None, save_dir=None):
-    """Plot the three stages of ARPES data processing: raw → symmetrized → interpolated.
-
-    Produces a 3-column figure showing, for each band on each path:
-    - Left: raw experimental data (momentum vs energy)
-    - Center: symmetrized data (averaged K→Γ and Γ→K segments)
-    - Right: interpolated data on the uniform fitting grid
-
-    Parameters
-    ----------
-    arpes : ARPESData
-        ARPESData instance with raw_data, sym_data, and fit_data populated.
-    tmd : str, optional
-        Material name for the filename. Inferred from ``arpes.tmd`` if not given.
-    save_dir : str or Path, optional
-        Directory to save the figure. If None, uses ``Figures/`` relative to
-        the repository root.
-    """
+    """Plot the three stages of ARPES data processing: raw → symmetrized → interpolated."""
     tmd = tmd or arpes.tmd
     paths = arpes.paths
     nbands = arpes.nbands
@@ -50,7 +35,6 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
             ax_sym = axes[ip, 1]
             ax_interp = axes[ip, 2]
 
-            # Raw data
             rd = arpes.raw_data[path][ib]
             valid = ~np.isnan(rd[:, 1])
             ax_raw.scatter(rd[valid, 0], rd[valid, 1], s=4, c="steelblue", alpha=0.6)
@@ -63,7 +47,6 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
             if ib == 0:
                 ax_raw.set_ylabel("Energy (eV)", fontsize=10)
 
-            # Symmetrized data
             sd = arpes.sym_data[path][ib]
             valid = ~np.isnan(sd[:, 1])
             ax_sym.scatter(sd[valid, 0], sd[valid, 1], s=8, c="darkorange", alpha=0.7)
@@ -73,37 +56,35 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
             if ip == len(paths) - 1:
                 ax_sym.set_xlabel("Momentum (Å⁻¹)", fontsize=10)
 
-            # Interpolated data
             fd = arpes.fit_data
-            ptsGK = fd.shape[0] // 3 * 2 if "KMKp" in paths else fd.shape[0]
+            pts_gk = fd.shape[0] // 3 * 2 if "KMKp" in paths else fd.shape[0]
             if path == "KpGK":
-                xs = fd[:ptsGK, 0]
-                ys = fd[:ptsGK, 3 + ib]
+                xs = fd[:pts_gk, 0]
+                ys = fd[:pts_gk, 3 + ib]
             else:
-                xs = fd[ptsGK:, 0]
-                ys = fd[ptsGK:, 3 + ib]
+                xs = fd[pts_gk:, 0]
+                ys = fd[pts_gk:, 3 + ib]
             valid = ~np.isnan(ys)
             ax_interp.scatter(xs[valid], ys[valid], s=12, c="forestgreen", alpha=0.8, zorder=3)
             ax_interp.axhline(0, color="gray", lw=0.5, ls="--")
 
-            # Add high-symmetry point markers on interpolated plot
-            modK = np.linalg.norm(arpes.K)
+            mod_k = np.linalg.norm(arpes.K)
             if path == "KpGK":
                 ax_interp.axvline(0, color="k", lw=0.8, ls=":")
-                ax_interp.axvline(modK, color="k", lw=0.8, ls=":")
+                ax_interp.axvline(mod_k, color="k", lw=0.8, ls=":")
                 if ib == 0:
                     ax_interp.text(0, ax_interp.get_ylim()[1] * 0.95, r"$\Gamma$",
                                    ha="center", va="top", fontsize=9, fontweight="bold")
-                    ax_interp.text(modK, ax_interp.get_ylim()[1] * 0.95, r"$K$",
+                    ax_interp.text(mod_k, ax_interp.get_ylim()[1] * 0.95, r"$K$",
                                    ha="center", va="top", fontsize=9, fontweight="bold")
             else:
-                ax_interp.axvline(modK, color="k", lw=0.8, ls=":")
-                modKM = modK + np.linalg.norm(arpes.M - arpes.K)
-                ax_interp.axvline(modKM, color="k", lw=0.8, ls=":")
+                ax_interp.axvline(mod_k, color="k", lw=0.8, ls=":")
+                mod_km = mod_k + np.linalg.norm(arpes.M - arpes.K)
+                ax_interp.axvline(mod_km, color="k", lw=0.8, ls=":")
                 if ib == 0:
-                    ax_interp.text(modK, ax_interp.get_ylim()[1] * 0.95, r"$K$",
+                    ax_interp.text(mod_k, ax_interp.get_ylim()[1] * 0.95, r"$K$",
                                    ha="center", va="top", fontsize=9, fontweight="bold")
-                    ax_interp.text(modKM, ax_interp.get_ylim()[1] * 0.95, r"$M$",
+                    ax_interp.text(mod_km, ax_interp.get_ylim()[1] * 0.95, r"$M$",
                                    ha="center", va="top", fontsize=9, fontweight="bold")
 
             if ip == 0:
@@ -111,7 +92,6 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
             if ip == len(paths) - 1:
                 ax_interp.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=10)
 
-        # Row label
         for ax in axes[ip]:
             ax.text(-0.15, 0.5, path_labels.get(path, path),
                     transform=ax.transAxes, rotation=90, va="center",
@@ -120,7 +100,7 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
     fig.suptitle(f"ARPES data processing pipeline — {tmd}", fontsize=14, fontweight="bold", y=1.01)
 
     if save_dir is None:
-        save_dir = Path(__file__).resolve().parents[1] / "Figures"
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
     fn = save_dir / f"data_pipeline_{tmd}.png"
@@ -130,19 +110,7 @@ def plot_data_pipeline(arpes, tmd=None, save_dir=None):
 
 
 def plot_bands(tb_en, data, legend_info, save_path=None):
-    """Plot TB band energies vs ARPES data.
-
-    Parameters
-    ----------
-    tb_en : np.ndarray
-        Band energies, shape (6, n_kpts).
-    data : ARPESData
-        ARPES data with fit_data and K attributes.
-    legend_info : tuple
-        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
-    save_path : str or Path, optional
-        If given, save figure to this path and close.
-    """
+    """Plot TB band energies vs ARPES data."""
     fit_data = data.fit_data
     fig = plt.figure(figsize=(15, 9))
     gs = gridspec.GridSpec(1, 2, figure=fig, width_ratios=[10, 1], hspace=0)
@@ -156,8 +124,8 @@ def plot_bands(tb_en, data, legend_info, save_path=None):
         ax.plot(fit_data[:, 0], en_pars, ls="-", label="Fit" if b == 0 else "",
                 zorder=3, color="skyblue", marker="s", markersize=10, mew=1, mec="k", mfc="deepskyblue")
     s_m, s_, s_p = 15, 20, 30
-    modK = np.linalg.norm(data.K)
-    ks = [fit_data[0, 0], modK, fit_data[-1, 0]]
+    mod_k = np.linalg.norm(data.K)
+    ks = [fit_data[0, 0], mod_k, fit_data[-1, 0]]
     ax.set_xticks(ks, [r"$\Gamma$", r"$K$", r"$M$"], size=s_)
     for i in range(len(ks)):
         ax.axvline(ks[i], color="k", lw=0.5)
@@ -177,22 +145,8 @@ def plot_bands(tb_en, data, legend_info, save_path=None):
 
 
 def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
-    """Plot parameter values as bar chart with DFT reference lines.
-
-    Parameters
-    ----------
-    pars : np.ndarray
-        43 tight-binding parameters.
-    tmd : str
-        Material name.
-    Bs : tuple
-        Bound parameters.
-    legend_info : tuple
-        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
-    save_path : str or Path, optional
-        If given, save figure to this path and close.
-    """
-    from .material import TMDMaterial
+    """Plot parameter values as bar chart with DFT reference lines."""
+    from ..material import TMDMaterial
 
     npars = pars.shape[0]
     mat = TMDMaterial(tmd)
@@ -272,22 +226,10 @@ def plot_parameters_absolute(pars, tmd, Bs, legend_info, save_path=None):
 
 
 def plot_orbital_content(pars, tmd, legend_info, save_path=None):
-    """Plot orbital content of bands along high-symmetry path.
-
-    Parameters
-    ----------
-    pars : np.ndarray
-        43 tight-binding parameters (or 41 if SOC is frozen).
-    tmd : str
-        Material name.
-    legend_info : tuple
-        (tmd, Ks, boundType, Bs, chi2_elements) or with optional rank appended.
-    save_path : str or Path, optional
-        If given, save figure to this path and close.
-    """
-    from .material import _find_t, _find_e, _find_HSO
-    from .constants import LATTICE_CONSTANTS, IND_OPO, IND_IPO
-    from .material import TMDMaterial
+    """Plot orbital content of bands along high-symmetry path."""
+    from ..material import _find_t, _find_e, _find_HSO
+    from ..constants import LATTICE_CONSTANTS, IND_OPO, IND_IPO
+    from ..material import TMDMaterial
 
     if pars.shape[0] == 41:
         mat_dft = TMDMaterial(tmd)
@@ -295,19 +237,19 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     else:
         full_pars = pars
 
-    Ngk = 200
-    Nkm = int(Ngk / 2)
-    Nmg = int(Ngk / 2 * np.sqrt(3))
-    Nk = Ngk + Nkm + Nmg + 1
+    n_gk = 200
+    n_km = int(n_gk / 2)
+    n_mg = int(n_gk / 2 * np.sqrt(3))
+    n_k = n_gk + n_km + n_mg + 1
     a_TMD = LATTICE_CONSTANTS[tmd]
     K = np.array([4 * np.pi / 3 / a_TMD, 0])
     M = np.array([np.pi / a_TMD, np.pi / np.sqrt(3) / a_TMD])
-    data_k = np.zeros((Nk, 2))
-    data_k[:Ngk, 0] = np.linspace(0, K[0], Ngk, endpoint=False)
-    for ik in range(Nkm):
-        data_k[Ngk + ik] = K + (M - K) / Nkm * ik
-    for ik in range(Nmg + 1):
-        data_k[Ngk + Nkm + ik] = M + M / Nmg * ik
+    data_k = np.zeros((n_k, 2))
+    data_k[:n_gk, 0] = np.linspace(0, K[0], n_gk, endpoint=False)
+    for ik in range(n_km):
+        data_k[n_gk + ik] = K + (M - K) / n_km * ik
+    for ik in range(n_mg + 1):
+        data_k[n_gk + n_km + ik] = M + M / n_mg * ik
 
     hopping = _find_t(full_pars)
     epsilon = _find_e(full_pars)
@@ -315,26 +257,25 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     HSO = _find_HSO(full_pars[-2:])
     args_H = (hopping, epsilon, HSO, offset)
 
-    from .hamiltonian import MonolayerHamiltonian
-    from .material import TMDMaterial
+    from ..monolayer.hamiltonian import MonolayerHamiltonian
     mat = TMDMaterial(tmd)
     ham = MonolayerHamiltonian(mat)
     all_H = ham.build(data_k, *args_H)
-    ens = np.zeros((Nk, 22))
-    evs = np.zeros((Nk, 22, 22), dtype=complex)
-    for i in range(Nk):
+    ens = np.zeros((n_k, 22))
+    evs = np.zeros((n_k, 22, 22), dtype=complex)
+    for i in range(n_k):
         ens[i], evs[i] = np.linalg.eigh(all_H[i])
 
-    orbitals = np.zeros((5, 22, Nk))
+    orbitals = np.zeros((5, 22, n_k))
     list_orbs = ([6, 7], [0, 1], [5], [3, 4, 9, 10], [2, 8])
     for orb in range(5):
         inds_orb = list_orbs[orb]
         for ib in range(22):
-            for ik in range(Nk):
+            for ik in range(n_k):
                 for iorb in inds_orb:
                     orbitals[orb, ib, ik] += np.linalg.norm(evs[ik, iorb, ib]) ** 2 + np.linalg.norm(evs[ik, iorb + 11, ib]) ** 2
 
-    indM = Ngk + Nkm
+    ind_m = n_gk + n_km
     fig = plt.figure(figsize=(15, 9))
     s_m, s_, s_p = 15, 20, 30
     gs = gridspec.GridSpec(1, 2, figure=fig, width_ratios=[10, 1], hspace=0)
@@ -342,7 +283,7 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     color = ["red", "brown", "blue", "green", "aqua"]
     labels = [r"$d_{xy}+d_{x^2-y^2}$", r"$d_{xz}+d_{yz}$", r"$d_{z^2}$", r"$p_x+p_y$", r"$p_z$"]
     leg = []
-    xvals = np.linspace(0, Nk - 1, Nk)
+    xvals = np.linspace(0, n_k - 1, n_k)
     for orb in range(5):
         for ib in range(22):
             ax.scatter(xvals, ens[:, ib], s=(orbitals[orb, ib] * 100),
@@ -352,11 +293,11 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
     legend = ax.legend(handles=leg, loc=(0.7, 0.45), fontsize=s_, handletextpad=0.35, handlelength=0.5)
     ax.add_artist(legend)
     ax.set_ylim(-4, 3)
-    ax.set_xlim(0, Nk - 1)
-    ax.axvline(Ngk, color="k", lw=1, zorder=-1)
-    ax.axvline(Ngk + Nkm, color="k", lw=1, zorder=-1)
+    ax.set_xlim(0, n_k - 1)
+    ax.axvline(n_gk, color="k", lw=1, zorder=-1)
+    ax.axvline(n_gk + n_km, color="k", lw=1, zorder=-1)
     ax.axhline(0, color="k", lw=1, zorder=-1)
-    ax.set_xticks([0, Ngk - 1, Ngk + Nkm - 1, Nk - 1], [r"$\Gamma$", r"$K$", r"$M$", r"$\Gamma$"], size=s_)
+    ax.set_xticks([0, n_gk - 1, n_gk + n_km - 1, n_k - 1], [r"$\Gamma$", r"$K$", r"$M$", r"$\Gamma$"], size=s_)
     ax.set_ylabel("Energy [eV]", size=s_)
     ax.tick_params(axis="y", labelsize=s_m)
     ax.set_title("Orbital content of bands", size=s_p)
@@ -369,27 +310,18 @@ def plot_orbital_content(pars, tmd, legend_info, save_path=None):
 
 
 def _add_legend_result(legend_info, ax):
-    """Add a text box with fit configuration and scoring to an axis.
-
-    Parameters
-    ----------
-    legend_info : tuple
-        Either (tmd, Ks, boundType, Bs, chi2_elements) or
-        (tmd, Ks, boundType, Bs, chi2_elements, rank, idx).
-    ax : matplotlib.axes.Axes
-        Axis to draw the text box on.
-    """
+    """Add a text box with fit configuration and scoring to an axis."""
     if len(legend_info) >= 7:
-        tmd, Ks, boundType, Bs, chi2_elements, rank, idx = legend_info[:7]
+        tmd, Ks, bound_type, Bs, chi2_elements, rank, idx = legend_info[:7]
     else:
-        tmd, Ks, boundType, Bs, chi2_elements = legend_info
+        tmd, Ks, bound_type, Bs, chi2_elements = legend_info
         rank, idx = None, None
 
     txt = tmd + "\n"
     if rank is not None:
         txt += f"Rank #{rank}  (idx {idx})\n"
-    txt_Bs = ["gen", "z  ", "xy ", "soc"] if boundType == "relative" else ["eps", "t_1", "t_5", "t_6", "soc"]
-    txt += "-" * 10 + "\nBoundaries: " + boundType + "\n" + "-" * 10 + "\n"
+    txt_Bs = ["gen", "z  ", "xy ", "soc"] if bound_type == "relative" else ["eps", "t_1", "t_5", "t_6", "soc"]
+    txt += "-" * 10 + "\nBoundaries: " + bound_type + "\n" + "-" * 10 + "\n"
     for i in range(len(Bs)):
         txt += txt_Bs[i] + ": %s" % Bs[i] + "\n"
     txt += "-" * 10 + "\nConstants\n" + "-" * 10 + "\n"
@@ -407,30 +339,8 @@ def _add_legend_result(legend_info, ax):
 
 
 def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=None):
-    """Generate band, parameter, and orbital content plots for top scoring results.
-
-    For each result in the scored DataFrame, produces three figures:
-    1. Bands comparison (TB vs ARPES)
-    2. Parameter overview (bar chart)
-    3. Orbital content of bands
-
-    Figures are saved to ``run_dir/Figures/`` with filenames like
-    ``rank001_bands.png``, ``rank001_params.png``, ``rank001_orbitals.png``.
-
-    Parameters
-    ----------
-    scored_df : pd.DataFrame
-        Scored results from GridScorer.score(), must have 'rank' column.
-    material_name : str
-        "WSe2" or "WS2".
-    master_folder : str
-        Repository root (for loading ARPES data).
-    run_dir : str
-        Run directory containing grid_config.json and fit_*.npz files.
-    top_n : int, optional
-        Number of top results to plot. If None, plots all in scored_df.
-    """
-    from .arpes_data import ARPESData
+    """Generate band, parameter, and orbital content plots for top scoring results."""
+    from ..monolayer.data import MonolayerData
     import json
 
     df = scored_df if top_n is None else scored_df.head(top_n)
@@ -452,7 +362,7 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         if hasattr(first_tb, "shape"):
             pts = first_tb.shape[1]
 
-    arpes = ARPESData(material_name, master_folder, pts=pts)
+    data = MonolayerData(material_name, master_folder, pts=pts)
 
     for _, row in df.iterrows():
         rank = int(row["rank"])
@@ -464,17 +374,17 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         else:
             Ks = tuple([row[f"K{i}_w"] for i in range(1, 7)])
         Bs = tuple(row["Bs"])
-        boundType = "absolute"
+        bound_type = "absolute"
 
         chi2_elements = [
             row["chi2_band"], row["K1_val"], row["K2_val"],
             row["K3_val"], row["K4_val"], row["K5_val"],
         ]
-        legend_info = (material_name, Ks, boundType, Bs, chi2_elements, rank, idx)
+        legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, rank, idx)
 
         prefix = f"rank{rank:03d}_idx{idx}"
 
-        plot_bands(tb_en, arpes, legend_info,
+        plot_bands(tb_en, data, legend_info,
                    save_path=fig_dir / f"{prefix}_bands.png")
 
         plot_parameters_absolute(params, material_name, Bs, legend_info,
@@ -486,142 +396,3 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         print(f"  Plots saved for rank {rank} (idx {idx})")
 
     print(f"All figures saved to {fig_dir}/")
-
-
-def plot_bilayer_data(bilayer_data, save_dir=None):
-    """Plot bilayer ARPES raw data, symmetrized data, and interpolated fitting grid.
-
-    Produces a 3-column figure showing:
-    - Left: raw experimental data (signed momentum vs energy) for all 3 bands
-    - Center: symmetrized data (|k|, averaged K' and K sides)
-    - Right: interpolated data on the uniform |k| fitting grid
-
-    Parameters
-    ----------
-    bilayer_data : BilayerData
-        BilayerData instance with raw_data, sym_data, and fit_data populated.
-    save_dir : str or Path, optional
-        Directory to save the figure. If None, uses ``Figures/`` relative to
-        the repository root.
-    """
-    fig, axes = plt.subplots(1, 3, figsize=(20, 6), sharey=True, constrained_layout=True)
-    ax_raw, ax_sym, ax_interp = axes
-
-    colors_raw = ["steelblue", "darkorange", "forestgreen"]
-    colors_sym = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-    colors_interp = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-    band_labels = [r"Band 1", r"Band 2", r"Band 3"]
-
-    for ib in range(bilayer_data.n_bands):
-        rd = bilayer_data.raw_data[ib]
-        valid = ~np.isnan(rd[:, 1])
-        ax_raw.scatter(rd[valid, 0], rd[valid, 1], s=6, c=colors_raw[ib],
-                       alpha=0.6, label=band_labels[ib])
-
-    ax_raw.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_raw.axvline(0, color="k", lw=0.8, ls=":")
-    ax_raw.set_xlabel("Momentum (Å⁻¹)", fontsize=12)
-    ax_raw.set_ylabel("Energy (eV)", fontsize=12)
-    ax_raw.set_title("Raw bilayer ARPES data", fontsize=13, fontweight="bold")
-    ax_raw.legend(fontsize=10)
-    ax_raw.text(0, ax_raw.get_ylim()[1] * 0.95, r"$\Gamma$",
-                ha="center", va="top", fontsize=10, fontweight="bold")
-
-    for ib in range(bilayer_data.n_bands):
-        sd = bilayer_data.sym_data[ib]
-        valid = ~np.isnan(sd[:, 1])
-        ax_sym.scatter(sd[valid, 0], sd[valid, 1], s=8, c=colors_sym[ib],
-                       alpha=0.7, label=band_labels[ib])
-
-    ax_sym.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_sym.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
-    ax_sym.set_title("Symmetrized (K'↔K averaged)", fontsize=13, fontweight="bold")
-    ax_sym.legend(fontsize=10)
-
-    fd = bilayer_data.fit_data
-    k_grid = fd[:, 0]
-    for ib in range(bilayer_data.n_bands):
-        energies = fd[:, ib + 1]
-        valid = ~np.isnan(energies)
-        ax_interp.scatter(k_grid[valid], energies[valid], s=10,
-                          c=colors_interp[ib], alpha=0.8, zorder=3,
-                          label=band_labels[ib])
-
-    ax_interp.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_interp.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
-    ax_interp.set_title("Interpolated (fitting grid)", fontsize=13, fontweight="bold")
-    ax_interp.legend(fontsize=10)
-
-    fig.suptitle("WSe2/WS2 bilayer ARPES data — K'→Γ→K path",
-                 fontsize=14, fontweight="bold", y=1.05)
-
-    if save_dir is None:
-        save_dir = Path(__file__).resolve().parents[1] / "Figures"
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
-    fn = save_dir / "bilayer_data.png"
-    fig.savefig(fn, dpi=150, bbox_inches="tight")
-    print(f"Saved: {fn}")
-    plt.close(fig)
-
-
-def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None, save_dir=None):
-    """Plot fitted bilayer bands against experimental ARPES data.
-
-    Parameters
-    ----------
-    bilayer_data : BilayerData
-        BilayerData instance with experimental fit_data.
-    k_list : np.ndarray
-        k-points used in Hamiltonian, shape (n_kpts, 2).
-    evals : np.ndarray
-        Computed eigenvalues with fitted coupling, shape (n_kpts, 44).
-    evals_no_coupling : np.ndarray, optional
-        Eigenvalues with zero interlayer coupling, shape (n_kpts, 44).
-    save_dir : str or Path, optional
-        Directory to save the figure. If None, uses ``Figures/``.
-    """
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
-
-    comp_k = np.linalg.norm(k_list, axis=1)
-    n_bands = bilayer_data.n_bands
-    # Band indices: 27 (top), 25 (middle), 23 (lower) — one from each spin-degenerate pair
-    # Order matches experimental: Band 1 (top) first, Band 3 (lowest) last
-    band_indices = [27, 25, 23]
-    computed = evals[:, band_indices]
-
-    colors_exp = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-    colors_fit = ["#aec7e8", "#ffbb78", "#98df8a"]
-    band_labels = [r"Band 1", r"Band 2", r"Band 3"]
-
-    exp_data = bilayer_data.fit_data
-    exp_k = exp_data[:, 0]
-    for ib in range(n_bands):
-        exp_e = exp_data[:, ib + 1]
-        valid = ~np.isnan(exp_e)
-        ax.scatter(exp_k[valid], exp_e[valid], s=20, c=colors_exp[ib],
-                   alpha=0.7, zorder=3, label=f"{band_labels[ib]} (ARPES)")
-        ax.plot(comp_k, computed[:, ib], color=colors_fit[ib],
-                lw=2.5, zorder=2, label=f"{band_labels[ib]} (fit)")
-
-    if evals_no_coupling is not None:
-        no_coup = evals_no_coupling[:, band_indices]
-        for ib in range(n_bands):
-            ax.plot(comp_k, no_coup[:, ib], color="gray",
-                    lw=1.5, ls="--", zorder=1,
-                    label=f"{band_labels[ib]} (no coupling)" if ib == 0 else "")
-
-    ax.axhline(0, color="gray", lw=0.5, ls="--")
-    ax.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
-    ax.set_ylabel("Energy (eV)", fontsize=12)
-    ax.set_title("Bilayer interlayer coupling fit", fontsize=13, fontweight="bold")
-    ax.legend(fontsize=10, loc="lower right")
-
-    if save_dir is None:
-        save_dir = Path(__file__).resolve().parents[1] / "Figures"
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
-    fn = save_dir / "bilayer_fit.png"
-    fig.savefig(fn, dpi=150, bbox_inches="tight")
-    print(f"Saved: {fn}")
-    plt.close(fig)

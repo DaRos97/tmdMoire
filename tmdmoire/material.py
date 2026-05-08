@@ -35,11 +35,6 @@ from .constants import (
 )
 
 
-def _R_z(t):
-    """2D rotation matrix by angle t (radians)."""
-    return np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
-
-
 def _find_t(params: np.ndarray) -> list[np.ndarray]:
     """Build 6 hopping matrices (t1–t6) from the 43-parameter array.
 

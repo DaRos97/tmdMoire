@@ -13,13 +13,14 @@ import pandas as pd
 from itertools import product, islice
 from tmdmoire import (
     TMDMaterial, MoireGeometry, EDCAnalyzer,
-    detect_machine, get_master_folder, get_home_dn, get_filename,
+    get_repo_root, get_filename,
     TWIST_ANGLES, LATTICE_CONSTANTS,
 )
 
-machine = detect_machine(os.getcwd())
-master_folder = get_master_folder(os.getcwd())
+master_folder = get_repo_root()
 n_chunks = 128
+
+BILAYER_DATA_DIR = "/home/users/r/rossid/bilayer_v2.0/Data/"
 
 if len(sys.argv) != 3:
     print("Usage: python3 scripts/analyze_edc.py <G|K> <index>")
@@ -31,12 +32,9 @@ if bz_point not in ["G", "K"]:
     raise ValueError(f"Unknown BZ point: {bz_point}")
 
 ind = int(sys.argv[2])
-if machine == "maf":
-    ind -= 1
 if ind < 0 or ind >= n_chunks:
     raise ValueError(f"Index out of range: {ind}")
 
-disp = machine == "loc"
 compute_gap = bz_point == "K"
 
 theta_deviation = 0
@@ -129,8 +127,6 @@ results_gap = []
 for pars in parameters_chunk:
     if bz_point == "G":
         Vg, phiG, w1p, w1d = pars
-        if disp:
-            print(f"Vg: {Vg:.3f}\tphiG: {phiG / np.pi * 180:.1f}\tw1p: {w1p:.3f}\tw1d: {w1d:.3f}")
         pars_interlayer["w1p"] = w1p
         pars_interlayer["w1d"] = w1d
         config["pars_V"] = (Vg, Vk, phiG, phiK)
@@ -157,7 +153,7 @@ for pars in parameters_chunk:
 df = pd.DataFrame(results, columns=columns)
 dirname = get_filename(
     ("edc" + bz_point, theta_deviation, n_shells, spreadE, *args_fn),
-    dirname=get_home_dn(machine, "bilayer") + "Data/",
+    dirname=BILAYER_DATA_DIR,
     float_precision=4,
 ) + "_" + list_fn + "/"
 if not Path(dirname).is_dir():
@@ -169,7 +165,7 @@ if compute_gap:
     df_gap = pd.DataFrame(results_gap, columns=columns_gap)
     dirname_gap = get_filename(
         ("edcGap" + bz_point, theta_deviation, n_shells, spreadE, *args_fn),
-        dirname=get_home_dn(machine, "bilayer") + "Data/",
+        dirname=BILAYER_DATA_DIR,
         float_precision=4,
     ) + "_" + list_fn + "/"
     if not Path(dirname_gap).is_dir():

@@ -1,10 +1,15 @@
+"""EDC analysis for bilayer moire superlattice.
+
+Computes energy distribution curves from supercell eigenvalues,
+fits Voigt profiles, computes band gaps, and local density of states.
+"""
 import numpy as np
-import scipy
 from scipy.special import wofz
 import lmfit
-from .material import TMDMaterial
-from .moire_geometry import MoireGeometry
+from ..material import TMDMaterial
+from .geometry import MoireGeometry
 from .hamiltonian import MoireHamiltonian
+from ..constants import EDC_G_POSITIONS, EDC_K_POSITIONS, ENERGY_OFFSETS
 
 
 def _voigt(x, center, amplitude, gamma, sigma):
@@ -25,7 +30,6 @@ class EDCAnalyzer:
 
     def compute_edc(self, params: tuple, bz_point: str, spreadE: float = 0.03,
                     sample: str = "S11", plot_bands: bool = False, plot_fit: bool = False):
-        from .constants import EDC_G_POSITIONS, EDC_K_POSITIONS, ENERGY_OFFSETS
 
         n_cells = self.config["n_cells"]
         k_point = self.config["k_point"]
@@ -78,7 +82,7 @@ class EDCAnalyzer:
         k_list = np.zeros((pts, 2))
         k_list[:, 0] = np.linspace(0, 0.12, pts)
         if bz_point == "K":
-            from .constants import LATTICE_CONSTANTS
+            from ..constants import LATTICE_CONSTANTS
             k_list[:, 0] += 4 * np.pi / 3 / LATTICE_CONSTANTS["WSe2"]
 
         moire_ham = MoireHamiltonian(self.wse2, self.ws2, self.geometry)
@@ -86,37 +90,37 @@ class EDCAnalyzer:
             k_list, self.config["n_shells"], interlayer_params, pars_V
         )
 
-        nTVB = 28 * n_cells
-        gap = np.min(evals[:, nTVB - 1] - evals[:, nTVB - 2])
+        n_tvb = 28 * n_cells
+        gap = np.min(evals[:, n_tvb - 1] - evals[:, n_tvb - 2])
         return gap
 
     def _fit_bands(self, band_type, evals, weights, n_cells, spreadE, sample, bz_point, plot_fit):
-        indexB = 28 * n_cells - 1 if band_type == "TVB" else 26 * n_cells - 1
-        indexL = indexB - 2 * n_cells + 1 if bz_point == "G" else indexB - n_cells + np.argmax(weights[indexB - n_cells:indexB]) + 1
-        nSOC = 2 if bz_point == "G" else 1
-        energyB = evals[indexB]
-        weightB = weights[indexB]
+        index_b = 28 * n_cells - 1 if band_type == "TVB" else 26 * n_cells - 1
+        index_l = index_b - 2 * n_cells + 1 if bz_point == "G" else index_b - n_cells + np.argmax(weights[index_b - n_cells:index_b]) + 1
+        n_soc = 2 if bz_point == "G" else 1
+        energy_b = evals[index_b]
+        weight_b = weights[index_b]
 
-        fullEnergyValues = evals[indexL:indexB + 1]
-        fullWeightValues = weights[indexL:indexB + 1]
+        full_energy_values = evals[index_l:index_b + 1]
+        full_weight_values = weights[index_l:index_b + 1]
 
-        minE = fullEnergyValues[0]
-        maxE = fullEnergyValues[-1]
-        Delta = maxE - minE
-        minE -= Delta / 2
-        maxE += Delta / 2
-        nE = int((maxE - minE) / 0.005)
-        energyList = np.linspace(minE, maxE, nE)
-        weightList = np.zeros(len(energyList))
+        min_e = full_energy_values[0]
+        max_e = full_energy_values[-1]
+        delta = max_e - min_e
+        min_e -= delta / 2
+        max_e += delta / 2
+        n_e = int((max_e - min_e) / 0.005)
+        energy_list = np.linspace(min_e, max_e, n_e)
+        weight_list = np.zeros(len(energy_list))
 
-        if np.max(fullWeightValues[:-nSOC]) > weightB:
+        if np.max(full_weight_values[:-n_soc]) > weight_b:
             return (0, 0), False
 
-        for i in range(len(fullEnergyValues)):
-            weightList += spreadE / np.pi * fullWeightValues[i] / ((energyList - fullEnergyValues[i]) ** 2 + spreadE ** 2)
+        for i in range(len(full_energy_values)):
+            weight_list += spreadE / np.pi * full_weight_values[i] / ((energy_list - full_energy_values[i]) ** 2 + spreadE ** 2)
 
         model = lmfit.Model(_two_lorentzian_one_gaussian)
-        cen1 = energyList[np.argmax(weightList)]
+        cen1 = energy_list[np.argmax(weight_list)]
         cen2 = cen1 - 0.05 if bz_point == "G" else cen1 - 0.15
         params_fit = model.make_params(
             amp1=1.57, cen1=cen1, gam1=0.03,
@@ -129,7 +133,7 @@ class EDCAnalyzer:
         params_fit["amp1"].set(min=0)
         params_fit["amp2"].set(min=0)
 
-        result = model.fit(weightList, params_fit, x=energyList)
+        result = model.fit(weight_list, params_fit, x=energy_list)
         amp1 = result.best_values["amp1"]
         amp2 = result.best_values["amp2"]
         cen1 = result.best_values["cen1"]
@@ -144,10 +148,10 @@ class EDCAnalyzer:
         n_cells = self.config["n_cells"]
         theta = self.config["theta_deg"] / 180 * np.pi
 
-        rPts = r_list.shape[0]
-        ePts = len(e_list)
-        kPts = k_flat.shape[0]
-        LDOS = np.zeros((rPts, ePts))
+        r_pts = r_list.shape[0]
+        e_pts = len(e_list)
+        k_pts = k_flat.shape[0]
+        LDOS = np.zeros((r_pts, e_pts))
 
         lu = MoireGeometry.lu_table(n_shells)
         G_M = self.geometry.reciprocal_vectors()
@@ -159,11 +163,11 @@ class EDCAnalyzer:
         alpha = np.arange(44)[:, np.newaxis]
         ind = (alpha % 22) + ig * 22 + n_cells * 22 * (alpha // 22)
 
-        for ik in range(kPts):
+        for ik in range(k_pts):
             evals_k = evals[ik]
             evecs_k = evecs[ik]
-            kGs = Kbs + k_flat[ik]
-            phases = np.exp(1j * r_list @ kGs.T)[np.newaxis, :, :]
+            k_gs = Kbs + k_flat[ik]
+            phases = np.exp(1j * r_list @ k_gs.T)[np.newaxis, :, :]
 
             for n, En in enumerate(evals_k):
                 coeffs = evecs_k[ind, n]
@@ -171,6 +175,6 @@ class EDCAnalyzer:
                 psi_alpha = np.sum(phases * coeffs_all, axis=-1)
                 psi_r_all = np.sum(np.abs(psi_alpha) ** 2, axis=0)
                 lorentz_matrix = spreadE / (np.pi * ((e_list - En) ** 2 + spreadE ** 2))
-                LDOS += psi_r_all[:, None] * lorentz_matrix[None, :] / kPts
+                LDOS += psi_r_all[:, None] * lorentz_matrix[None, :] / k_pts
 
         return LDOS
