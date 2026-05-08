@@ -443,5 +443,5 @@ class MoireHamiltonian:
         evecs = np.zeros((k_pts, n_cells * 44, n_cells * 44), dtype=complex)
         for i in range(k_pts):
             H_tot = self.build_supercell(k_points[i], n_shells, interlayer_params, pars_V)
-            evals[i], evecs[i] = scipy.linalg.eigh(H_tot, check_finite=False, overwrite_a=True)
+            evals[i], evecs[i] = la.eigh(H_tot, check_finite=False, overwrite_a=True)
         return evals, evecs

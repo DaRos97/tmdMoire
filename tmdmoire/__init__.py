@@ -12,6 +12,7 @@ from .material import TMDMaterial
 from .hamiltonian import MonolayerHamiltonian, MoireHamiltonian
 from .arpes_data import ARPESData
 from .bilayer_data import BilayerData
+from .bilayer_fitter import BilayerFitter
 from .fitter import ParameterFitter
 from .scoring import GridScorer
 from .edc_analyzer import EDCAnalyzer
@@ -25,6 +26,7 @@ __all__ = [
     "MoireHamiltonian",
     "ARPESData",
     "BilayerData",
+    "BilayerFitter",
     "ParameterFitter",
     "GridScorer",
     "EDCAnalyzer",

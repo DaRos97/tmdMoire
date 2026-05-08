@@ -56,7 +56,7 @@ class BilayerData:
         self.pts = pts
         self.n_bands = 3
         self.raw_data = self._load_raw()
-        self.sym_data = self._symmetrize()
+        self.sym_data = self._load_or_symmetrize()
         self.fit_data = self._interpolate(pts)
 
     @property
@@ -165,6 +165,38 @@ class BilayerData:
             sym.append(result)
         return sym
 
+    def _load_or_symmetrize(self) -> list[np.ndarray]:
+        """Load symmetrized data from cache or compute and save it.
+
+        Checks ``Data/sym_bilayer.npz`` for a previously computed
+        symmetrized dataset. If found and the file is newer than all
+        raw input files, it is loaded directly. Otherwise, symmetrization
+        is performed and the result is saved.
+
+        Returns
+        -------
+        list[np.ndarray]
+            Symmetrized data with same structure as ``raw_data``.
+        """
+        data_dir = Path("Data")
+        cache_fn = data_dir / "sym_bilayer.npz"
+
+        if cache_fn.exists():
+            cache_mtime = cache_fn.stat().st_mtime
+            all_raw_newer = False
+            for ib in range(1, self.n_bands + 1):
+                raw_fn = Path(self.master_folder) / "Inputs" / "bilayer_fitting" / f"WSe2WS2_Band{ib}.txt"
+                if raw_fn.stat().st_mtime > cache_mtime:
+                    all_raw_newer = True
+                    break
+            if not all_raw_newer:
+                return _load_bilayer_sym_cache(cache_fn, self.n_bands)
+
+        sym = self._symmetrize()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        _save_bilayer_sym_cache(cache_fn, sym, self.n_bands)
+        return sym
+
     def _interpolate(self, pts: int) -> np.ndarray:
         """Interpolate symmetrized data onto a uniform |k| grid.
 
@@ -207,3 +239,26 @@ class BilayerData:
             result[~within_range, ib + 1] = np.nan
 
         return result
+
+
+# ─── Cache helpers ────────────────────────────────────────────────────────────
+
+def _save_bilayer_sym_cache(fn: Path, sym: list, n_bands: int):
+    """Save symmetrized bilayer data to an npz file."""
+    save_dict = {}
+    for ib in range(n_bands):
+        arr = sym[ib]
+        save_dict[f"band{ib}_data"] = arr.ravel()
+        save_dict[f"band{ib}_shape"] = arr.shape
+    np.savez(fn, **save_dict)
+
+
+def _load_bilayer_sym_cache(fn: Path, n_bands: int) -> list[np.ndarray]:
+    """Load symmetrized bilayer data from an npz cache file."""
+    data = np.load(fn, allow_pickle=True)
+    sym = []
+    for ib in range(n_bands):
+        arr = data[f"band{ib}_data"]
+        shape = tuple(data[f"band{ib}_shape"])
+        sym.append(arr.reshape(shape))
+    return sym
