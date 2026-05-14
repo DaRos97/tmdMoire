@@ -56,22 +56,8 @@ class MoireHamiltonian:
             Id[i + 11, i + 11] = in_plane
         return Id
 
-    def _build_interlayer_coupling(self, interlayer_params):
-        """Construct the 22×22 interlayer coupling matrices."""
-        Ham_int1 = np.zeros((22, 22), dtype=complex)
-        Ham_int2 = np.zeros((22, 22), dtype=complex)
-        orbd = 5
-        orbp = 8
-        psi = 0.0
-        for i_so in [0, 11]:
-            Ham_int1[orbp + i_so, orbp + i_so] = interlayer_params["w1p"]
-            Ham_int1[orbd + i_so, orbd + i_so] = interlayer_params["w1d"]
-            Ham_int2[orbp + i_so, orbp + i_so] = interlayer_params["w2p"]
-            Ham_int2[orbd + i_so, orbd + i_so] = interlayer_params["w2d"] * np.exp(1j * psi)
-        return Ham_int1, Ham_int2
-
-    def _build_interlayer_coupling2(self, interlayer_params, k_):
-        """Construct the 22×22 interlayer coupling matrix. We use here the t=w1+w2\sum_{i=1}^6 e^{ike_i}"""
+    def _build_interlayer_coupling(self, interlayer_params, k_):
+        """Construct the 22×22 interlayer coupling matrix. We use here the t=w1+w2*sum_{i=1}^6 e^{ike_i}"""
         Ham_int = np.zeros((22, 22), dtype=complex)
         orbd = 5
         orbp = 8
@@ -180,7 +166,6 @@ class MoireHamiltonian:
         n_cells = MoireGeometry.n_cells(n_shells)
         G_M = self.geometry.reciprocal_vectors()
         moire_ham = self._build_moire_potential(*pars_V)
-        #interlayer_ham1, interlayer_ham2 = self._build_interlayer_coupling(interlayer_params)
         lu = MoireGeometry.lu_table(n_shells)
 
         use_cache = n_shells == 0 and k_idx is not None and mono_hams_wse2 is not None
@@ -212,7 +197,7 @@ class MoireHamiltonian:
                 Ham[n * 22:(n + 1) * 22, n * 22:(n + 1) * 22] = self._build_monolayer_ham(Kn, args_wse2)
                 Ham[(n_cells + n) * 22:(n_cells + n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = self._build_monolayer_ham(Kn, args_ws2)
             # Interlayer coupling w1
-            interlayer_ham = self._build_interlayer_coupling2(interlayer_params,Kn)
+            interlayer_ham = self._build_interlayer_coupling(interlayer_params,Kn)
             Ham[n * 22:(n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = interlayer_ham
 
         Ham[n_cells * 22:, :n_cells * 22] = np.copy(Ham[:n_cells * 22, n_cells * 22:].T.conj())
@@ -230,10 +215,6 @@ class MoireHamiltonian:
                     Vup = moire_ham if g % 2 == 0 else moire_ham.conj()
                     Ham[s * 22:(s + 1) * 22, nn * 22:(nn + 1) * 22] += Vup
                     Ham[n_cells * 22 + s * 22:n_cells * 22 + (s + 1) * 22, n_cells * 22 + nn * 22:n_cells * 22 + (nn + 1) * 22] += Vup
-                    # Interlayer coupling w2
-                    # Iup = interlayer_ham2 if g % 2 == 0 else interlayer_ham2.conj()
-                    # Ham[s * 22:(s + 1) * 22, (n_cells + nn) * 22:(n_cells + nn + 1) * 22] += Iup
-                    # Ham[(n_cells + nn) * 22:(n_cells + nn + 1) * 22, s * 22:(s + 1) * 22] += Iup.conj()
         return Ham
 
     def diagonalize(self, k_points, n_shells, interlayer_params, pars_V,

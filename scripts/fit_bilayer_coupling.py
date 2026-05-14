@@ -48,6 +48,10 @@ parser.add_argument("--debug-every", type=int, default=1,
                     help="Save debug plot every N accepted steps.")
 parser.add_argument("--verbose", action="store_true",
                     help="Print configuration.")
+parser.add_argument("--gamma-weight", type=float, default=5.0,
+                    help="Weight multiplier for Gamma point (default: 5.0).")
+parser.add_argument("--gamma-sigma", type=float, default=0.15,
+                    help="Width of Gamma region in Å⁻¹ (default: 0.15).")
 args = parser.parse_args()
 
 monolayer_fns = {
@@ -60,6 +64,7 @@ if args.verbose:
     print(f" k-points: {args.n_kpts}")
     print(f" Bounds: all params [-5, 5]")
     print(f" Starts: {args.n_starts}, seed: {args.seed}")
+    print(f" Gamma weight: {args.gamma_weight}, sigma: {args.gamma_sigma} Å⁻¹")
     print("-" * 50)
 
 wse2 = TMDMaterial("WSe2")
@@ -67,7 +72,8 @@ wse2.load_fitted(monolayer_fns["WSe2"])
 ws2 = TMDMaterial("WS2")
 ws2.load_fitted(monolayer_fns["WS2"])
 
-fitter = BilayerFitter(wse2, ws2, master_folder, n_kpts=args.n_kpts)
+fitter = BilayerFitter(wse2, ws2, master_folder, n_kpts=args.n_kpts,
+                       gamma_weight=args.gamma_weight, gamma_sigma=args.gamma_sigma)
 
 # Pre-fit diagnostic plot
 evals_nc, _ = fitter._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
@@ -90,6 +96,8 @@ for i, name in enumerate(["w1p", "w1d", "w2p", "w2d"]):
     print(f"  {name} = {result['x'][i]:+.4f} eV")
 print(f"\nSaved to: {fn}")
 
-# Post-fit plot
+# Post-fit plot with parameter legend
+param_dict = {name: result["x"][i] for i, name in enumerate(["w1p", "w1d", "w2p", "w2d"])}
 plot_bilayer_fit(fitter.bilayer_data, result["k_list"],
-                 result["evals"], result["evals_no_coupling"])
+                 result["evals"], result["evals_no_coupling"],
+                 interlayer_params=param_dict)

@@ -40,7 +40,8 @@ class BilayerFitter:
     ]
 
     def __init__(self, wse2: TMDMaterial, ws2: TMDMaterial,
-                 master_folder: str, n_kpts: int = 51):
+                 master_folder: str, n_kpts: int = 51,
+                 gamma_weight: float = 5.0, gamma_sigma: float = 0.15):
         self.wse2 = wse2
         self.ws2 = ws2
         self.n_kpts = n_kpts
@@ -49,6 +50,8 @@ class BilayerFitter:
         self._debug_dir = None
         self._debug_max = None
         self._debug_no_coupling_evals = None
+        self.gamma_weight = gamma_weight
+        self.gamma_sigma = gamma_sigma
 
         a = wse2.lattice_constant
         self.K_vec = np.array([4 * np.pi / 3 / a, 0])
@@ -109,7 +112,10 @@ class BilayerFitter:
             if valid.sum() == 0:
                 continue
             comp_interp = np.interp(self.exp_k[valid], self.comp_k, computed[:, ib])
-            chi2 += np.sum((comp_interp - exp_e[valid]) ** 2)
+            residuals = comp_interp - exp_e[valid]
+            k_vals = self.exp_k[valid]
+            weights = 1.0 + self.gamma_weight * np.exp(-k_vals ** 2 / (2 * self.gamma_sigma ** 2))
+            chi2 += np.sum(weights * residuals ** 2)
             n_points += valid.sum()
 
         mse = chi2 / n_points if n_points > 0 else 1e10

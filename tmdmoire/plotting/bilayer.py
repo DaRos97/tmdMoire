@@ -241,8 +241,16 @@ def plot_bilayer_supercell(bilayer_data, k_list, evals, weights,
     plt.close(fig)
 
 
-def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None, save_dir=None):
-    """Plot fitted bilayer bands against experimental ARPES data."""
+def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None,
+                     interlayer_params=None, save_dir=None):
+    """Plot fitted bilayer bands against experimental ARPES data.
+
+    Parameters
+    ----------
+    interlayer_params : dict, optional
+        Dict of fitted parameter names and values, e.g. {"w1p": 1.2, ...}.
+        If provided, displayed as a text box on the plot.
+    """
     fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
 
     comp_k = np.linalg.norm(k_list, axis=1)
@@ -277,6 +285,14 @@ def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None, save_d
     ax.set_ylabel("Energy (eV)", fontsize=12)
     ax.set_title("Bilayer interlayer coupling fit", fontsize=13, fontweight="bold")
     ax.legend(fontsize=10, loc="lower right")
+
+    if interlayer_params is not None:
+        text_str = "\n".join(
+            f"{k} = {v:+.4f} eV" for k, v in interlayer_params.items()
+        )
+        ax.text(0.02, 0.98, text_str, transform=ax.transAxes,
+                fontsize=10, verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
 
     if save_dir is None:
         save_dir = Path(__file__).resolve().parents[2] / "Figures"

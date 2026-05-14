@@ -1,9 +1,10 @@
 # TMD heterobilayer WSe₂/WS₂
 
-Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Two-stage computational workflow:
+Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Three-stage computational workflow:
 
-1. **Monolayer** — Fit 43 tight-binding parameters per TMD (WSe₂, WS₂) to ARPES data
-2. **Bilayer** — Build moiré supercell Hamiltonian, compute EDCs, extract moiré potential & interlayer coupling
+1. **Monolayer fitting** — Fit 43 tight-binding parameters per TMD (WSe₂, WS₂) to ARPES band dispersion data
+2. **Bilayer interlayer coupling** — Fit 4 interlayer hopping parameters (w1p, w1d, w2p, w2d) to bilayer ARPES data
+3. **Bilayer moiré potential** — Sweep moiré potential parameters (Vg, Vk, φG, φK) to match experimental EDC peaks
 
 ## Table of Contents
 
@@ -31,6 +32,12 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Two-stag
   - [Output](#output)
   - [Lattice constants](#lattice-constants)
 - [Bilayer Moiré Bands](#bilayer-moir%C3%A9-bands)
+  - [Overview](#bilayer-overview)
+  - [Interlayer coupling form](#interlayer-coupling-form)
+  - [Minimization](#minimization)
+  - [Quick start](#bilayer-quick-start)
+  - [Export script](#export-script)
+  - [Output](#bilayer-output)
 - [References](#references)
 
 ## Monolayer Fitting
@@ -339,34 +346,99 @@ Fitted parameters from grid searches are saved as `.npz` files in `Data/run_<id>
 
 ## Bilayer Moiré Bands
 
-*(Documentation forthcoming)*
-
 ### Overview
 
-The bilayer stage constructs a moiré supercell Hamiltonian for a twisted WSe₂/WS₂ heterobilayer and computes Energy Distribution Curves (EDCs) at high-symmetry points (Γ and K) to extract the moiré potential amplitude/phase and interlayer coupling strengths.
+The bilayer stage fits interlayer hopping parameters between WSe₂ and WS₂ layers to reproduce the top valence bands from bilayer ARPES data along the Γ–K path. The fit uses a 44×44 Hamiltonian (22 orbitals per layer × 2 layers, spin-degenerate) with `n_shells=0` (no moiré supercell expansion, i.e. a single mini-Brillouin zone).
+
+### Interlayer coupling form
+
+The interlayer coupling matrix is a 22×22 block that connects WSe₂ and WS₂ orbitals at the same k-point. Only two orbitals per spin block participate in interlayer hopping:
+
+- **p_z^e** (index 8, even parity p_z orbital)
+- **d_z²** (index 5, even parity d orbital)
+
+For each orbital type, the coupling has the form:
+
+```
+t(k) = w1 + w2 · Σ_{i=1}^{6} exp(i k · e_i)
+```
+
+where `e_i` are the 6 nearest-neighbor vectors in the moiré lattice, obtained by rotating the base vector `[a·√3, 0]` by multiples of π/3:
+
+```python
+e_i = a · √3 · R_z(i·π/3) @ [1, 0]    for i = 0, ..., 5
+```
+
+The four fitted parameters are:
+
+| Parameter | Orbital | Role |
+|---|---|---|
+| `w1p` | p_z^e | On-site interlayer hopping (k-independent) |
+| `w2p` | p_z^e | k-dependent modulation via 6 NN vectors |
+| `w1d` | d_z² | On-site interlayer hopping (k-independent) |
+| `w2d` | d_z² | k-dependent modulation via 6 NN vectors |
+
+At Γ (k=0), the sum `Σ exp(i k · e_i) = 6`, so the total coupling is `w1 + 6·w2`. Away from Γ, the phase factors interfere and reduce the coupling strength.
+
+### Minimization
+
+The fit minimizes a chi-squared objective comparing computed band energies to symmetrized bilayer ARPES data along the Γ–K path:
+
+```
+χ² = (1/N) Σ_{b=1}^{3} Σ_{i} w(k_i) · [E_TB[b, k_i] - E_ARPES[b, k_i]]²
+```
+
+where:
+- **3 bands**: the top 3 valence bands (indices 27, 26, 25 out of 44)
+- **Gamma weighting**: `w(k) = 1 + γ_weight · exp(-k² / (2σ²))` gives higher weight to points near Γ. Default: `γ_weight = 5.0`, `σ = 0.15 Å⁻¹`
+- **Energy offset**: the S11 sample offset of −0.47 eV is applied to all computed energies
+
+The optimization uses `scipy.optimize.minimize` with the Nelder-Mead method, launched from multiple random starting points (default: 10) within bounds of [−5, 5] eV for all four parameters. The best result across all starts is selected.
 
 ### Quick start
 
 ```bash
-# EDC analysis at Gamma, chunk 0
-python scripts/analyze_edc.py G 0
+# Run interlayer coupling fit (default: 10 starts, gamma_weight=5.0)
+python scripts/fit_bilayer_coupling.py
 
-# EDC analysis at K, chunk 5
-python scripts/analyze_edc.py K 5
+# With more starting points and custom gamma weighting
+python scripts/fit_bilayer_coupling.py --n-starts 20 --gamma-weight 10.0 --gamma-sigma 0.1
+
+# Verbose output
+python scripts/fit_bilayer_coupling.py --verbose
+
+# Save debug plots during optimization
+python scripts/fit_bilayer_coupling.py --debug --debug-max 20
 ```
 
-### Parameters
+### Export script
 
-| Parameter | Description | Typical range |
-|---|---|---|
-| Vg, Vk | Moiré potential amplitude at Γ and K | 0.001–0.040 eV |
-| φG, φK | Moiré potential phase | 0–360° |
-| w1p | Interlayer p-orbital coupling | −1.58 to −1.53 eV |
-| w1d | Interlayer d-orbital coupling | 1.12 to 1.17 eV |
+The export script computes the top 8 valence bands along two Brillouin zone cuts using the fitted interlayer parameters and saves both data and plots:
+
+```bash
+python scripts/export_bilayer_bands.py
+```
+
+**Output** (all in `Data/interlayer_fit/`):
+
+| File | Description |
+|---|---|
+| `bilayer_bands_KpGK.txt` | Top 8 valence bands along K′–Γ–K (201 k-points), tab-separated |
+| `bilayer_bands_KpGK.png` | Plot of the above with ARPES data overlaid |
+| `bilayer_bands_KpMK.txt` | Top 8 valence bands along K′–M–K (101 k-points), tab-separated |
+| `bilayer_bands_KpMK.png` | Plot of the above (TB only, no ARPES data for this path) |
+
+The `.txt` files contain 9 columns: cumulative |k| distance (Å⁻¹) followed by 8 band energies (eV) for bands 27 down to 20, with the S11 energy offset (−0.47 eV) applied.
 
 ### Output
 
-Results are saved as chunked HDF5 files in `Data/`.
+Fitted interlayer parameters are saved to:
+
+| File | Content |
+|---|---|
+| `Inputs/bilayer_fitting/interlayer_params.npy` | NumPy array `[w1p, w1d, w2p, w2d]` |
+| `Inputs/bilayer_fitting/interlayer_params_metadata.json` | Metadata: parameter values, chi², nfev, success flag, timestamp |
+| `Figures/bilayer_fit.png` | Final fit plot with parameter values and ARPES comparison |
 
 ## References
 
