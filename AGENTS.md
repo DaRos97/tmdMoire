@@ -147,6 +147,7 @@ Bilayer stage:
 
 ## Conventions
 
+- **Never save files outside the project repository.** All output (figures, data files, debug plots) must stay within the project directory tree (e.g. `Data/`, `Figures/`, `Inputs/`).
 - SOC bounds set to 0 in config → fit only TB params (HSO fixed from DFT)
 - Bound types: "relative" (fraction of DFT value) or "absolute" (fixed eV range)
 - Grid config defines K1-K6 value lists; Cartesian product gives all combinations

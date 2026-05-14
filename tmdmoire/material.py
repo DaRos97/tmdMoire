@@ -414,6 +414,93 @@ class TMDMaterial:
                 raise ValueError(f"Index not in any list for bounds: {i}")
         return bounds
 
+    def build_hamiltonian(self, k_point: np.ndarray) -> np.ndarray:
+        """Build the full 22×22 Hamiltonian at a given k-point.
+
+        Parameters
+        ----------
+        k_point : np.ndarray
+            2D k-vector in Å⁻¹.
+
+        Returns
+        -------
+        np.ndarray
+            22×22 complex Hamiltonian matrix.
+        """
+        hopping = self.build_hopping_matrices()
+        epsilon = self.build_onsite_energies()
+        HSO = self.build_soc_hamiltonian()
+        a_mono = self.lattice_constant
+        offset = self.params[-3]
+
+        delta = a_mono * np.array([
+            A_1, A_1 + A_2, A_2,
+            -(2 * A_1 + A_2) / 3, (A_1 + 2 * A_2) / 3, (A_1 - A_2) / 3,
+            -2 * (A_1 + 2 * A_2) / 3, 2 * (2 * A_1 + A_2) / 3, 2 * (A_2 - A_1) / 3,
+        ])
+        H_0 = np.zeros((11, 11), dtype=complex)
+        for i in range(11):
+            H_0[i, i] += (epsilon[i]
+                + 2 * hopping[0][i, i] * np.cos(np.dot(k_point, delta[0]))
+                + 2 * hopping[1][i, i] * (np.cos(np.dot(k_point, delta[1])) + np.cos(np.dot(k_point, delta[2])))
+            )
+        for ind in J_PLUS:
+            i, j = ind[0] - 1, ind[1] - 1
+            temp = (2 * hopping[0][i, j] * np.cos(np.dot(k_point, delta[0]))
+                + hopping[1][i, j] * (np.exp(-1j * np.dot(k_point, delta[1])) + np.exp(-1j * np.dot(k_point, delta[2])))
+                + hopping[2][i, j] * (np.exp(1j * np.dot(k_point, delta[1])) + np.exp(1j * np.dot(k_point, delta[2])))
+            )
+            H_0[i, j] += temp
+            H_0[j, i] += np.conjugate(temp)
+        for ind in J_MINUS:
+            i, j = ind[0] - 1, ind[1] - 1
+            temp = (-2 * 1j * hopping[0][i, j] * np.sin(np.dot(k_point, delta[0]))
+                + hopping[1][i, j] * (np.exp(-1j * np.dot(k_point, delta[1])) - np.exp(-1j * np.dot(k_point, delta[2])))
+                + hopping[2][i, j] * (-np.exp(1j * np.dot(k_point, delta[1])) + np.exp(1j * np.dot(k_point, delta[2])))
+            )
+            H_0[i, j] += temp
+            H_0[j, i] += np.conjugate(temp)
+        for ind in J_MX_PLUS:
+            i, j = ind[0] - 1, ind[1] - 1
+            temp = hopping[3][i, j] * (np.exp(1j * np.dot(k_point, delta[3])) - np.exp(1j * np.dot(k_point, delta[5])))
+            H_0[i, j] += temp
+            H_0[j, i] += np.conjugate(temp)
+        for ind in J_MX_MINUS:
+            i, j = ind[0] - 1, ind[1] - 1
+            temp = (hopping[3][i, j] * (np.exp(1j * np.dot(k_point, delta[3])) + np.exp(1j * np.dot(k_point, delta[5])))
+                + hopping[4][i, j] * np.exp(1j * np.dot(k_point, delta[4]))
+            )
+            H_0[i, j] += temp
+            H_0[j, i] += np.conjugate(temp)
+
+        H_1 = np.zeros((11, 11), dtype=complex)
+        H_1[8, 5] += hopping[5][8, 5] * (np.exp(1j * np.dot(k_point, delta[6])) + np.exp(1j * np.dot(k_point, delta[7])) + np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[5, 8] += np.conjugate(H_1[8, 5])
+        H_1[10, 5] += hopping[5][10, 5] * (np.exp(1j * np.dot(k_point, delta[6])) - 1/2 * np.exp(1j * np.dot(k_point, delta[7])) - 1/2 * np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[5, 10] += np.conjugate(H_1[10, 5])
+        H_1[9, 5] += np.sqrt(3) / 2 * hopping[5][10, 5] * (-np.exp(1j * np.dot(k_point, delta[7])) + np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[5, 9] += np.conjugate(H_1[9, 5])
+        H_1[8, 7] += hopping[5][8, 7] * (np.exp(1j * np.dot(k_point, delta[6])) - 1/2 * np.exp(1j * np.dot(k_point, delta[7])) - 1/2 * np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[7, 8] += np.conjugate(H_1[8, 7])
+        H_1[8, 6] += np.sqrt(3) / 2 * hopping[5][8, 7] * (-np.exp(1j * np.dot(k_point, delta[7])) + np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[6, 8] += np.conjugate(H_1[8, 6])
+        H_1[9, 6] += 3/4 * hopping[5][10, 7] * (np.exp(1j * np.dot(k_point, delta[7])) + np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[6, 9] += np.conjugate(H_1[9, 6])
+        H_1[10, 6] += np.sqrt(3) / 4 * hopping[5][10, 7] * (np.exp(1j * np.dot(k_point, delta[7])) - np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[6, 10] += np.conjugate(H_1[10, 6])
+        H_1[9, 7] += H_1[10, 6]
+        H_1[7, 9] += H_1[6, 10]
+        H_1[10, 7] += hopping[5][10, 7] * (np.exp(1j * np.dot(k_point, delta[6])) + 1/4 * np.exp(1j * np.dot(k_point, delta[7])) + 1/4 * np.exp(1j * np.dot(k_point, delta[8])))
+        H_1[7, 10] += np.conjugate(H_1[10, 7])
+
+        H_TB = H_0 + H_1
+        H = np.zeros((22, 22), dtype=complex)
+        H[:11, :11] = H_TB
+        H[11:, 11:] = H_TB
+        H += HSO
+        H += np.identity(22) * offset
+        return H
+
     def parameter_distance(self, params: np.ndarray | None = None) -> float:
         """Compute normalized distance from DFT parameter values.
 

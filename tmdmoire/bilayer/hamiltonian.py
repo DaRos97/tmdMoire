@@ -12,8 +12,10 @@ import scipy.linalg as la
 from ..constants import (
     J_PLUS, J_MINUS, J_MX_PLUS, J_MX_MINUS, A_1, A_2, M_LIST,
 )
+from ..utils.kpoints import R_z
 from ..material import TMDMaterial
 from .geometry import MoireGeometry
+from ..utils.kpoints import R_z
 
 
 class MoireHamiltonian:
@@ -53,6 +55,32 @@ class MoireHamiltonian:
             Id[i, i] = in_plane
             Id[i + 11, i + 11] = in_plane
         return Id
+
+    def _build_interlayer_coupling(self, interlayer_params):
+        """Construct the 22×22 interlayer coupling matrices."""
+        Ham_int1 = np.zeros((22, 22), dtype=complex)
+        Ham_int2 = np.zeros((22, 22), dtype=complex)
+        orbd = 5
+        orbp = 8
+        psi = 0.0
+        for i_so in [0, 11]:
+            Ham_int1[orbp + i_so, orbp + i_so] = interlayer_params["w1p"]
+            Ham_int1[orbd + i_so, orbd + i_so] = interlayer_params["w1d"]
+            Ham_int2[orbp + i_so, orbp + i_so] = interlayer_params["w2p"]
+            Ham_int2[orbd + i_so, orbd + i_so] = interlayer_params["w2d"] * np.exp(1j * psi)
+        return Ham_int1, Ham_int2
+
+    def _build_interlayer_coupling2(self, interlayer_params, k_):
+        """Construct the 22×22 interlayer coupling matrix. We use here the t=w1+w2\sum_{i=1}^6 e^{ike_i}"""
+        Ham_int = np.zeros((22, 22), dtype=complex)
+        orbd = 5
+        orbp = 8
+        nn_vectors = self.wse2.lattice_constant * np.sqrt(3) * np.array([R_z(np.pi/3*i) @ np.array([1,0]) for i in range(6)])
+        nn_term = np.sum(np.exp(1j * np.array([np.dot(nn_v, k_) for nn_v in nn_vectors])))
+        for i_so in [0, 11]:
+            Ham_int[orbp + i_so, orbp + i_so] = interlayer_params["w1p"] + interlayer_params["w2p"] * nn_term
+            Ham_int[orbd + i_so, orbd + i_so] = interlayer_params["w1d"] + interlayer_params["w2d"] * nn_term
+        return Ham_int
 
     def _build_monolayer_ham(self, k_point, args):
         """Build a single 22×22 monolayer Hamiltonian (internal, non-vectorized)."""
@@ -125,48 +153,72 @@ class MoireHamiltonian:
         H += np.identity(22) * offset
         return H
 
-    def build_supercell(self, k_point, n_shells, interlayer_params, pars_V):
-        """Construct the full (44·N)×(44·N) supercell Hamiltonian."""
+    def build_supercell(self, k_point, n_shells, interlayer_params, pars_V,
+                        k_idx=None, mono_hams_wse2=None, mono_hams_ws2=None):
+        """Construct the full (44·N)×(44·N) supercell Hamiltonian.
+
+        Parameters
+        ----------
+        k_point : np.ndarray
+            Base k-point in the mini-BZ.
+        n_shells : int
+            Number of moire shells.
+        interlayer_params : dict
+            Interlayer coupling parameters.
+        pars_V : tuple
+            Moire potential parameters (V_G, V_K, psi_G, psi_K).
+        k_idx : int, optional
+            Index of k_point in the cached Hamiltonian lists.
+            Only used when n_shells=0 and mono_hams are provided.
+        mono_hams_wse2 : list[np.ndarray], optional
+            Pre-computed 22×22 WSe2 Hamiltonians at each k-point.
+            Only used when n_shells=0.
+        mono_hams_ws2 : list[np.ndarray], optional
+            Pre-computed 22×22 WS2 Hamiltonians at each k-point.
+            Only used when n_shells=0.
+        """
         n_cells = MoireGeometry.n_cells(n_shells)
         G_M = self.geometry.reciprocal_vectors()
         moire_ham = self._build_moire_potential(*pars_V)
+        #interlayer_ham1, interlayer_ham2 = self._build_interlayer_coupling(interlayer_params)
         lu = MoireGeometry.lu_table(n_shells)
 
-        hopping_wse2 = self.wse2.build_hopping_matrices()
-        epsilon_wse2 = self.wse2.build_onsite_energies()
-        HSO_wse2 = self.wse2.build_soc_hamiltonian()
-        offset_wse2 = self.wse2.params[-3]
+        use_cache = n_shells == 0 and k_idx is not None and mono_hams_wse2 is not None
 
-        hopping_ws2 = self.ws2.build_hopping_matrices()
-        epsilon_ws2 = self.ws2.build_onsite_energies()
-        HSO_ws2 = self.ws2.build_soc_hamiltonian()
-        offset_ws2 = self.ws2.params[-3]
+        if not use_cache:
+            hopping_wse2 = self.wse2.build_hopping_matrices()
+            epsilon_wse2 = self.wse2.build_onsite_energies()
+            HSO_wse2 = self.wse2.build_soc_hamiltonian()
+            offset_wse2 = self.wse2.params[-3]
+            args_wse2 = (hopping_wse2, epsilon_wse2, HSO_wse2, self.wse2.lattice_constant, offset_wse2)
 
-        args_wse2 = (hopping_wse2, epsilon_wse2, HSO_wse2, self.wse2.lattice_constant, offset_wse2)
-        args_ws2 = (hopping_ws2, epsilon_ws2, HSO_ws2, self.ws2.lattice_constant, offset_ws2)
+            hopping_ws2 = self.ws2.build_hopping_matrices()
+            epsilon_ws2 = self.ws2.build_onsite_energies()
+            HSO_ws2 = self.ws2.build_soc_hamiltonian()
+            offset_ws2 = self.ws2.params[-3]
+            args_ws2 = (hopping_ws2, epsilon_ws2, HSO_ws2, self.ws2.lattice_constant, offset_ws2)
 
         Ham = np.zeros((n_cells * 44, n_cells * 44), dtype=complex)
         Kns = np.zeros((n_cells, 2))
         for i in range(n_cells):
             Kns[i] = k_point + G_M[1] * lu[i][0] + G_M[2] * lu[i][1]
 
-        orbd_list = [5, 16]
-        psi_interlayer = 0 if interlayer_params['stacking'] == 'P' else 2 * np.pi / 3
-
         for n in range(n_cells):
             Kn = Kns[n]
-            Ham[n * 22:(n + 1) * 22, n * 22:(n + 1) * 22] = self._build_monolayer_ham(Kn, args_wse2)
-            Ham[(n_cells + n) * 22:(n_cells + n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = self._build_monolayer_ham(Kn, args_ws2)
-
-            for i_so in [0, 11]:
-                Ham[n * 22 + 8 + i_so, (n_cells + n) * 22 + 8 + i_so] += interlayer_params['w1p']
-            for orbd in orbd_list:
-                Ham[n * 22 + orbd, (n_cells + n) * 22 + orbd] += interlayer_params['w1d']
+            if use_cache:
+                Ham[n * 22:(n + 1) * 22, n * 22:(n + 1) * 22] = mono_hams_wse2[k_idx]
+                Ham[(n_cells + n) * 22:(n_cells + n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = mono_hams_ws2[k_idx]
+            else:
+                Ham[n * 22:(n + 1) * 22, n * 22:(n + 1) * 22] = self._build_monolayer_ham(Kn, args_wse2)
+                Ham[(n_cells + n) * 22:(n_cells + n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = self._build_monolayer_ham(Kn, args_ws2)
+            # Interlayer coupling w1
+            interlayer_ham = self._build_interlayer_coupling2(interlayer_params,Kn)
+            Ham[n * 22:(n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = interlayer_ham
 
         Ham[n_cells * 22:, :n_cells * 22] = np.copy(Ham[:n_cells * 22, n_cells * 22:].T.conj())
 
-        for n in range(0, n_shells + 1):
-            for s in range(np.sign(n) * (1 + (n - 1) * n * 3), n * (n + 1) * 3 + 1):
+        for n in range(0, n_shells + 1):    # Index of the shell
+            for s in range(np.sign(n) * (1 + (n - 1) * n * 3), n * (n + 1) * 3 + 1):    # Index inside the shell
                 ind_s = lu[s]
                 for i in M_LIST:
                     ind_nn = (ind_s[0] + i[0], ind_s[1] + i[1])
@@ -175,19 +227,26 @@ class MoireHamiltonian:
                     except ValueError:
                         continue
                     g = M_LIST.index(i)
-                    Vup = moire_ham if g % 2 else moire_ham.conj()
+                    Vup = moire_ham if g % 2 == 0 else moire_ham.conj()
                     Ham[s * 22:(s + 1) * 22, nn * 22:(nn + 1) * 22] += Vup
                     Ham[n_cells * 22 + s * 22:n_cells * 22 + (s + 1) * 22, n_cells * 22 + nn * 22:n_cells * 22 + (nn + 1) * 22] += Vup
-
+                    # Interlayer coupling w2
+                    # Iup = interlayer_ham2 if g % 2 == 0 else interlayer_ham2.conj()
+                    # Ham[s * 22:(s + 1) * 22, (n_cells + nn) * 22:(n_cells + nn + 1) * 22] += Iup
+                    # Ham[(n_cells + nn) * 22:(n_cells + nn + 1) * 22, s * 22:(s + 1) * 22] += Iup.conj()
         return Ham
 
-    def diagonalize(self, k_points, n_shells, interlayer_params, pars_V):
+    def diagonalize(self, k_points, n_shells, interlayer_params, pars_V,
+                    mono_hams_wse2=None, mono_hams_ws2=None):
         """Diagonalize the supercell Hamiltonian at each k-point."""
         k_pts = k_points.shape[0]
         n_cells = MoireGeometry.n_cells(n_shells)
         evals = np.zeros((k_pts, n_cells * 44))
         evecs = np.zeros((k_pts, n_cells * 44, n_cells * 44), dtype=complex)
         for i in range(k_pts):
-            H_tot = self.build_supercell(k_points[i], n_shells, interlayer_params, pars_V)
+            H_tot = self.build_supercell(k_points[i], n_shells, interlayer_params, pars_V,
+                                         k_idx=i,
+                                         mono_hams_wse2=mono_hams_wse2,
+                                         mono_hams_ws2=mono_hams_ws2)
             evals[i], evecs[i] = la.eigh(H_tot, check_finite=False, overwrite_a=True)
         return evals, evecs

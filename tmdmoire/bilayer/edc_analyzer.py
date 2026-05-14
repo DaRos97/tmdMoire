@@ -17,6 +17,10 @@ def _voigt(x, center, amplitude, gamma, sigma):
     return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
 
 
+def _three_voigt_model(x, amp1, cen1, gam1, amp2, cen2, gam2, amp3, cen3, gam3, sig):
+    return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig) + _voigt(x, cen3, amp3, gam3, sig)
+
+
 def _two_lorentzian_one_gaussian(x, amp1, cen1, gam1, amp2, cen2, gam2, sig):
     return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig)
 
@@ -50,20 +54,22 @@ class EDCAnalyzer:
 
         evals = evals[0]
         evecs = evecs[0]
+        evals += ENERGY_OFFSETS.get(sample, 0.0)
+
         ab = np.absolute(evecs) ** 2
         weights = np.sum(ab[:22, :], axis=0) + np.sum(ab[22 * n_cells:22 * (1 + n_cells), :], axis=0)
+
+        if bz_point == "G":
+            pTVB, pSide, pLVB, success = self._fit_bands_gamma(evals, weights, n_cells, spreadE, sample, plot_fit)
+            if not success:
+                return np.nan, False
+            return (pTVB, pSide, pLVB), True
 
         pTVB, successTVB = self._fit_bands("TVB", evals, weights, n_cells, spreadE, sample, bz_point, plot_fit)
         if not successTVB:
             return np.nan, False
 
-        if bz_point == "K":
-            return pTVB, True
-
-        pLVB, successLVB = self._fit_bands("LVB", evals, weights, n_cells, spreadE, sample, bz_point, plot_fit)
-        if successLVB:
-            return (pTVB[0], pTVB[1], pLVB[0]), True
-        return np.nan, False
+        return pTVB, True
 
     def compute_gap(self, params: tuple, bz_point: str, plot_bands_gap: bool = False):
         n_cells = self.config["n_cells"]
@@ -93,6 +99,58 @@ class EDCAnalyzer:
         n_tvb = 28 * n_cells
         gap = np.min(evals[:, n_tvb - 1] - evals[:, n_tvb - 2])
         return gap
+
+    def _fit_bands_gamma(self, evals, weights, n_cells, spreadE, sample, plot_fit):
+        index_tvb = 28 * n_cells - 1
+        index_lvb = 26 * n_cells - 1
+        index_l = index_lvb - 2 * n_cells + 1
+
+        full_energy_values = evals[index_l:index_tvb + 1]
+        full_weight_values = weights[index_l:index_tvb + 1]
+
+        min_e = full_energy_values[0]
+        max_e = full_energy_values[-1]
+        delta = max_e - min_e
+        min_e -= delta / 2
+        max_e += delta / 2
+        n_e = int((max_e - min_e) / 0.005)
+        energy_list = np.linspace(min_e, max_e, n_e)
+        weight_list = np.zeros(len(energy_list))
+
+        for i in range(len(full_energy_values)):
+            weight_list += spreadE / np.pi * full_weight_values[i] / ((energy_list - full_energy_values[i]) ** 2 + spreadE ** 2)
+
+        model = lmfit.Model(_three_voigt_model)
+        idx_max = np.argmax(weight_list)
+        cen1 = energy_list[idx_max]
+        cen2 = cen1 - 0.09
+        cen3 = cen1 - 0.65
+
+        params_fit = model.make_params(
+            amp1=1.5, cen1=cen1, gam1=0.03,
+            amp2=0.8, cen2=cen2, gam2=0.03,
+            amp3=1.0, cen3=cen3, gam3=0.03,
+            sig=0.07,
+        )
+        params_fit["sig"].set(min=1e-6, max=50)
+        params_fit["gam1"].set(min=1e-6, max=50)
+        params_fit["gam2"].set(min=1e-6, max=50)
+        params_fit["gam3"].set(min=1e-6, max=50)
+        params_fit["amp1"].set(min=0)
+        params_fit["amp2"].set(min=0)
+        params_fit["amp3"].set(min=0)
+
+        result = model.fit(weight_list, params_fit, x=energy_list)
+        amp1 = result.best_values["amp1"]
+        amp2 = result.best_values["amp2"]
+        amp3 = result.best_values["amp3"]
+        cen1 = result.best_values["cen1"]
+        cen2 = result.best_values["cen2"]
+        cen3 = result.best_values["cen3"]
+
+        if result.success and amp1 > 1e-3 and amp2 > 1e-3 and amp3 > 1e-3 and result.redchi < 1.0 and cen1 > cen2 > cen3:
+            return cen1, cen2, cen3, True
+        return 0, 0, 0, False
 
     def _fit_bands(self, band_type, evals, weights, n_cells, spreadE, sample, bz_point, plot_fit):
         index_b = 28 * n_cells - 1 if band_type == "TVB" else 26 * n_cells - 1
