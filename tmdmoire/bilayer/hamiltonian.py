@@ -15,7 +15,6 @@ from ..constants import (
 from ..utils.kpoints import R_z
 from ..material import TMDMaterial
 from .geometry import MoireGeometry
-from ..utils.kpoints import R_z
 
 
 class MoireHamiltonian:

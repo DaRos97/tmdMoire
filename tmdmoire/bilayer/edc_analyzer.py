@@ -21,7 +21,7 @@ def _three_voigt_model(x, amp1, cen1, gam1, amp2, cen2, gam2, amp3, cen3, gam3, 
     return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig) + _voigt(x, cen3, amp3, gam3, sig)
 
 
-def _two_lorentzian_one_gaussian(x, amp1, cen1, gam1, amp2, cen2, gam2, sig):
+def _two_voigt(x, amp1, cen1, gam1, amp2, cen2, gam2, sig):
     return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig)
 
 
@@ -177,7 +177,7 @@ class EDCAnalyzer:
         for i in range(len(full_energy_values)):
             weight_list += spreadE / np.pi * full_weight_values[i] / ((energy_list - full_energy_values[i]) ** 2 + spreadE ** 2)
 
-        model = lmfit.Model(_two_lorentzian_one_gaussian)
+        model = lmfit.Model(_two_voigt)
         cen1 = energy_list[np.argmax(weight_list)]
         cen2 = cen1 - 0.05 if bz_point == "G" else cen1 - 0.15
         params_fit = model.make_params(

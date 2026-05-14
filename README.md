@@ -257,16 +257,19 @@ For the full grid search on the HPC cluster (SGE/rademaker queue), use the scrip
 
 ```bash
 # Submit 128 parallel tasks for WSe₂ (default run ID)
-./HPC/job.sh WSe2
+./HPC/mono_job.sh WSe2
 
 # Submit with a named run ID
-./HPC/job.sh WSe2 001
+./HPC/mono_job.sh WSe2 001
 
 # Submit for WS₂
-./HPC/job.sh WS2 002
+./HPC/mono_job.sh WS2 002
+
+# Submit with custom number of tasks
+./HPC/mono_job.sh WSe2 001 256
 ```
 
-Each job array submission creates 128 SGE tasks (one per CPU), with ~28 fits per task. Output goes to `Scratch/grid_<material>_<run_id>_task<N>.out`.
+Each job array submission creates N SGE tasks. Chunk boundaries are computed automatically from `fit_config.json`. Output goes to `Scratch/grid_<material>_<run_id>_task<N>.out`.
 
 After all tasks complete, score the results:
 
@@ -293,10 +296,10 @@ Data/
 
 **Iterative workflow:**
 
-1. Run the initial grid search: `./HPC/job.sh WSe2 001`
+1. Run the initial grid search: `./HPC/mono_job.sh WSe2 001`
 2. Score results and inspect the best fits
 3. Edit `Inputs/monolayer_fitting/fit_config.json` to refine the grid (e.g. narrower ranges, finer spacing)
-4. Run again with a new ID: `./HPC/job.sh WSe2 002`
+4. Run again with a new ID: `./HPC/mono_job.sh WSe2 002`
 5. Compare runs: `python scripts/run_monolayer_grid.py WSe2 --score --run-id 001` and `--run-id 002`
 
 The `--run-id` flag works with all scripts:

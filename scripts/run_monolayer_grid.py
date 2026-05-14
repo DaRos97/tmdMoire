@@ -11,7 +11,8 @@ Usage
 ::
 
     python scripts/run_monolayer_grid.py WSe2                          # All combinations
-    python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100      # Chunk
+    python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100      # Chunk by index
+    python scripts/run_monolayer_grid.py WSe2 --chunk 0/128            # Chunk by fraction
     python scripts/run_monolayer_grid.py WSe2 --run-id 001             # Named run
     python scripts/run_monolayer_grid.py WSe2 --score                   # Score existing results
     python scripts/run_monolayer_grid.py WSe2 --score --run-id 001      # Score specific run
@@ -25,6 +26,7 @@ Arguments
 ---------
 - ``WSe2`` or ``WS2``: Target material.
 - ``--start``, ``--end``: Run only a subset of indices (for HPC chunking).
+- ``--chunk id/total``: Run a chunk of the grid (e.g. ``0/128``). Overrides ``--start``/``--end``.
 - ``--run-id``: Subdirectory name under Data/ for results (default: "default").
   Results are saved to ``Data/<material>_run_<id>/``.
 - ``--score``: Skip fitting, just score and display existing results.
@@ -223,6 +225,8 @@ def main():
                         help="K4 hard filter threshold for scoring.")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for fitting.")
+    parser.add_argument("--chunk", type=str, default=None,
+                        help="Chunk specifier in 'id/total' format (e.g. '0/128'). Overrides --start/--end.")
     parser.add_argument("--plot", action="store_true",
                         help="When scoring, also generate plots for top results.")
     parser.add_argument("--export", action="store_true",
@@ -246,7 +250,14 @@ def main():
     all_configs = build_grid(config)
     total = len(all_configs)
 
-    if args.end is None:
+    if args.chunk is not None:
+        chunk_id, n_chunks = map(int, args.chunk.split("/"))
+        chunk_size = total // n_chunks
+        remainder = total % n_chunks
+        args.start = chunk_id * chunk_size + min(chunk_id, remainder)
+        args.end = args.start + chunk_size + (1 if chunk_id < remainder else 0)
+        print(f"Chunk {chunk_id}/{n_chunks}: indices [{args.start}, {args.end}) of {total}")
+    elif args.end is None:
         args.end = total
 
     print(f"Grid size: {total} combinations")

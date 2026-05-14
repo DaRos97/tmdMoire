@@ -1,0 +1,32 @@
+{
+  "interlayer": {
+    "w1p": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w1d": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w2p": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w2d": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    }
+  },
+  "moire": {
+    "Vg": {
+      "min_ev": 0.010,
+      "max_ev": 0.020,
+      "step_ev": 0.001
+    },
+    "phiG": {
+      "min_deg": 0,
+      "max_deg": 359,
+      "step_deg": 10
+    }
+  }
+}
