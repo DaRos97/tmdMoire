@@ -5,8 +5,8 @@ import subprocess
 import numpy as np
 
 
-SOURCE_CONFIG = "Inputs/monolayer_fitting/grid_config.json"
-"""Default path to the grid configuration file."""
+SOURCE_CONFIG = "Inputs/monolayer_fitting/fit_config.json"
+"""Default path to the fit configuration file."""
 
 
 def get_repo_root() -> str:
@@ -30,10 +30,10 @@ def get_repo_root() -> str:
 
 
 def prepare_run_dir(run_id: str, material: str) -> str:
-    """Create the run output directory and copy grid_config.json into it.
+    """Create the run output directory and copy fit_config.json into it.
 
     Creates ``Data/<material>_run_<run_id>/`` if it does not exist, and
-    copies ``Inputs/monolayer_fitting/grid_config.json`` into it (only if the destination
+    copies ``Inputs/monolayer_fitting/fit_config.json`` into it (only if the destination
     does not exist or is older than the source).
 
     Parameters
@@ -50,7 +50,7 @@ def prepare_run_dir(run_id: str, material: str) -> str:
     """
     run_dir = os.path.join("Data", f"{material}_run_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
-    dst = os.path.join(run_dir, "grid_config.json")
+    dst = os.path.join(run_dir, "fit_config.json")
     if not os.path.exists(dst):
         shutil.copy2(SOURCE_CONFIG, dst)
     elif os.path.getmtime(SOURCE_CONFIG) > os.path.getmtime(dst):

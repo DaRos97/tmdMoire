@@ -21,9 +21,11 @@ Chi-squared terms:
     - K₅: Band gap at K vs DFT gap
     - K₆: Weight multiplier for high-symmetry points
 
-Stored ``chi2_band`` is the K6-weighted mean-squared band distance
+Stored ``band_K6`` is the K6-weighted mean-squared band distance
+
 (the version that appears in the objective function). A separate
-``chi2_band_unweighted`` field (pure band distance, no K6 weights)
+``band_dist`` field (pure band distance, no K6 weights)
+
 is stored for cross-comparison across grid points with different K6.
 """
 import numpy as np
@@ -206,18 +208,19 @@ class ParameterFitter:
         """Run global optimization via dual annealing or differential evolution + Nelder-Mead refinement."""
         opt = self.config.get("optimizer", {})
         method = opt.get("method", "dual_annealing")
+        use_dft_x0 = self.config.get("use_dft_x0", True)
 
         nm_maxiter = opt.get("nm_maxiter", 50)
         nm_fatol = opt.get("nm_fatol", 1e-3)
 
         if initial_params is None:
-            initial_params = self.material.dft_params
+            initial_params = self.material.dft_params if use_dft_x0 else None
 
         if self.config["Bs"][-1] == 0:
             HSO = self.material.build_soc_hamiltonian()
             args_chi2 = (HSO, self.material.dft_params[-2:])
             bounds = self.get_bounds()[:-2]
-            initial_params = initial_params[:-2]
+            initial_params = initial_params[:-2] if initial_params is not None else None
         else:
             args_chi2 = ()
             bounds = self.get_bounds()
@@ -340,8 +343,8 @@ class ParameterFitter:
                  boundType=config["boundType"],
                  seed=result.get("seed", 42),
                  material=self.material.name,
-                 chi2_band=constraints["chi2_band_weighted"],
-                 chi2_band_unweighted=constraints["chi2_band"],
+                  band_K6=constraints["chi2_band_weighted"],
+                  band_dist=constraints["chi2_band"],
                  K1_val=constraints["K1"],
                  K2_val=constraints["K2"],
                  K3_val=constraints["K3"],

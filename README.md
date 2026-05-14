@@ -143,15 +143,15 @@ Typical range: 0 (at DFT) to ~2 (large deviations).
 
 #### K₂ — orbital band content at M
 
-**What it does**: Ensures the top valence bands at the M point have the correct interlayer-coupling orbital character (p_z^o, d_z², p_z^e). DFT predicts these orbitals should have low weight at M for the valence bands.
+**What it does**: Minimizes the weight of interlayer-coupling orbitals (d_z², p_z^e) in the top valence bands at the M point. These are the only orbitals that participate in interlayer hopping in the bilayer model. Since ARPES shows no noticeable change in the band structure at M between monolayer and bilayer, the interlayer-coupling orbital character at M should remain small — the fit penalizes any mixing of d_z² and p_z^e into the valence bands at M.
 
-**Implementation**: Sum the squared eigenvector components `|c|²` for the 6 interlayer-coupling orbitals (IND_ILC) across the top valence bands (4 for WSe₂, 2 for WS₂) at the M point, then normalize by the number of terms:
+**Implementation**: Sum the squared eigenvector components `|c|²` for the 4 interlayer-coupling orbitals (d_z² and p_z^e, both spin blocks; IND_ILC) across the top valence bands (4 for WSe₂, 2 for WS₂) at the M point, then normalize by the number of terms:
 
 ```python
 C₂ = Σ_{orb ∈ ILC} Σ_{band ∈ TVB} |⟨orb|ψ_band(M)⟩|² / (|ILC| × |TVB|)
 ```
 
-Typical range: 0.01–0.2 (DFT values are small, ~0.05 for WSe₂, ~0.11 for WS₂).
+The p_z^o orbital is excluded because it does not enter the bilayer interlayer coupling Hamiltonian. Typical range: 0.01–0.2 (DFT values are small, ~0.05 for WSe₂, ~0.11 for WS₂).
 
 #### K₃ — orbital occupation at Γ and K
 
@@ -160,7 +160,7 @@ Typical range: 0.01–0.2 (DFT values are small, ~0.05 for WSe₂, ~0.11 for WS�
 **Implementation**: Eight absolute differences between target DFT occupations and the computed occupations:
 
 - **At Γ** (4 terms): p_z^e and d_z² content in each of the two degenerate TVB states
-- **At K** (4 terms): p₋₁^e and d₂ content in each of the two TVB states (p₋₁^e = (p_x^e - i·p_y^e)/√2, d₂ = (d_x²-y² - i·d_xy)/√2)
+- **At K** (4 terms): p₋₁^e and d₋₂ content in each of the two TVB states (p₋₁^e = (p_x^e - i·p_y^e)/√2, d₋₂ = (d_x²-y² - i·d_xy)/√2)
 
 The sum is divided by 8 to give a mean occupation error:
 
@@ -210,30 +210,39 @@ python scripts/fit_monolayer.py WSe2 0
 python scripts/fit_monolayer.py WS2 5
 ```
 
-The index selects a combination of constraint weights (K₁–K₆) from the grid defined in `Inputs/grid_config.json`.
+The index selects a combination of constraint weights (K₁–K₆) from the grid defined in `Inputs/monolayer_fitting/fit_config.json`.
 
 ### Grid search
 
-Instead of running individual fits, you can sweep over all combinations of constraint weights (K₁–K₆) defined in `Inputs/grid_config.json`:
+Instead of running individual fits, you can sweep over all combinations of constraint weights (K₁–K₆) defined in `Inputs/monolayer_fitting/fit_config.json`:
 
 ```bash
 # Run all combinations for WSe₂
-python scripts/run_grid.py WSe2
+python scripts/run_monolayer_grid.py WSe2
 
 # Run a subset (for chunking on HPC)
-python scripts/run_grid.py WSe2 --start 0 --end 100
+python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100
 
 # Score existing results
-python scripts/run_grid.py WSe2 --score
+python scripts/run_monolayer_grid.py WSe2 --score
 
 # Show top 20 results
-python scripts/run_grid.py WSe2 --score --top 20
+python scripts/run_monolayer_grid.py WSe2 --score --top 20
 
 # Adjust the K4 hard filter threshold (default: 0.05)
-python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
+python scripts/run_monolayer_grid.py WSe2 --score --k4-threshold 0.1
 ```
 
 The default grid has 3×4×4×4×4×2 = **1,536 combinations**. Each fit uses dual annealing (maxiter=100) followed by Nelder-Mead refinement (fatol=1e-3, maxiter=50).
+
+### Initial point control
+
+The `use_dft_x0` option in `fit_config.json` controls whether the DFT-derived parameters are used as the initial point (`x0`) for the optimizer:
+
+- **`true`** (default): One individual in the DE population (or the starting point for dual annealing) is seeded with the DFT parameters. This biases the search toward the DFT basin.
+- **`false`**: The entire population is randomly initialized within the bounds. This maximizes exploration and avoids any gravitational pull toward the DFT parameters, at the cost of potentially slower convergence.
+
+Set `use_dft_x0: false` when you suspect the best fit lies far from the DFT starting point, or when running with `K1 = 0` (no DFT penalty).
 
 ### HPC workflow
 
@@ -255,22 +264,22 @@ Each job array submission creates 128 SGE tasks (one per CPU), with ~28 fits per
 After all tasks complete, score the results:
 
 ```bash
-python scripts/run_grid.py WSe2 --score --run-id 001
+python scripts/run_monolayer_grid.py WSe2 --score --run-id 001
 ```
 
 ### Run management
 
-Each run is stored in its own subdirectory under `Data/run_<id>/`. When you start a run, `Inputs/grid_config.json` is copied into the run directory as a snapshot, making each run fully self-contained and reproducible.
+Each run is stored in its own subdirectory under `Data/run_<id>/`. When you start a run, `Inputs/monolayer_fitting/fit_config.json` is copied into the run directory as a snapshot, making each run fully self-contained and reproducible.
 
 ```
 Data/
   run_001/
-    grid_config.json          ← snapshot of config used for this run
+    fit_config.json          ← snapshot of config used for this run
     fit_WSe2_idx0.npz
     fit_WSe2_idx1.npz
     ...
   run_002/
-    grid_config.json          ← different config (e.g. finer grid)
+    fit_config.json          ← different config (e.g. finer grid)
     fit_WSe2_idx0.npz
     ...
 ```
@@ -279,15 +288,15 @@ Data/
 
 1. Run the initial grid search: `./HPC/job.sh WSe2 001`
 2. Score results and inspect the best fits
-3. Edit `Inputs/grid_config.json` to refine the grid (e.g. narrower ranges, finer spacing)
+3. Edit `Inputs/monolayer_fitting/fit_config.json` to refine the grid (e.g. narrower ranges, finer spacing)
 4. Run again with a new ID: `./HPC/job.sh WSe2 002`
-5. Compare runs: `python scripts/run_grid.py WSe2 --score --run-id 001` and `--run-id 002`
+5. Compare runs: `python scripts/run_monolayer_grid.py WSe2 --score --run-id 001` and `--run-id 002`
 
 The `--run-id` flag works with all scripts:
 
 ```bash
-python scripts/run_grid.py WSe2 --start 0 --end 100 --run-id 002
-python scripts/run_grid.py WSe2 --score --run-id 002 --top 20
+python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100 --run-id 002
+python scripts/run_monolayer_grid.py WSe2 --score --run-id 002 --top 20
 python scripts/fit_monolayer.py WSe2 42 --run-id 002
 ```
 

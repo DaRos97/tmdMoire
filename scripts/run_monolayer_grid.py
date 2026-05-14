@@ -1,8 +1,8 @@
 """Run monolayer fitting across a grid of constraint weights.
 
 Executes the full fitting pipeline for each combination of constraint
-weights (K1-K6) defined in ``Inputs/monolayer_fitting/grid_config.json``. A snapshot of
-the config is copied to ``Data/run_<id>/grid_config.json`` for
+weights (K1-K6) defined in ``Inputs/monolayer_fitting/fit_config.json``. A snapshot of
+the config is copied to ``Data/run_<id>/fit_config.json`` for
 reproducibility. Results are saved as
 ``Data/run_<id>/fit_{TMD}_idx{N}.npz`` files.
 
@@ -10,16 +10,16 @@ Usage
 -----
 ::
 
-    python scripts/run_grid.py WSe2                          # All combinations
-    python scripts/run_grid.py WSe2 --start 0 --end 100      # Chunk
-    python scripts/run_grid.py WSe2 --run-id 001             # Named run
-    python scripts/run_grid.py WSe2 --score                   # Score existing results
-    python scripts/run_grid.py WSe2 --score --run-id 001      # Score specific run
-    python scripts/run_grid.py WSe2 --score --top 20          # Top 20
-    python scripts/run_grid.py WSe2 --score --k4-threshold 0.1
-    python scripts/run_grid.py WSe2 --score --plot              # Score + generate plots
-    python scripts/run_grid.py WSe2 --score --plot --top 5      # Plots for top 5
-    python scripts/run_grid.py WSe2 --score --export             # Score + export best params for bilayer
+    python scripts/run_monolayer_grid.py WSe2                          # All combinations
+    python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100      # Chunk
+    python scripts/run_monolayer_grid.py WSe2 --run-id 001             # Named run
+    python scripts/run_monolayer_grid.py WSe2 --score                   # Score existing results
+    python scripts/run_monolayer_grid.py WSe2 --score --run-id 001      # Score specific run
+    python scripts/run_monolayer_grid.py WSe2 --score --top 20          # Top 20
+    python scripts/run_monolayer_grid.py WSe2 --score --k4-threshold 0.1
+    python scripts/run_monolayer_grid.py WSe2 --score --plot              # Score + generate plots
+    python scripts/run_monolayer_grid.py WSe2 --score --plot --top 5      # Plots for top 5
+    python scripts/run_monolayer_grid.py WSe2 --score --export             # Score + export best params for bilayer
 
 Arguments
 ---------
@@ -36,23 +36,23 @@ Examples
 --------
 Run all combinations for WSe2::
 
-    python scripts/run_grid.py WSe2
+    python scripts/run_monolayer_grid.py WSe2
 
 Run indices 0-399 (submit as HPC job 1)::
 
-    python scripts/run_grid.py WSe2 --start 0 --end 400
+    python scripts/run_monolayer_grid.py WSe2 --start 0 --end 400
 
 Run with a named subdirectory::
 
-    python scripts/run_grid.py WSe2 --run-id 001
+    python scripts/run_monolayer_grid.py WSe2 --run-id 001
 
 Score existing results::
 
-    python scripts/run_grid.py WSe2 --score
+    python scripts/run_monolayer_grid.py WSe2 --score
 
 Score a specific run::
 
-    python scripts/run_grid.py WSe2 --score --run-id 001
+    python scripts/run_monolayer_grid.py WSe2 --score --run-id 001
 """
 import sys
 import os
@@ -71,9 +71,9 @@ from tmdmoire import (
 )
 
 
-def load_grid_config(run_dir: str) -> dict:
-    """Load grid configuration from the run directory."""
-    config_path = os.path.join(run_dir, "grid_config.json")
+def load_fit_config(run_dir: str) -> dict:
+    """Load fit configuration from the run directory."""
+    config_path = os.path.join(run_dir, "fit_config.json")
     with open(config_path) as f:
         return json.load(f)
 
@@ -95,6 +95,7 @@ def build_grid(config: dict) -> list[dict]:
             "boundType": config["bounds"]["boundType"],
             "Bs": tuple(config["bounds"]["Bs"]),
             "optimizer": config.get("optimizer", {}),
+            "use_dft_x0": config.get("use_dft_x0", True),
         })
     return configs
 
@@ -103,7 +104,7 @@ def run_chunk(material_name: str, master_folder: str,
               start: int, end: int, seed: int = 42,
               run_dir: str = "Data") -> None:
     """Run fitting for a chunk of grid indices."""
-    config = load_grid_config(run_dir)
+    config = load_fit_config(run_dir)
     all_configs = build_grid(config)
     total = len(all_configs)
 
@@ -176,8 +177,8 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
             "idx": int(row["idx"]),
             "rank": int(row["rank"]),
             "chi2": float(row["chi2"]),
-            "chi2_band_unweighted": float(row["chi2_band_unweighted"]),
-            "chi2_band": float(row["chi2_band"]),
+            "band_dist": float(row["band_dist"]),
+            "band_K6": float(row["band_K6"]),
             "K1_val": float(row["K1_val"]),
             "K2_val": float(row["K2_val"]),
             "K3_val": float(row["K3_val"]),
@@ -241,7 +242,7 @@ def main():
 
     run_dir = prepare_run_dir(args.run_id, args.material)
 
-    config = load_grid_config(run_dir)
+    config = load_fit_config(run_dir)
     all_configs = build_grid(config)
     total = len(all_configs)
 

@@ -6,11 +6,11 @@ the best parameter sets.
 
 Scoring stages:
     1. Hard filter: reject results where K4 > threshold (CBM not at K)
-    2. Primary rank: sort by chi2_band_unweighted (lowest first)
-    3. Tiebreak: for similar chi2_band_unweighted, prefer lower K3 + K2 + K5
+    2. Primary rank: sort by band_dist (lowest first)
+    3. Tiebreak: for similar band_dist, prefer lower K3 + K2 + K5
 
-Note: ``chi2_band`` in the .npz file is the K6-weighted band distance
-(matching the objective function). ``chi2_band_unweighted`` is the pure
+Note: ``band_K6`` in the .npz file is the K6-weighted band distance
+(matching the objective function). ``band_dist`` is the pure
 band distance without K6 weighting, used for fair cross-comparison
 between grid points with different K6 values.
 """
@@ -49,8 +49,8 @@ class GridScorer:
             rows.append({
                 "idx": idx,
                 "chi2": float(d["chi2"]),
-                "chi2_band": float(d["chi2_band"]),
-                "chi2_band_unweighted": float(d["chi2_band_unweighted"]) if "chi2_band_unweighted" in d else float(d["chi2_band"]),
+                "band_K6": float(d["band_K6"]) if "band_K6" in d else float(d["chi2_band"]),
+                "band_dist": float(d["band_dist"]) if "band_dist" in d else float(d["chi2_band_unweighted"]) if "chi2_band_unweighted" in d else float(d["chi2_band"]),
                 "K1_val": float(d["K1_val"]),
                 "K2_val": float(d["K2_val"]),
                 "K3_val": float(d["K3_val"]),
@@ -85,7 +85,7 @@ class GridScorer:
             passed["K3_val"] + passed["K2_val"] + passed["K5_val"]
         )
         passed = passed.sort_values(
-            ["chi2_band_unweighted", "composite_secondary"],
+            ["band_dist", "composite_secondary"],
             ascending=[True, True],
         ).reset_index(drop=True)
         passed["rank"] = passed.index + 1
@@ -103,13 +103,13 @@ class GridScorer:
             f"Top {min(top_n, len(ranked))} results for {self.material}",
             f"  (K4 threshold: {k4_threshold}, total loaded: {len(self.load_results())})",
             "",
-            f"{'Rank':>4} {'Idx':>5} {'chi2_bw':>10} {'chi2_band':>10} {'K4_val':>8} {'K3_val':>8} {'K2_val':>8} {'K5_val':>8} {'nfev':>8}",
+            f"{'Rank':>4} {'Idx':>5} {'band_dist':>10} {'band_K6':>10} {'K4_val':>8} {'K3_val':>8} {'K2_val':>8} {'K5_val':>8} {'nfev':>8}",
             "-" * 80,
         ]
         for _, row in ranked.iterrows():
             lines.append(
-                f"{row['rank']:>4} {row['idx']:>5} {row['chi2_band_unweighted']:>10.6f} "
-                f"{row['chi2_band']:>10.6f} {row['K4_val']:>8.6f} {row['K3_val']:>8.6f} "
+                f"{row['rank']:>4} {row['idx']:>5} {row['band_dist']:>10.6f} "
+                f"{row['band_K6']:>10.6f} {row['K4_val']:>8.6f} {row['K3_val']:>8.6f} "
                 f"{row['K2_val']:>8.6f} {row['K5_val']:>8.6f} {row['nfev']:>8}"
             )
         return "\n".join(lines)

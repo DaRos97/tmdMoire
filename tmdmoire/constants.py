@@ -158,8 +158,9 @@ IND_OPO = [0, 1, 2, 5, 8, 11, 12, 13, 16, 19]
 IND_IPO = [3, 4, 6, 7, 9, 10, 14, 15, 17, 18, 20, 21]
 """In-plane orbital indices (both spin blocks): p_x^o, p_y^o, d_xy, d_x2-y2, p_x^e, p_y^e."""
 
-IND_ILC = [2, 5, 8, 13, 16, 19]
-"""Interlayer-coupling orbital indices: p_z^o, d_z2, p_z^e (both spins)."""
+IND_ILC = [5, 8, 16, 19]
+"""Interlayer-coupling orbital indices: d_z2, p_z^e (both spins).
+Excludes p_z^o (indices 2, 13) since bilayer only couples p_z^e and d_z2."""
 
 TVB2 = [12, 13]
 """Top valence band indices for WS2 (2 bands near TVB)."""

@@ -20,7 +20,7 @@ Arguments
 ---------
 - ``WSe2`` or ``WS2``: Target material.
 - ``index``: Integer selecting a combination of constraint weights (K1-K6)
-  from the grid defined in ``Inputs/monolayer_fitting/grid_config.json``.
+  from the grid defined in ``Inputs/monolayer_fitting/fit_config.json``.
 - ``--run-id``: Run identifier. Results saved to Data/run_<id>/ (default: 'default').
 
 Examples
@@ -70,7 +70,7 @@ argc = args.index
 
 def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     """Select constraint weights and bound parameters for a given index."""
-    config_path = os.path.join(run_dir, "grid_config.json")
+    config_path = os.path.join(run_dir, "fit_config.json")
     with open(config_path) as f:
         config = json.load(f)
 
@@ -93,6 +93,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
         "boundType": config["bounds"]["boundType"],
         "Bs": tuple(config["bounds"]["Bs"]),
         "optimizer": config.get("optimizer", {}),
+        "use_dft_x0": config.get("use_dft_x0", True),
     }
 
 

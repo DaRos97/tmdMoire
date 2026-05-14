@@ -352,7 +352,7 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     pts = 91
-    config_path = Path(run_dir) / "grid_config.json"
+    config_path = Path(run_dir) / "fit_config.json"
     if config_path.exists():
         with open(config_path) as f:
             pts = json.load(f).get("pts", 91)
@@ -377,7 +377,7 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         bound_type = "absolute"
 
         chi2_elements = [
-            row["chi2_band"], row["K1_val"], row["K2_val"],
+            row["band_K6"], row["K1_val"], row["K2_val"],
             row["K3_val"], row["K4_val"], row["K5_val"],
         ]
         legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, rank, idx)

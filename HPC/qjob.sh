@@ -1,6 +1,6 @@
 # SGE job array worker script
 # Called by job.sh for each task in the array
-# Computes chunk boundaries from SGE_TASK_ID and runs run_grid.py
+# Computes chunk boundaries from SGE_TASK_ID and runs run_monolayer_grid.py
 
 MATERIAL=$1
 TOTAL=$2
@@ -29,4 +29,4 @@ echo "Task $SGE_TASK_ID: fits [$START, $END) of $TOTAL (run: $RUN_ID)"
 OUTPUT_FILE=Scratch/grid_${MATERIAL}_${RUN_ID}_task${SGE_TASK_ID}.out
 ERROR_FILE=Scratch/grid_${MATERIAL}_${RUN_ID}_task${SGE_TASK_ID}.err
 
-python3 scripts/run_grid.py ${MATERIAL} --start ${START} --end ${END} --run-id ${RUN_ID} >${OUTPUT_FILE} 2>${ERROR_FILE}
+python3 scripts/run_monolayer_grid.py ${MATERIAL} --start ${START} --end ${END} --run-id ${RUN_ID} >${OUTPUT_FILE} 2>${ERROR_FILE}
