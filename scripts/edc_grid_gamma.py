@@ -105,8 +105,8 @@ total_jobs = len(list_Vg) * len(list_phiG) * len(list_w1p) * len(list_w1d) * len
 
 chunk_size = total_jobs // n_chunks
 remainder = total_jobs % n_chunks
-start = chunk_id * chunk_size + min(chunk_id, remainder)
-end = start + chunk_size + (1 if chunk_id < remainder else 0)
+start = int(chunk_id * chunk_size + min(chunk_id, remainder))
+end = int(start + chunk_size + (1 if chunk_id < remainder else 0))
 
 grid = product(list_Vg, list_phiG, list_w1p, list_w1d, list_w2p, list_w2d)
 grid_chunk = islice(grid, start, end)
