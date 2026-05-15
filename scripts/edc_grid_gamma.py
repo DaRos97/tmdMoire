@@ -6,12 +6,15 @@ fits 4 Lorentzians to each EDC, and saves results.
 
 Usage:
     python scripts/edc_grid_gamma.py --chunk <id>/<total>
-    python scripts/edc_grid_gamma.py --chunk 0/128
+    python scripts/edc_grid_gamma.py --chunk 0/128 --run-id 001
+    python scripts/edc_grid_gamma.py --chunk 0/128 --run-id test
 """
 import sys
 import os
 import json
 import time
+import shutil
+import datetime
 from pathlib import Path
 from itertools import product, islice
 
@@ -27,25 +30,37 @@ from tmdmoire.utils.paths import get_repo_root
 
 master_folder = get_repo_root()
 
+# ─── Parse arguments ─────────────────────────────────────────────────────────
+
+run_id = "default"
+chunk_id = 0
+n_chunks = 1
+args = sys.argv[1:]
+i = 0
+while i < len(args):
+    if args[i] == "--chunk" and i + 1 < len(args):
+        val = args[i + 1]
+        if "/" in val:
+            chunk_id, n_chunks = map(int, val.split("/"))
+        elif "=" in val:
+            chunk_id, n_chunks = map(int, val.split("="))
+        i += 2
+    elif args[i] == "--run-id" and i + 1 < len(args):
+        run_id = args[i + 1]
+        i += 2
+    else:
+        i += 1
+
 # ─── Load grid config ────────────────────────────────────────────────────────
 
 config_path = master_folder + "/Inputs/bilayer_fitting/grid_config.json"
 with open(config_path) as f:
     grid_cfg = json.load(f)
 
-# ─── Parse chunk argument ────────────────────────────────────────────────────
-
-chunk_id = 0
-n_chunks = 1
-args = sys.argv[1:]
-for i, arg in enumerate(args):
-    if arg == "--chunk" and i + 1 < len(args):
-        val = args[i + 1]
-        if "/" in val:
-            chunk_id, n_chunks = map(int, val.split("/"))
-        elif "=" in val:
-            chunk_id, n_chunks = map(int, val.split("="))
-        break
+fixed = grid_cfg.get("fixed", {})
+Vk = fixed.get("Vk_ev", 0.0077)
+phiK_deg = fixed.get("phiK_deg", 106)
+phiK = phiK_deg / 180 * np.pi
 
 # ─── Load materials ──────────────────────────────────────────────────────────
 
@@ -122,7 +137,7 @@ def _four_lorentzian(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
 
 def compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d):
     phiG = phiG_deg / 180 * np.pi
-    pars_V = (Vg, 0.0, phiG, 0.0)
+    pars_V = (Vg, Vk, phiG, phiK)
     pars_interlayer = {"stacking": "P", "w1p": w1p, "w2p": w2p, "w1d": w1d, "w2d": w2d}
 
     moire_ham = MoireHamiltonian(wse2, ws2, geometry)
@@ -209,8 +224,45 @@ def compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d):
 
 # ─── Run grid ────────────────────────────────────────────────────────────────
 
-out_dir = Path("Data/edc_grid_gamma")
+out_dir = Path("Data") / f"edc_grid_gamma_run_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
+
+# Copy grid config and interlayer params into run directory for reproducibility
+grid_config_src = master_folder + "/Inputs/bilayer_fitting/grid_config.json"
+grid_config_dst = out_dir / "grid_config.json"
+if not grid_config_dst.exists() or os.path.getmtime(grid_config_src) > grid_config_dst.stat().st_mtime:
+    shutil.copy2(grid_config_src, grid_config_dst)
+
+interlayer_src = master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy"
+interlayer_dst = out_dir / "interlayer_params.npy"
+if not interlayer_dst.exists() or os.path.getmtime(interlayer_src) > interlayer_dst.stat().st_mtime:
+    shutil.copy2(interlayer_src, interlayer_dst)
+
+# Save run metadata
+meta_fn = out_dir / "run_metadata.json"
+if not meta_fn.exists():
+    meta = {
+        "run_id": run_id,
+        "timestamp_start": datetime.datetime.now().isoformat(),
+        "n_chunks": n_chunks,
+        "grid_sizes": {
+            "Vg": len(list_Vg), "phiG": len(list_phiG),
+            "w1p": len(list_w1p), "w1d": len(list_w1d),
+            "w2p": len(list_w2p), "w2d": len(list_w2d),
+        },
+        "fixed_params": {
+            "Vk_ev": Vk,
+            "phiK_deg": phiK_deg,
+        },
+        "total_points": total_jobs,
+        "fitted_interlayer": {
+            "w1p": float(w1p_fit), "w1d": float(w1d_fit),
+            "w2p": float(w2p_fit), "w2d": float(w2d_fit),
+        },
+    }
+    with open(meta_fn, "w") as f:
+        json.dump(meta, f, indent=2)
+
 out_fn = out_dir / f"chunk_{chunk_id}_{n_chunks}.h5"
 
 columns = ["Vg", "phiG", "w1p", "w1d", "w2p", "w2d",

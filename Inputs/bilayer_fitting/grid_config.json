@@ -28,5 +28,9 @@
       "max_deg": 359,
       "step_deg": 10
     }
+  },
+  "fixed": {
+    "Vk_ev": 0.0077,
+    "phiK_deg": 106
   }
 }
