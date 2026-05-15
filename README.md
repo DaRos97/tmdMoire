@@ -38,6 +38,16 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Three-st
   - [Quick start](#bilayer-quick-start)
   - [Export script](#export-script)
   - [Output](#bilayer-output)
+- [Bilayer Moiré Potential (EDC Analysis)](#bilayer-moir%C3%A9-potential-edc-analysis)
+  - [Overview](#edc-overview)
+  - [EDC Intensity Profile](#edc-intensity-profile)
+  - [Gamma-Point Sweep](#gamma-point-sweep)
+  - [K-Point Sweep](#k-point-sweep)
+  - [Configuration](#edc-configuration)
+  - [Quick Start](#edc-quick-start)
+  - [HPC Workflow](#edc-hpc-workflow)
+  - [Run Management](#edc-run-management)
+  - [Output Format](#edc-output-format)
 - [References](#references)
 
 ## Monolayer Fitting
@@ -442,6 +452,128 @@ Fitted interlayer parameters are saved to:
 | `Inputs/bilayer_fitting/interlayer_params.npy` | NumPy array `[w1p, w1d, w2p, w2d]` |
 | `Inputs/bilayer_fitting/interlayer_params_metadata.json` | Metadata: parameter values, chi², nfev, success flag, timestamp |
 | `Figures/bilayer_fit.png` | Final fit plot with parameter values and ARPES comparison |
+
+## Bilayer Moiré Potential (EDC Analysis)
+
+### EDC Overview
+
+With monolayer parameters and interlayer couplings fixed, this stage sweeps the moiré potential parameters to match experimental Energy Distribution Curve (EDC) peak positions. The workflow runs in two stages:
+
+1. **Gamma-point sweep** — 6D grid over Vg, φG, w1p, w1d, w2p, w2d (Vk and φK fixed). Fits 4 Lorentzians to the EDC intensity profile (TVB main/side + LVB main/side).
+2. **K-point sweep** — 2D grid over Vk, φK with all other parameters fixed to the Gamma best fit. Fits 2 Lorentzians (TVB + moire side band) and computes the band gap near K.
+
+### EDC Intensity Profile
+
+The EDC intensity at a given k-point is computed from the supercell Hamiltonian eigenvalues and eigenvectors:
+
+1. **Diagonalization**: Build and diagonalize the (44·N)×(44·N) supercell Hamiltonian at the target k-point (N = 19 cells for n_shells=2 → 836×836 matrix).
+2. **Spectral weights**: For each eigenstate, compute the weight as the sum of |eigenvector|² over the WSe₂ block (indices 0–21) and WS₂ block (indices 22N–22(N+1)−1).
+3. **Lorentzian broadening**: Convolve each eigenvalue with a Lorentzian of width `spreadE = 0.03 eV`:
+   ```
+   I(E) = Σ_i w_i · (spreadE/π) / [(E - E_i)² + spreadE²]
+   ```
+4. **Peak fitting**: Fit a sum of Lorentzians to the resulting intensity profile using `lmfit`.
+
+### Gamma-Point Sweep
+
+**Grid**: 6 dimensions — Vg, φG, w1p, w1d, w2p, w2d. Fixed parameters: Vk = 7.7 meV, φK = 106°.
+
+**Peak structure**: 4 Lorentzians corresponding to:
+- TVB main (c1) — top valence band, WSe₂-derived
+- TVB side (c2) — moire side band of TVB
+- LVB main (c3) — lower valence band, WS₂-derived
+- LVB side (c4) — moire side band of LVB
+
+**Distance metric**:
+```
+dist = √[(c1 - E_TVB)² + (c2 - E_side)² + (c3 - E_LVB)²] / 3
+```
+where experimental values are `EDC_G_POSITIONS = [-1.1599, -1.2531, -1.82]` eV for sample S11.
+
+**Analysis**: 2D heatmap of minimum distance over (Vg, φG), minimizing over all interlayer parameter combinations.
+
+### K-Point Sweep
+
+**Grid**: 2 dimensions — Vk, φK. Fixed parameters: Vg, φG, w1p, w1d, w2p, w2d from the Gamma best fit.
+
+**Peak structure**: 2 Lorentzians — TVB and moire side band.
+
+**Band gap**: Computed by diagonalizing the Hamiltonian along a 51-point path near K and taking the minimum gap between the top valence band and the next band.
+
+### EDC Configuration
+
+Each BZ point has its own config file in `Inputs/bilayer_fitting/`:
+
+| File | Purpose |
+|---|---|
+| `grid_config_gamma.json` | Gamma sweep: interlayer ranges/steps, Vg/φG grid, fixed Vk/φK |
+| `grid_config_k.json` | K sweep: Vk/φK grid, fixed Vg/φG/w1p/w1d/w2p/w2d |
+
+Interlayer parameter ranges are specified as `range_ev` (± around fitted value) and `step_ev`. Moiré parameters use `min_ev`/`max_ev`/`step_ev` or `min_deg`/`max_deg`/`step_deg`.
+
+### EDC Quick Start
+
+```bash
+# Gamma sweep: single chunk (for testing)
+python scripts/edc_grid_gamma.py --chunk 0/1000000 --run-id test
+
+# Gamma sweep: combine chunks
+python scripts/combine_edc_chunks.py --bz-point gamma --run-id test
+
+# Gamma sweep: analyze results
+python scripts/analyze_edc_gamma.py --run-id test
+
+# K sweep (after Gamma best fit is known)
+python scripts/edc_grid_k.py --chunk 0/10000 --run-id test_k
+
+# K sweep: combine and analyze
+python scripts/combine_edc_chunks.py --bz-point k --run-id test_k
+python scripts/analyze_edc_k.py --run-id test_k
+```
+
+### EDC HPC Workflow
+
+```bash
+# Submit Gamma sweep (128 tasks, default run ID)
+./HPC/edc_gamma_job.sh
+
+# Submit with custom task count and run ID
+./HPC/edc_gamma_job.sh 256 001
+
+# Submit K sweep
+./HPC/edc_k_job.sh 128 001
+```
+
+### EDC Run Management
+
+Each run is stored in a self-contained directory:
+
+```
+Data/
+  edc_grid_gamma_run_001/
+    grid_config.json          ← snapshot of gamma config
+    interlayer_params.npy     ← snapshot of fitted interlayer params
+    run_metadata.json         ← run info (timestamp, grid sizes, fixed params)
+    chunk_0_128.h5
+    chunk_1_128.h5
+    ...
+    combined.h5               ← all chunks concatenated
+    analysis.png              ← 2D distance heatmap
+```
+
+### EDC Output Format
+
+Each `.h5` file contains 19 datasets:
+
+| Column | Description |
+|---|---|
+| `Vg`, `phiG`, `w1p`, `w1d`, `w2p`, `w2d` | Input parameters |
+| `c1`–`c4` | Fitted peak centers (eV) |
+| `a1`–`a4` | Fitted peak amplitudes |
+| `g1`–`g4` | Fitted peak widths (gamma) |
+| `redchi` | Reduced chi-squared of the fit |
+
+The K-point sweep additionally includes `gap` (band gap in eV).
 
 ## References
 

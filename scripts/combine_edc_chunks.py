@@ -1,12 +1,12 @@
 """Combine EDC grid chunk files into a single result file.
 
-Scans Data/edc_grid_gamma_run_<id>/ for all chunk_*.h5 files,
+Scans Data/edc_grid_<bz>_run_<id>/ for all chunk_*.h5 files,
 concatenates datasets, and saves a combined file.
 
 Usage:
-    python scripts/combine_edc_chunks.py
-    python scripts/combine_edc_chunks.py --run-id 001
-    python scripts/combine_edc_chunks.py --run-id 001 --output Data/edc_grid_gamma_run_001/combined.h5
+    python scripts/combine_edc_chunks.py --bz-point gamma --run-id 001
+    python scripts/combine_edc_chunks.py --bz-point k --run-id 001
+    python scripts/combine_edc_chunks.py --bz-point gamma --run-id 001 --output Data/edc_grid_gamma_run_001/combined.h5
 """
 import sys
 import os
@@ -17,13 +17,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import h5py
 
+bz_point = "gamma"
 run_id = "default"
 output = None
 
 args = sys.argv[1:]
 i = 0
 while i < len(args):
-    if args[i] == "--run-id" and i + 1 < len(args):
+    if args[i] == "--bz-point" and i + 1 < len(args):
+        bz_point = args[i + 1]
+        i += 2
+    elif args[i] == "--run-id" and i + 1 < len(args):
         run_id = args[i + 1]
         i += 2
     elif args[i] == "--output" and i + 1 < len(args):
@@ -32,7 +36,7 @@ while i < len(args):
     else:
         i += 1
 
-out_dir = Path("Data") / f"edc_grid_gamma_run_{run_id}"
+out_dir = Path("Data") / f"edc_grid_{bz_point}_run_{run_id}"
 if output is None:
     output = out_dir / "combined.h5"
 

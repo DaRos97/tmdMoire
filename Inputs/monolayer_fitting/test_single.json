@@ -1,0 +1,28 @@
+{
+    "description": "Test: single-element grid for all K values",
+    "grid": {
+        "K1": [0.01],
+        "K2": [1.0],
+        "K3": [1.0],
+        "K4": [1.0],
+        "K5": [1.0],
+        "K6": [10]
+    },
+    "bounds": {
+        "boundType": "absolute",
+        "Bs": [5, 2, 4, 1, 0]
+    },
+    "pts": 91,
+    "seed": 42,
+    "use_dft_x0": true,
+    "optimizer": {
+        "method": "differential_evolution",
+        "de_maxiter": 50,
+        "de_popsize": 5,
+        "de_strategy": "best1exp",
+        "de_mutation": [0.5, 1.0],
+        "de_recombination": 0.7,
+        "nm_maxiter": 50,
+        "nm_fatol": 1e-4
+    }
+}

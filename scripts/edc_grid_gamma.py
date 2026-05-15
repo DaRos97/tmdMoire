@@ -53,7 +53,7 @@ while i < len(args):
 
 # ─── Load grid config ────────────────────────────────────────────────────────
 
-config_path = master_folder + "/Inputs/bilayer_fitting/grid_config.json"
+config_path = master_folder + "/Inputs/bilayer_fitting/grid_config_gamma.json"
 with open(config_path) as f:
     grid_cfg = json.load(f)
 
@@ -228,7 +228,7 @@ out_dir = Path("Data") / f"edc_grid_gamma_run_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # Copy grid config and interlayer params into run directory for reproducibility
-grid_config_src = master_folder + "/Inputs/bilayer_fitting/grid_config.json"
+grid_config_src = master_folder + "/Inputs/bilayer_fitting/grid_config_gamma.json"
 grid_config_dst = out_dir / "grid_config.json"
 if not grid_config_dst.exists() or os.path.getmtime(grid_config_src) > grid_config_dst.stat().st_mtime:
     shutil.copy2(grid_config_src, grid_config_dst)

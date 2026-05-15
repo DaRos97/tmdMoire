@@ -1,5 +1,5 @@
 # SGE job array worker script for EDC Gamma grid sweep
-# Called by edc_job.sh for each task in the array
+# Called by edc_gamma_job.sh for each task in the array
 # Computes chunk boundaries and runs edc_grid_gamma.py
 
 N_TASKS=$1

@@ -1,0 +1,40 @@
+{
+  "interlayer": {
+    "w1p": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w1d": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w2p": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    },
+    "w2d": {
+      "range_ev": 0.010,
+      "step_ev": 0.002
+    }
+  },
+  "moire": {
+    "Vk": {
+      "min_ev": 0.001,
+      "max_ev": 0.040,
+      "step_ev": 0.002
+    },
+    "phiK": {
+      "min_deg": 0,
+      "max_deg": 359,
+      "step_deg": 10
+    }
+  },
+  "fixed": {
+    "Vg_ev": 0.015,
+    "phiG_deg": 180,
+    "w1p_ev": -1.3232,
+    "w1d_ev": 0.5012,
+    "w2p_ev": -0.1774,
+    "w2d_ev": 0.0295
+  }
+}
