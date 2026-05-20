@@ -302,3 +302,150 @@ def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None,
     fig.savefig(fn, dpi=150, bbox_inches="tight")
     print(f"Saved: {fn}")
     plt.close(fig)
+
+
+def _apply_energy_shading(spread, e_list, shade_factor_e):
+    """Apply linear energy-dependent shading.
+
+    Starts at factor 0.1 at E_min and goes to shade_factor_e at E_max.
+    """
+    shade = np.linspace(0.1, shade_factor_e, len(e_list))
+    return spread * shade[np.newaxis, :]
+
+
+def _label_high_symmetry(ax, k_positions, labels, y_min, y_max):
+    """Add vertical dashed lines and labels at high-symmetry points."""
+    for k_pos, label in zip(k_positions, labels):
+        ax.axvline(k_pos, color="gray", lw=0.5, ls="--", alpha=0.5)
+        ax.text(k_pos, y_max * 0.95, label, ha="center", va="top",
+                fontsize=10, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                          edgecolor="gray", alpha=0.7))
+
+
+def plot_moire_bands_simulated(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
+                                shade_factor_e=3.0, save_dir=None):
+    """Plot simulated moire band intensity for K'->G->K and K->M->K' paths."""
+    spread_kgk = _apply_energy_shading(spread_kgk, e_list, shade_factor_e)
+    spread_kmkp = _apply_energy_shading(spread_kmkp, e_list, shade_factor_e)
+
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    ax1.pcolormesh(k_kgk, e_list, spread_kgk.T, cmap="Greys", shading="auto")
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    ax2.pcolormesh(k_kmkp, e_list, spread_kmkp.T, cmap="Greys", shading="auto")
+    ax2.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Moiré bilayer bands — simulated intensity",
+                 fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "moire_bands_simulated.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
+
+
+def plot_arpes_data(k_kgk, k_kmkp, e_list, intensity_kgk, intensity_kmkp,
+                     save_dir=None):
+    """Plot experimental ARPES intensity for K'->G->K and K->M->K' paths."""
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    ax1.pcolormesh(k_kgk, e_list, intensity_kgk.T, cmap="Greys", shading="auto")
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    ax2.pcolormesh(k_kmkp, e_list, intensity_kmkp.T, cmap="Greys", shading="auto")
+    ax2.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Experimental ARPES intensity",
+                 fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "arpes_data.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
+
+
+def plot_moire_bands_half_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
+                                 arpes_kgk, arpes_kmkp,
+                                 shade_factor_e=3.0, save_dir=None):
+    """Plot half-ARPES / half-simulated moire band comparison.
+
+    Left side (k < 0) is ARPES, right side (k > 0) is simulated, for both subplots.
+    """
+    spread_kgk = _apply_energy_shading(spread_kgk, e_list, shade_factor_e)
+    spread_kmkp = _apply_energy_shading(spread_kmkp, e_list, shade_factor_e)
+
+    zero_kgk = np.argmin(np.abs(k_kgk))
+    zero_kmkp = np.argmin(np.abs(k_kmkp))
+
+    k_kgk_left = k_kgk[:zero_kgk + 1]
+    k_kgk_right = k_kgk[zero_kgk:]
+    arpes_kgk_left = arpes_kgk[:zero_kgk + 1]
+    spread_kgk_right = spread_kgk[zero_kgk:]
+
+    k_kmkp_left = k_kmkp[:zero_kmkp + 1]
+    k_kmkp_right = k_kmkp[zero_kmkp:]
+    arpes_kmkp_left = arpes_kmkp[:zero_kmkp + 1]
+    spread_kmkp_right = spread_kmkp[zero_kmkp:]
+
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    ax1.pcolormesh(k_kgk_left, e_list, arpes_kgk_left.T, cmap="Greys",
+                   shading="auto", alpha=0.7)
+    ax1.pcolormesh(k_kgk_right, e_list, spread_kgk_right.T, cmap="Greys",
+                   shading="auto")
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    ax2.pcolormesh(k_kmkp_left, e_list, arpes_kmkp_left.T, cmap="Greys",
+                   shading="auto", alpha=0.7)
+    ax2.pcolormesh(k_kmkp_right, e_list, spread_kmkp_right.T, cmap="Greys",
+                   shading="auto")
+    ax2.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Moiré bilayer bands — half ARPES / half simulated",
+                 fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "moire_bands_half_arpes.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)

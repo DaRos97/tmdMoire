@@ -43,6 +43,11 @@ python scripts/analyze_edc_gamma.py --run-id <id>
 python scripts/edc_grid_k.py --chunk <id>/<total> --run-id <id>
 python scripts/combine_edc_chunks.py --bz-point k --run-id <id>
 python scripts/analyze_edc_k.py --run-id <id>
+
+# Bilayer: plot moire bands with intensity spreading
+python scripts/plot_moire_bands.py --k-pts 300 --n-shells 2
+python scripts/plot_moire_bands.py --k-pts 200 --n-shells 2 --spread-type Lorentz --spread-e 0.03
+python scripts/plot_moire_bands.py --k-pts 300 --n-shells 2 --pow-factor 1.5 --shade-e-factor 5
 ```
 
 No build/test/lint tooling exists. Verification = does it run and produce `.npz`/`.npy`/`.h5` output.
@@ -74,13 +79,14 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `hamiltonian.py` | `MoireHamiltonian`: builds (44·N)×(44·N) supercell Hamiltonian with interlayer coupling + moire potential |
 | `fitter.py` | `BilayerFitter`: fits 4 interlayer hopping params (w1p, w1d, w2p, w2d) via Nelder-Mead |
 | `edc_analyzer.py` | `EDCAnalyzer`: computes EDCs from supercell eigenvalues, fits Voigt profiles, computes band gap, LDOS |
+| `intensity.py` | `compute_weights`, `spread_intensity`: orbital weights from eigenvectors, k+E spreading with Gaussian/Lorentzian kernels |
 
 ### Package: `tmdmoire/plotting/`
 
 | Module | Role |
 |---|---|
 | `monolayer.py` | `plot_data_pipeline`, `plot_bands`, `plot_parameters_absolute`, `plot_orbital_content`, `plot_top_results` |
-| `bilayer.py` | `plot_bilayer_data`, `plot_bilayer_fit` |
+| `bilayer.py` | `plot_bilayer_data`, `plot_bilayer_fit`, `plot_moire_bands_simulated`, `plot_moire_bands_half_arpes` |
 
 ### Package: `tmdmoire/utils/`
 
@@ -102,6 +108,7 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `combine_edc_chunks.py` | Combines chunked `.h5` files into single `combined.h5` |
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
 | `analyze_edc_k.py` | Analyzes K results: computes distance + band gap, plots 2D heatmap |
+| `plot_moire_bands.py` | Plots moire bilayer bands with intensity spreading along K'→Γ→K and K→M→K' paths; supports caching, Gaussian/Lorentzian spreading, half-ARPES overlay |
 
 ### Development scripts: `scripts/dev/`
 
@@ -128,10 +135,12 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Stored band_K6**: K6-weighted band distance (matches objective function); `band_dist` stores pure band distance for cross-comparison across grid points
 - **Inputs/monolayer_fitting/**: ARPES band data (`KpGK_*.txt`, `KMKp_*.txt`), pre-fitted TB params (`tb_*.npy`), fit config (`fit_config.json`), manifest (`manifest.json`)
 - **Inputs/bilayer_fitting/**: Bilayer ARPES bands (`WSe2WS2_Band*.txt`), exported monolayer params (`tb_WSe2.npy`, `tb_WS2.npy`), interlayer params (Step 2 output), grid configs (`grid_config_gamma.json`, `grid_config_k.json`)
-- **Outputs**: `Data/run_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/run_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files)
+- **Inputs/plot_bilayer/**: Parameters for final band plotting — `tb_WSe2.npy`, `tb_WS2.npy` (43 monolayer params each), `interlayer_G.npy` (dict: w1p, w1d, w2p, w2d, Vg, phiG), `interlayer_K.npy` (dict: Vk, phiK). ARPES data files for half-ARPES plots (`i06_sum_S11_KGK_BE.txt`, `S11_KK_80eV_LV_BE.txt`).
+- **Outputs**: `Data/run_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/run_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
 - **Default Gamma grid**: 11×37×11×11×11×11 = ~6M combinations. ~0.6s per point (836×836 diagonalization dominates).
 - **Default K grid**: 20×37 = 740 combinations (configurable).
 - **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV) + 3-Lorentzian fit at Gamma, 2-Lorentzian fit at K.
+- **Band plotting**: computes single G→K→M path (--k-pts points), mirrors to K'→G→K and K→M→K'. Keeps bands 18–27 per cell (10 bands including TVB). Two-level cache: `Data/plot_bilayer_moire/diag_<params>/diag.npz` for diagonalization, `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` for intensity spreading.
 
 ## Workflow
 
@@ -179,8 +188,15 @@ Bilayer stage:
                                                      2-Lorentzian fit + band gap
                                                      Match EDC_K_POSITIONS
                                                                    ↓
-                                                     Data/edc_grid_k_run_<id>/
-                                                     combined.h5 + analysis.png
+                                                      Data/edc_grid_k_run_<id>/
+                                                      combined.h5 + analysis.png
+                                                                    ↓
+                                                       Step 3: Moire band plotting
+                                                       Load params from Inputs/plot_bilayer/
+                                                       Diagonalize (44·N)×(44·N) along G→K, K→M
+                                                       Mirror to K'→G→K and K→M→K'
+                                                       Compute weights + spread intensity
+                                                       Output: Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png
 ```
 
 ## Conventions

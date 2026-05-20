@@ -1,0 +1,216 @@
+"""One-time analysis script for old-format sm01 run.
+
+Handles legacy directory structure:
+- Data/edc_grid_gamma_run_<id>/ (old naming)
+- grid_config.json + run_metadata.json (separate files)
+- combined.h5 with c1-c4, a1-a4, g1-g4 columns
+
+Produces the same analysis plot as analyze_edc_gamma.py.
+"""
+import sys
+import os
+from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+import numpy as np
+import h5py
+import json
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+from tmdmoire import EDC_G_POSITIONS
+
+run_id = "sm01"
+
+# ─── Load combined data (old naming convention) ──────────────────────────────
+
+run_dir = Path("Data") / f"edc_grid_gamma_run_{run_id}"
+combined_fn = run_dir / "combined.h5"
+
+if not combined_fn.exists():
+    print(f"Combined file not found: {combined_fn}")
+    sys.exit(1)
+
+with h5py.File(combined_fn, "r") as f:
+    Vg = f["Vg"][:]
+    phiG = f["phiG"][:]
+    w1p = f["w1p"][:]
+    w1d = f["w1d"][:]
+    w2p = f["w2p"][:]
+    w2d = f["w2d"][:]
+    c1 = f["c1"][:]
+    c2 = f["c2"][:]
+    c3 = f["c3"][:]
+
+n_points = len(Vg)
+print(f"Loaded {n_points} points from {combined_fn}")
+
+# ─── Load old-format metadata ────────────────────────────────────────────────
+
+with open(run_dir / "grid_config.json") as f:
+    grid_cfg = json.load(f)
+
+with open(run_dir / "run_metadata.json") as f:
+    run_meta = json.load(f)
+
+fitted_interlayer = np.array([
+    run_meta["fitted_interlayer"]["w1p"],
+    run_meta["fitted_interlayer"]["w1d"],
+    run_meta["fitted_interlayer"]["w2p"],
+    run_meta["fitted_interlayer"]["w2d"],
+])
+w1p_fit, w1d_fit, w2p_fit, w2d_fit = fitted_interlayer
+
+il = grid_cfg["interlayer"]
+bounds = {
+    "w1p": (w1p_fit - il["w1p"]["range_ev"], w1p_fit + il["w1p"]["range_ev"]),
+    "w1d": (w1d_fit - il["w1d"]["range_ev"], w1d_fit + il["w1d"]["range_ev"]),
+    "w2p": (w2p_fit - il["w2p"]["range_ev"], w2p_fit + il["w2p"]["range_ev"]),
+    "w2d": (w2d_fit - il["w2d"]["range_ev"], w2d_fit + il["w2d"]["range_ev"]),
+}
+
+tol = 1e-6
+
+# ─── Compute distance ────────────────────────────────────────────────────────
+
+exp = EDC_G_POSITIONS["S11"]
+
+valid = ~np.isnan(c1) & ~np.isnan(c2) & ~np.isnan(c3)
+n_valid = valid.sum()
+print(f"Valid fits: {n_valid} / {n_points}")
+
+dist = np.full(n_points, np.nan)
+dist[valid] = (
+    np.abs(c1[valid] - exp[0])
+    + np.abs(c2[valid] - exp[1])
+    + np.abs(c3[valid] - exp[2])
+)
+
+# ─── Apply cutoff ────────────────────────────────────────────────────────────
+
+cutoff_ev = 0.026
+above_cutoff = dist > cutoff_ev
+dist[above_cutoff] = np.nan
+n_within_cutoff = np.sum(~np.isnan(dist))
+print(f"Points within {cutoff_ev*1000:.0f} meV cutoff: {n_within_cutoff} / {n_points}")
+
+if n_within_cutoff == 0:
+    print("No points within cutoff. Exiting.")
+    sys.exit(0)
+
+# ─── Find global minimum ─────────────────────────────────────────────────────
+
+idx_best = np.nanargmin(dist)
+print(f"\nGlobal minimum distance: {dist[idx_best]*1000:.2f} meV")
+print(f"  Vg   = {Vg[idx_best]*1000:.1f} meV")
+print(f"  phiG = {phiG[idx_best]:.1f} deg")
+print(f"  w1p  = {w1p[idx_best]:+.4f} eV")
+print(f"  w1d  = {w1d[idx_best]:+.4f} eV")
+print(f"  w2p  = {w2p[idx_best]:+.4f} eV")
+print(f"  w2d  = {w2d[idx_best]:+.4f} eV")
+print(f"  c1   = {c1[idx_best]:.4f} eV (exp: {exp[0]:.4f} eV)")
+print(f"  c2   = {c2[idx_best]:.4f} eV (exp: {exp[1]:.4f} eV)")
+print(f"  c3   = {c3[idx_best]:.4f} eV (exp: {exp[2]:.4f} eV)")
+
+# ─── Aggregate ───────────────────────────────────────────────────────────────
+
+phiG_vals = np.unique(phiG)
+Vg_vals = np.unique(Vg)
+n_phi = len(phiG_vals)
+n_Vg = len(Vg_vals)
+
+print(f"\nGrid: {n_Vg} Vg values x {n_phi} phiG values")
+
+dist_2d = np.full((n_Vg, n_phi), np.nan)
+bounds_2d = [[[] for _ in range(n_phi)] for _ in range(n_Vg)]
+
+param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+
+for iv, vg in enumerate(Vg_vals):
+    for ip, pg in enumerate(phiG_vals):
+        mask = (Vg == vg) & (phiG == pg) & ~np.isnan(dist)
+        if mask.any():
+            idx_min = np.nanargmin(dist[mask])
+            idx_global = np.where(mask)[0][idx_min]
+            dist_2d[iv, ip] = dist[idx_global]
+            for pname, parr in param_arrays.items():
+                val = parr[idx_global]
+                lo, hi = bounds[pname]
+                if abs(val - lo) < tol or abs(val - hi) < tol:
+                    bounds_2d[iv][ip].append(pname)
+
+# ─── Plot ────────────────────────────────────────────────────────────────────
+
+fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+
+im = ax.pcolormesh(
+    phiG_vals, Vg_vals * 1000, dist_2d * 1000,
+    cmap="viridis_r", shading="auto",
+)
+
+ax.scatter(
+    phiG[idx_best], Vg[idx_best] * 1000,
+    marker="*", s=200, c="red", edgecolors="white", linewidths=1.5,
+    zorder=5, label="Best fit",
+)
+
+legend_text = (
+    f"Best fit (dist = {dist[idx_best]*1000:.1f} meV)\n"
+    f"w1p = {w1p[idx_best]:+.4f} eV\n"
+    f"w1d = {w1d[idx_best]:+.4f} eV\n"
+    f"w2p = {w2p[idx_best]:+.4f} eV\n"
+    f"w2d = {w2d[idx_best]:+.4f} eV"
+)
+
+bound_colors = {"w1p": "red", "w1d": "blue", "w2p": "green", "w2d": "orange"}
+bound_styles = {"w1p": "-", "w1d": "--", "w2p": "-.", "w2d": ":"}
+
+all_legend_handles = [
+    plt.matplotlib.patches.Patch(facecolor="none", edgecolor="none", label=legend_text),
+]
+for p in ["w1p", "w1d", "w2p", "w2d"]:
+    all_legend_handles.append(
+        plt.matplotlib.patches.Patch(facecolor="none", edgecolor=bound_colors[p], linewidth=2,
+              linestyle=bound_styles[p], label=f"{p} at bound")
+    )
+ax.legend(
+    handles=all_legend_handles,
+    loc="upper left", fontsize=9, framealpha=0.9,
+)
+
+dVg = (Vg_vals[1] - Vg_vals[0]) * 1000 if len(Vg_vals) > 1 else 1
+dphiG = (phiG_vals[1] - phiG_vals[0]) if len(phiG_vals) > 1 else 1
+
+for iv in range(n_Vg):
+    for ip in range(n_phi):
+        if not bounds_2d[iv][ip]:
+            continue
+        for pname in bounds_2d[iv][ip]:
+            rect = Rectangle(
+                (phiG_vals[ip] - dphiG / 2, Vg_vals[iv] * 1000 - dVg / 2),
+                dphiG, dVg,
+                fill=False, edgecolor=bound_colors[pname],
+                linewidth=3, linestyle=bound_styles[pname],
+                zorder=4,
+            )
+            ax.add_patch(rect)
+
+cbar = fig.colorbar(im, ax=ax, pad=0.02)
+cbar.set_label("Min distance (meV)", fontsize=11)
+
+ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
+ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
+ax.set_title(
+    f"EDC Gamma: min distance over interlayer params\n"
+    f"Run: {run_id}  |  {n_within_cutoff}/{n_points} within {cutoff_ev*1000:.0f} meV cutoff",
+    fontsize=12,
+)
+
+out_fn = run_dir / "analysis_v2.png"
+fig.savefig(out_fn, dpi=200, bbox_inches="tight")
+plt.close(fig)
+
+print(f"\nFigure saved to {out_fn}")
