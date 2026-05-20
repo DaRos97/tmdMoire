@@ -5,8 +5,8 @@ peak positions, and produces a 2D heatmap of minimum distance over (Vg, phiG)
 with the global best-fit point marked and interlayer parameters shown.
 
 Usage:
-    python scripts/analyze_edc_gamma.py --run-id 001
-    python scripts/analyze_edc_gamma.py --run-id 001 --output Figures/edc_gamma_analysis.png
+    python scripts/analyze_edc_gamma.py --id 001
+    python scripts/analyze_edc_gamma.py --id 001 --output Figures/edc_gamma_analysis.png
 """
 import sys
 import os
@@ -32,7 +32,7 @@ output = None
 args = sys.argv[1:]
 i = 0
 while i < len(args):
-    if args[i] == "--run-id" and i + 1 < len(args):
+    if args[i] == "--id" and i + 1 < len(args):
         run_id = args[i + 1]
         i += 2
     elif args[i] == "--output" and i + 1 < len(args):
@@ -43,12 +43,12 @@ while i < len(args):
 
 # ─── Load combined data ──────────────────────────────────────────────────────
 
-run_dir = Path("Data") / f"edc_gamma_run_{run_id}"
+run_dir = Path("Data") / f"edc_gamma_{run_id}"
 combined_fn = run_dir / "combined.h5"
 
 if not combined_fn.exists():
     print(f"Combined file not found: {combined_fn}")
-    print("Run: python scripts/combine_edc_chunks.py --run-id {run_id}")
+    print("Run: python scripts/combine_edc_chunks.py --id {run_id}")
     sys.exit(1)
 
 with h5py.File(combined_fn, "r") as f:

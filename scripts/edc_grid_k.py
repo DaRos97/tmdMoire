@@ -7,8 +7,8 @@ and saves results.
 
 Usage:
     python scripts/edc_grid_k.py --chunk <id>/<total>
-    python scripts/edc_grid_k.py --chunk 0/128 --run-id 001
-    python scripts/edc_grid_k.py --chunk 0/128 --run-id test
+    python scripts/edc_grid_k.py --chunk 0/128 --id 001
+    python scripts/edc_grid_k.py --chunk 0/128 --id test
 """
 import sys
 import os
@@ -46,7 +46,7 @@ while i < len(args):
         elif "=" in val:
             chunk_id, n_chunks = map(int, val.split("="))
         i += 2
-    elif args[i] == "--run-id" and i + 1 < len(args):
+    elif args[i] == "--id" and i + 1 < len(args):
         run_id = args[i + 1]
         i += 2
     else:

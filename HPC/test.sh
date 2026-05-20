@@ -15,17 +15,17 @@ echo ""
 
 # Run a single fit (index 0)
 echo "--- Running single fit (index 0) ---"
-python3 scripts/run_monolayer_grid.py ${MATERIAL} --start 0 --end 1 --run-id ${RUN_ID}
+python3 scripts/run_monolayer_grid.py ${MATERIAL} --start 0 --end 1 --id ${RUN_ID}
 
 echo ""
 echo "--- Scoring results ---"
-python3 scripts/run_monolayer_grid.py ${MATERIAL} --score --run-id ${RUN_ID} --top 1
+python3 scripts/run_monolayer_grid.py ${MATERIAL} --score --id ${RUN_ID} --top 1
 
 echo ""
 echo "--- Generating plots ---"
-python3 scripts/run_monolayer_grid.py ${MATERIAL} --score --run-id ${RUN_ID} --top 1 --plot
+python3 scripts/run_monolayer_grid.py ${MATERIAL} --score --id ${RUN_ID} --top 1 --plot
 
 echo ""
 echo "=== Test complete ==="
-echo "Results in: Data/${MATERIAL}_run_${RUN_ID}/"
-echo "To clean up: rm -rf Data/${MATERIAL}_run_${RUN_ID}"
+echo "Results in: Data/${MATERIAL}_${RUN_ID}/"
+echo "To clean up: rm -rf Data/${MATERIAL}_${RUN_ID}"

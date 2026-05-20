@@ -32,7 +32,7 @@ def get_repo_root() -> str:
 def prepare_run_dir(run_id: str, material: str) -> str:
     """Create the run output directory and copy fit_config.json into it.
 
-    Creates ``Data/<material>_run_<run_id>/`` if it does not exist, and
+    Creates ``Data/<TMD>_<run_id>/`` if it does not exist, and
     copies ``Inputs/monolayer_fitting/fit_config.json`` into it (only if the destination
     does not exist or is older than the source).
 
@@ -48,7 +48,7 @@ def prepare_run_dir(run_id: str, material: str) -> str:
     str
         Path to the run directory.
     """
-    run_dir = os.path.join("Data", f"{material}_run_{run_id}")
+    run_dir = os.path.join("Data", f"{material}_{run_id}")
     os.makedirs(run_dir, exist_ok=True)
     dst = os.path.join(run_dir, "fit_config.json")
     if not os.path.exists(dst):

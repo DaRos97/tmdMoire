@@ -2,9 +2,9 @@
 
 Executes the full fitting pipeline for each combination of constraint
 weights (K1-K6) defined in ``Inputs/monolayer_fitting/fit_config.json``. A snapshot of
-the config is copied to ``Data/run_<id>/fit_config.json`` for
+the config is copied to ``Data/<TMD>_<id>/fit_config.json`` for
 reproducibility. Results are saved as
-``Data/run_<id>/fit_{TMD}_idx{N}.npz`` files.
+``Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz`` files.
 
 Usage
 -----
@@ -13,9 +13,9 @@ Usage
     python scripts/run_monolayer_grid.py WSe2                          # All combinations
     python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100      # Chunk by index
     python scripts/run_monolayer_grid.py WSe2 --chunk 0/128            # Chunk by fraction
-    python scripts/run_monolayer_grid.py WSe2 --run-id 001             # Named run
+    python scripts/run_monolayer_grid.py WSe2 --id 001             # Named run
     python scripts/run_monolayer_grid.py WSe2 --score                   # Score existing results
-    python scripts/run_monolayer_grid.py WSe2 --score --run-id 001      # Score specific run
+    python scripts/run_monolayer_grid.py WSe2 --score --id 001      # Score specific run
     python scripts/run_monolayer_grid.py WSe2 --score --top 20          # Top 20
     python scripts/run_monolayer_grid.py WSe2 --score --k4-threshold 0.1
     python scripts/run_monolayer_grid.py WSe2 --score --plot              # Score + generate plots
@@ -27,8 +27,8 @@ Arguments
 - ``WSe2`` or ``WS2``: Target material.
 - ``--start``, ``--end``: Run only a subset of indices (for HPC chunking).
 - ``--chunk id/total``: Run a chunk of the grid (e.g. ``0/128``). Overrides ``--start``/``--end``.
-- ``--run-id``: Subdirectory name under Data/ for results (default: "default").
-  Results are saved to ``Data/<material>_run_<id>/``.
+- ``--id``: Subdirectory name under Data/ for results (default: "default").
+  Results are saved to ``Data/<TMD>_<id>/``.
 - ``--score``: Skip fitting, just score and display existing results.
 - ``--top N``: Show top N results when scoring (default: 10).
 - ``--k4-threshold``: K4 hard filter threshold for scoring (default: 0.05).
@@ -46,7 +46,7 @@ Run indices 0-399 (submit as HPC job 1)::
 
 Run with a named subdirectory::
 
-    python scripts/run_monolayer_grid.py WSe2 --run-id 001
+    python scripts/run_monolayer_grid.py WSe2 --id 001
 
 Score existing results::
 
@@ -54,7 +54,7 @@ Score existing results::
 
 Score a specific run::
 
-    python scripts/run_monolayer_grid.py WSe2 --score --run-id 001
+    python scripts/run_monolayer_grid.py WSe2 --score --id 001
 """
 import sys
 import os
@@ -215,8 +215,8 @@ def main():
                         help="First grid index (inclusive).")
     parser.add_argument("--end", type=int, default=None,
                         help="Last grid index (exclusive). Default: run all.")
-    parser.add_argument("--run-id", type=str, default="default",
-                        help="Run identifier. Results saved to Data/run_<id>/ (default: 'default').")
+    parser.add_argument("--id", type=str, default="default",
+                        help="Run identifier. Results saved to Data/<TMD>_<id>/ (default: 'default').")
     parser.add_argument("--score", action="store_true",
                         help="Skip fitting, just score existing results.")
     parser.add_argument("--top", type=int, default=10,
@@ -236,7 +236,7 @@ def main():
 
     master_folder = get_repo_root()
 
-    run_dir = os.path.join("Data", f"{args.material}_run_{args.run_id}")
+    run_dir = os.path.join("Data", f"{args.material}_{args.id}")
 
     if args.score:
         do_score(args.material, args.top, args.k4_threshold,
@@ -244,7 +244,7 @@ def main():
                  export=args.export)
         return
 
-    run_dir = prepare_run_dir(args.run_id, args.material)
+    run_dir = prepare_run_dir(args.id, args.material)
 
     config = load_fit_config(run_dir)
     all_configs = build_grid(config)
@@ -262,7 +262,7 @@ def main():
 
     print(f"Grid size: {total} combinations")
     print(f"Running chunk: [{args.start}, {args.end})")
-    print(f"Run ID: {args.run_id} -> {run_dir}")
+    print(f"Run ID: {args.id} -> {run_dir}")
     print()
 
     run_chunk(args.material, master_folder, args.start, args.end,

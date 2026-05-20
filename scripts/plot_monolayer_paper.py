@@ -108,7 +108,7 @@ def main():
                              "Default: Inputs/bilayer_fitting/tb_{TMD}*.npy (first match).")
     parser.add_argument("--no-cache", action="store_true",
                         help="Recompute eigenvalues/intensities instead of loading cache.")
-    parser.add_argument("--run-id", type=str, default="de01",
+    parser.add_argument("--id", type=str, default="de01",
                         help="Run ID for monolayer data loading (default: de01).")
     parser.add_argument("--n-k-int", type=int, default=582,
                         help="Number of k-points for intensity plot (default: 582).")
@@ -121,7 +121,7 @@ def main():
     parser.add_argument("--spread-e", type=float, default=0.05,
                         help="Lorentzian E-width for intensity (default: 0.05).")
     parser.add_argument("--output-dir", type=str, default=None,
-                        help="Output directory for figures. Default: Data/run_<id>/Figures/.")
+                        help="Output directory for figures. Default: Data/<TMD>_<id>/Figures/.")
 
     args = parser.parse_args()
     tmd = args.material
@@ -254,7 +254,7 @@ def main():
                  ens_dft=ens_dft_orb, orb_dft=orbitals_dft)
 
     # ── ARPES bands (from monolayer data pipeline) ───────────────────────
-    run_dir = os.path.join("Data", f"{tmd}_run_{args.run_id}")
+    run_dir = os.path.join("Data", f"{tmd}_{args.id}")
     data = MonolayerData(tmd, master_folder, pts=args.n_k_bands)
     arpes_bands = data.fit_data
 

@@ -14,14 +14,14 @@ Usage
 ::
 
     python scripts/fit_monolayer.py <WSe2|WS2> <index>
-    python scripts/fit_monolayer.py <WSe2|WS2> <index> --run-id 001
+    python scripts/fit_monolayer.py <WSe2|WS2> <index> --id 001
 
 Arguments
 ---------
 - ``WSe2`` or ``WS2``: Target material.
 - ``index``: Integer selecting a combination of constraint weights (K1-K6)
   from the grid defined in ``Inputs/monolayer_fitting/fit_config.json``.
-- ``--run-id``: Run identifier. Results saved to Data/run_<id>/ (default: 'default').
+- ``--id``: Run identifier. Results saved to Data/<TMD>_<id>/ (default: 'default').
 
 Examples
 --------
@@ -31,11 +31,11 @@ Fit WSe2 with constraint weight set 0::
 
 Fit WS2 with constraint weight set 5 into a named run::
 
-    python scripts/fit_monolayer.py WS2 5 --run-id 001
+    python scripts/fit_monolayer.py WS2 5 --id 001
 
 Output
 ------
-Optimized parameters are saved to ``Data/run_<id>/fit_{TMD}_idx{N}.npz``.
+Optimized parameters are saved to ``Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz``.
 """
 import sys
 import os
@@ -56,7 +56,7 @@ master_folder = get_repo_root()
 parser = argparse.ArgumentParser(description="Fit monolayer TB parameters.")
 parser.add_argument("material", choices=["WSe2", "WS2"], help="Target material.")
 parser.add_argument("index", type=int, help="Grid index.")
-parser.add_argument("--run-id", type=str, default="default",
+parser.add_argument("--id", type=str, default="default",
                     help="Run identifier for output subdirectory.")
 parser.add_argument("--debug-figures", action="store_true",
                     help="Save debug figures for each new best during minimization.")
@@ -97,7 +97,7 @@ def get_args(tmd: str, ind: int, run_dir: str) -> dict:
     }
 
 
-run_dir = prepare_run_dir(args.run_id, tmd_name)
+run_dir = prepare_run_dir(args.id, tmd_name)
 
 args_minimization = get_args(tmd_name, argc, run_dir)
 pts = args_minimization["pts"]

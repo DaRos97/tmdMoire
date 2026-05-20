@@ -291,23 +291,23 @@ Each job array submission creates N SGE tasks. Chunk boundaries are computed aut
 After all tasks complete, score the results:
 
 ```bash
-python scripts/run_monolayer_grid.py WSe2 --score --run-id 001
+python scripts/run_monolayer_grid.py WSe2 --score --id 001
 ```
 
 ### Run management
 
-Each run is stored in its own subdirectory under `Data/run_<id>/`. When you start a run, `Inputs/monolayer_fitting/fit_config.json` is copied into the run directory as a snapshot, making each run fully self-contained and reproducible.
+Each run is stored in its own subdirectory under `Data/<TMD>_<id>/`. When you start a run, `Inputs/monolayer_fitting/fit_config.json` is copied into the run directory as a snapshot, making each run fully self-contained and reproducible.
 
 ```
 Data/
-  run_001/
+  WSe2_001/
     fit_config.json          ← snapshot of config used for this run
     fit_WSe2_idx0.npz
     fit_WSe2_idx1.npz
     ...
-  run_002/
+  WS2_002/
     fit_config.json          ← different config (e.g. finer grid)
-    fit_WSe2_idx0.npz
+    fit_WS2_idx0.npz
     ...
 ```
 
@@ -317,14 +317,14 @@ Data/
 2. Score results and inspect the best fits
 3. Edit `Inputs/monolayer_fitting/fit_config.json` to refine the grid (e.g. narrower ranges, finer spacing)
 4. Run again with a new ID: `./HPC/mono_job.sh WSe2 002`
-5. Compare runs: `python scripts/run_monolayer_grid.py WSe2 --score --run-id 001` and `--run-id 002`
+5. Compare runs: `python scripts/run_monolayer_grid.py WSe2 --score --id 001` and `--id 002`
 
-The `--run-id` flag works with all scripts:
+The `--id` flag works with all scripts:
 
 ```bash
-python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100 --run-id 002
-python scripts/run_monolayer_grid.py WSe2 --score --run-id 002 --top 20
-python scripts/fit_monolayer.py WSe2 42 --run-id 002
+python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100 --id 002
+python scripts/run_monolayer_grid.py WSe2 --score --id 002 --top 20
+python scripts/fit_monolayer.py WSe2 42 --id 002
 ```
 
 ### Programmatic usage
@@ -355,7 +355,7 @@ print(f"Optimized parameters: {result['x']}")
 
 ### Output
 
-Fitted parameters from grid searches are saved as `.npz` files in `Data/run_<id>/`. Each file contains the optimized parameters, chi-squared values, individual constraint values, and the computed band energies. Symmetrized ARPES data is cached as `Data/sym_{TMD}.npz`.
+Fitted parameters from grid searches are saved as `.npz` files in `Data/<TMD>_<id>/`. Each file contains the optimized parameters, chi-squared values, individual constraint values, and the computed band energies. Symmetrized ARPES data is cached as `Data/sym_{TMD}.npz`.
 
 ### Lattice constants
 
@@ -518,20 +518,20 @@ Interlayer parameter ranges are specified as `range_ev` (± around fitted value)
 
 ```bash
 # Gamma sweep: single chunk (for testing)
-python scripts/edc_grid_gamma.py --chunk 0/1000000 --run-id test
+python scripts/edc_grid_gamma.py --chunk 0/1000000 --id test
 
 # Gamma sweep: combine chunks
-python scripts/combine_edc_chunks.py --bz-point gamma --run-id test
+python scripts/combine_edc_chunks.py --bz-point gamma --id test
 
 # Gamma sweep: analyze results
-python scripts/analyze_edc_gamma.py --run-id test
+python scripts/analyze_edc_gamma.py --id test
 
 # K sweep (after Gamma best fit is known)
-python scripts/edc_grid_k.py --chunk 0/10000 --run-id test_k
+python scripts/edc_grid_k.py --chunk 0/10000 --id test_k
 
 # K sweep: combine and analyze
-python scripts/combine_edc_chunks.py --bz-point k --run-id test_k
-python scripts/analyze_edc_k.py --run-id test_k
+python scripts/combine_edc_chunks.py --bz-point k --id test_k
+python scripts/analyze_edc_k.py --id test_k
 ```
 
 ### EDC HPC Workflow

@@ -11,7 +11,7 @@ MATERIAL=$1
 RUN_ID=${2:-default}
 N_TASKS=${3:-128}
 
-qsub -N grid_${MATERIAL}_${RUN_ID} \
+qsub -N ${MATERIAL}_${RUN_ID} \
      -o HPC/out_${MATERIAL}_${RUN_ID}.out \
      -e HPC/out_${MATERIAL}_${RUN_ID}.err \
      -t 1-${N_TASKS} \
