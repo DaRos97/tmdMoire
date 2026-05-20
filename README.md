@@ -459,7 +459,7 @@ Fitted interlayer parameters are saved to:
 
 With monolayer parameters and interlayer couplings fixed, this stage sweeps the moiré potential parameters to match experimental Energy Distribution Curve (EDC) peak positions. The workflow runs in two stages:
 
-1. **Gamma-point sweep** — 6D grid over Vg, φG, w1p, w1d, w2p, w2d (Vk and φK fixed). Fits 4 Lorentzians to the EDC intensity profile (TVB main/side + LVB main/side).
+1. **Gamma-point sweep** — 6D grid over Vg, φG, w1p, w1d, w2p, w2d (Vk and φK fixed). Fits 3 Lorentzians to the EDC intensity profile (TVB main/side + LVB main).
 2. **K-point sweep** — 2D grid over Vk, φK with all other parameters fixed to the Gamma best fit. Fits 2 Lorentzians (TVB + moire side band) and computes the band gap near K.
 
 ### EDC Intensity Profile
@@ -478,15 +478,11 @@ The EDC intensity at a given k-point is computed from the supercell Hamiltonian 
 
 **Grid**: 6 dimensions — Vg, φG, w1p, w1d, w2p, w2d. Fixed parameters: Vk = 7.7 meV, φK = 106°.
 
-**Peak structure**: 4 Lorentzians corresponding to:
-- TVB main (c1) — top valence band, WSe₂-derived
-- TVB side (c2) — moire side band of TVB
-- LVB main (c3) — lower valence band, WS₂-derived
-- LVB side (c4) — moire side band of LVB
+**Peak structure**: 4 Lorentzians are fitted (TVB main, TVB side, LVB main, LVB side), but only the first three peak details (c1–c3, a1–a3, g1–g3) are saved. The first three peaks are the ones compared against ARPES experimental positions; the fourth peak (LVB side band) is fitted to improve the overall fit quality but is not used in the distance metric.
 
 **Distance metric**:
 ```
-dist = √[(c1 - E_TVB)² + (c2 - E_side)² + (c3 - E_LVB)²] / 3
+dist = |c1 - E_TVB| + |c2 - E_side| + |c3 - E_LVB|
 ```
 where experimental values are `EDC_G_POSITIONS = [-1.1599, -1.2531, -1.82]` eV for sample S11.
 
@@ -550,7 +546,7 @@ Each run is stored in a self-contained directory:
 
 ```
 Data/
-  edc_grid_gamma_run_001/
+  edc_gamma_run_001/
     grid_config.json          ← snapshot of gamma config
     interlayer_params.npy     ← snapshot of fitted interlayer params
     run_metadata.json         ← run info (timestamp, grid sizes, fixed params)
@@ -563,14 +559,14 @@ Data/
 
 ### EDC Output Format
 
-Each `.h5` file contains 19 datasets:
+Each `.h5` file contains 16 datasets. Note: 4 Lorentzians are fitted per EDC, but only the first 3 peak details are saved since those are the ones compared against ARPES experimental positions.
 
 | Column | Description |
 |---|---|
 | `Vg`, `phiG`, `w1p`, `w1d`, `w2p`, `w2d` | Input parameters |
-| `c1`–`c4` | Fitted peak centers (eV) |
-| `a1`–`a4` | Fitted peak amplitudes |
-| `g1`–`g4` | Fitted peak widths (gamma) |
+| `c1`–`c3` | Fitted peak centers (eV) — TVB main, TVB side, LVB main |
+| `a1`–`a3` | Fitted peak amplitudes |
+| `g1`–`g3` | Fitted peak widths (gamma) |
 | `redchi` | Reduced chi-squared of the fit |
 
 The K-point sweep additionally includes `gap` (band gap in eV).

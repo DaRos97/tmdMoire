@@ -6,7 +6,7 @@ This directory contains scripts for testing, debugging, and inspecting intermedi
 
 | Script | Purpose |
 |---|---|
-| `test_edc_gamma.py` | Computes the EDC intensity profile at Gamma for a single parameter set (Vg=15 meV, phiG=180°), fits 4 Lorentzians, and plots the intensity profile with individual peak contributions. Saves to `Data/edc_intensity_test/`. |
+| `test_edc_gamma.py` | Computes the EDC intensity profile at Gamma for a single parameter set (Vg=15 meV, phiG=180°), fits 3 Lorentzians, and plots the intensity profile with individual peak contributions. Saves to `Data/edc_intensity_test/`. |
 | `benchmark_edc.py` | Measures the wall-clock time for a single EDC computation (diagonalization + spreading + fitting). Reports average time per point over N runs. |
 
 ## Monolayer constraint debugging

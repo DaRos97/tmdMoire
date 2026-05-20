@@ -97,7 +97,7 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `run_monolayer_grid.py` | Grid search: iterates over all K1-K6 combinations, supports `--start/--end` chunking, `--score` mode, `--export` |
 | `plot_bilayer_data.py` | Loads and plots bilayer ARPES data pipeline (raw → symmetrized → interpolated) |
 | `fit_bilayer_coupling.py` | Fits interlayer coupling parameters to bilayer ARPES data |
-| `edc_grid_gamma.py` | Gamma-point EDC sweep: 6D grid over Vg, phiG, w1p, w1d, w2p, w2d; fits 4 Lorentzians; saves to `.h5` |
+| `edc_grid_gamma.py` | Gamma-point EDC sweep: 6D grid over Vg, phiG, w1p, w1d, w2p, w2d; fits 3 Lorentzians; saves to `.h5` |
 | `edc_grid_k.py` | K-point EDC sweep: 2D grid over Vk, phiK; fits 2 Lorentzians + band gap; saves to `.h5` |
 | `combine_edc_chunks.py` | Combines chunked `.h5` files into single `combined.h5` |
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
@@ -109,7 +109,7 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 
 | Script | Role |
 |---|---|
-| `test_edc_gamma.py` | Single-point EDC at Gamma: computes intensity profile, fits 4 Lorentzians, plots result |
+| `test_edc_gamma.py` | Single-point EDC at Gamma: computes intensity profile, fits 3 Lorentzians, plots result |
 | `benchmark_edc.py` | Measures wall-clock time per EDC point (diagonalization + spreading + fitting) |
 | `check_k3_d2.py` | Verifies K3 orbital occupation constraint at K against DFT targets |
 | `check_k5_detail.py` | Detailed K5 analysis: DFT vs fitted band shifts at K |
@@ -128,10 +128,10 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Stored band_K6**: K6-weighted band distance (matches objective function); `band_dist` stores pure band distance for cross-comparison across grid points
 - **Inputs/monolayer_fitting/**: ARPES band data (`KpGK_*.txt`, `KMKp_*.txt`), pre-fitted TB params (`tb_*.npy`), fit config (`fit_config.json`), manifest (`manifest.json`)
 - **Inputs/bilayer_fitting/**: Bilayer ARPES bands (`WSe2WS2_Band*.txt`), exported monolayer params (`tb_WSe2.npy`, `tb_WS2.npy`), interlayer params (Step 2 output), grid configs (`grid_config_gamma.json`, `grid_config_k.json`)
-- **Outputs**: `Data/run_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/run_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_grid_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files)
+- **Outputs**: `Data/run_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/run_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files)
 - **Default Gamma grid**: 11×37×11×11×11×11 = ~6M combinations. ~0.6s per point (836×836 diagonalization dominates).
 - **Default K grid**: 20×37 = 740 combinations (configurable).
-- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV) + 4-Lorentzian fit at Gamma, 2-Lorentzian fit at K.
+- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV) + 3-Lorentzian fit at Gamma, 2-Lorentzian fit at K.
 
 ## Workflow
 
@@ -167,10 +167,10 @@ Bilayer stage:
                                                      Fix interlayer params from Step 1
                                                      Sweep Vg, phiG, w1p, w1d, w2p, w2d (6D)
                                                      Fixed: Vk=7.7 meV, phiK=106 deg
-                                                     836×836 diagonalization + 4-Lorentzian fit
+                                                     836×836 diagonalization + 3-Lorentzian fit
                                                      Match EDC_G_POSITIONS
                                                                    ↓
-                                                     Data/edc_grid_gamma_run_<id>/
+                                                     Data/edc_gamma_run_<id>/
                                                      combined.h5 + analysis.png
                                                                    ↓
                                                      Step 2b: Moire potential at K

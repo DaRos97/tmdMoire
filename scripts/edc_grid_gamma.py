@@ -2,7 +2,7 @@
 
 Loads grid parameters from Inputs/bilayer_fitting/grid_config.json,
 sweeps 6D parameter space (Vg, phiG, w1p, w1d, w2p, w2d),
-fits 4 Lorentzians to each EDC, and saves results.
+fits 3 Lorentzians to each EDC, and saves results.
 
 Usage:
     python scripts/edc_grid_gamma.py --chunk <id>/<total>
@@ -207,40 +207,23 @@ def compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d):
         return None
 
     return {
-        "c1": result.best_values["c1"],
-        "c2": result.best_values["c2"],
-        "c3": result.best_values["c3"],
-        "c4": result.best_values["c4"],
-        "a1": result.best_values["a1"],
-        "a2": result.best_values["a2"],
-        "a3": result.best_values["a3"],
-        "a4": result.best_values["a4"],
-        "g1": result.best_values["g1"],
-        "g2": result.best_values["g2"],
-        "g3": result.best_values["g3"],
-        "g4": result.best_values["g4"],
+        "c1": result.best_values["c1"], "a1": result.best_values["a1"], "g1": result.best_values["g1"],
+        "c2": result.best_values["c2"], "a2": result.best_values["a2"], "g2": result.best_values["g2"],
+        "c3": result.best_values["c3"], "a3": result.best_values["a3"], "g3": result.best_values["g3"],
         "redchi": result.redchi,
     }
 
 # ─── Run grid ────────────────────────────────────────────────────────────────
 
-out_dir = Path("Data") / f"edc_grid_gamma_run_{run_id}"
+out_dir = Path("Data") / f"edc_gamma_run_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
-# Copy grid config and interlayer params into run directory for reproducibility
+# Save combined metadata
 grid_config_src = master_folder + "/Inputs/bilayer_fitting/grid_config_gamma.json"
-grid_config_dst = out_dir / "grid_config.json"
-if not grid_config_dst.exists() or os.path.getmtime(grid_config_src) > grid_config_dst.stat().st_mtime:
-    shutil.copy2(grid_config_src, grid_config_dst)
-
-interlayer_src = master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy"
-interlayer_dst = out_dir / "interlayer_params.npy"
-if not interlayer_dst.exists() or os.path.getmtime(interlayer_src) > interlayer_dst.stat().st_mtime:
-    shutil.copy2(interlayer_src, interlayer_dst)
-
-# Save run metadata
-meta_fn = out_dir / "run_metadata.json"
+meta_fn = out_dir / "metadata.json"
 if not meta_fn.exists():
+    with open(grid_config_src) as f:
+        grid_cfg_src = json.load(f)
     meta = {
         "run_id": run_id,
         "timestamp_start": datetime.datetime.now().isoformat(),
@@ -259,14 +242,20 @@ if not meta_fn.exists():
             "w1p": float(w1p_fit), "w1d": float(w1d_fit),
             "w2p": float(w2p_fit), "w2d": float(w2d_fit),
         },
+        "grid_config": grid_cfg_src,
     }
     with open(meta_fn, "w") as f:
         json.dump(meta, f, indent=2)
 
+interlayer_src = master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy"
+interlayer_dst = out_dir / "interlayer_params.npy"
+if not interlayer_dst.exists() or os.path.getmtime(interlayer_src) > interlayer_dst.stat().st_mtime:
+    shutil.copy2(interlayer_src, interlayer_dst)
+
 out_fn = out_dir / f"chunk_{chunk_id}_{n_chunks}.h5"
 
 columns = ["Vg", "phiG", "w1p", "w1d", "w2p", "w2d",
-           "c1", "c2", "c3", "c4", "a1", "a2", "a3", "a4", "g1", "g2", "g3", "g4", "redchi"]
+           "c1", "a1", "g1", "c2", "a2", "g2", "c3", "a3", "g3", "redchi"]
 
 t_start = time.perf_counter()
 n_success = 0
@@ -287,7 +276,7 @@ with h5py.File(out_fn, "w") as hf:
         dsets["w2d"][i] = w2d
 
         if result is not None:
-            for col in ["c1", "c2", "c3", "c4", "a1", "a2", "a3", "a4", "g1", "g2", "g3", "g4", "redchi"]:
+            for col in ["c1", "a1", "g1", "c2", "a2", "g2", "c3", "a3", "g3", "redchi"]:
                 dsets[col][i] = result[col]
             n_success += 1
         else:

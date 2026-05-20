@@ -1,6 +1,6 @@
 """Test EDC intensity profile at Gamma with fixed parameters.
 
-Uses Vg=15 meV, phiG=180 deg, and fitted interlayer couplings.
+Uses Vg=5 meV, phiG=180 deg, and fitted interlayer couplings.
 Computes the EDC intensity profile, fits 4 Lorentzians (TVB main/side + LVB main/side),
 and plots the result.
 """
@@ -24,7 +24,7 @@ master_folder = get_repo_root()
 
 # ─── Parameters ──────────────────────────────────────────────────────────────
 
-Vg = 0.015          # 15 meV
+Vg = 0.005          # 5 meV
 phiG_deg = 180
 phiG = phiG_deg / 180 * np.pi
 spreadE = 0.03
