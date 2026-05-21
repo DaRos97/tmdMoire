@@ -6,6 +6,7 @@ with the global best-fit point marked and interlayer parameters shown.
 
 Usage:
     python scripts/analyze_edc_gamma.py --id 001
+    python scripts/analyze_edc_gamma.py --id 001 --cutoff 0.030
     python scripts/analyze_edc_gamma.py --id 001 --output Figures/edc_gamma_analysis.png
 """
 import sys
@@ -28,6 +29,7 @@ from tmdmoire import EDC_G_POSITIONS
 
 run_id = "default"
 output = None
+cutoff_ev = 0.050  # 50 meV default
 
 args = sys.argv[1:]
 i = 0
@@ -37,6 +39,9 @@ while i < len(args):
         i += 2
     elif args[i] == "--output" and i + 1 < len(args):
         output = Path(args[i + 1])
+        i += 2
+    elif args[i] == "--cutoff" and i + 1 < len(args):
+        cutoff_ev = float(args[i + 1])
         i += 2
     else:
         i += 1
@@ -108,7 +113,6 @@ dist[valid] = (
 
 # ─── Apply cutoff ────────────────────────────────────────────────────────────
 
-cutoff_ev = 0.050  # 50 meV
 above_cutoff = dist > cutoff_ev
 dist[above_cutoff] = np.nan
 n_cutoff = above_cutoff.sum()
@@ -143,11 +147,12 @@ n_Vg = len(Vg_vals)
 
 print(f"\nGrid: {n_Vg} Vg values x {n_phi} phiG values")
 
+param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+
 # Build 2D array: for each (Vg, phiG) cell, take min over all interlayer combos
 dist_2d = np.full((n_Vg, n_phi), np.nan)
 bounds_2d = [[[] for _ in range(n_phi)] for _ in range(n_Vg)]
-
-param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+param_2d = {pname: np.full((n_Vg, n_phi), np.nan) for pname in param_arrays}
 
 for iv, vg in enumerate(Vg_vals):
     for ip, pg in enumerate(phiG_vals):
@@ -158,9 +163,12 @@ for iv, vg in enumerate(Vg_vals):
             dist_2d[iv, ip] = dist[idx_global]
             for pname, parr in param_arrays.items():
                 val = parr[idx_global]
+                param_2d[pname][iv, ip] = val
                 lo, hi = bounds[pname]
-                if abs(val - lo) < tol or abs(val - hi) < tol:
-                    bounds_2d[iv][ip].append(pname)
+                if abs(val - lo) < tol:
+                    bounds_2d[iv][ip].append((pname, "lo"))
+                elif abs(val - hi) < tol:
+                    bounds_2d[iv][ip].append((pname, "hi"))
 
 # ─── Plot ────────────────────────────────────────────────────────────────────
 
@@ -191,14 +199,19 @@ from matplotlib.patches import Patch
 
 bound_colors = {"w1p": "red", "w1d": "blue", "w2p": "green", "w2d": "orange"}
 bound_styles = {"w1p": "-", "w1d": "--", "w2p": "-.", "w2d": ":"}
+bound_widths = {"lo": 2, "hi": 4}
 
 all_legend_handles = [
     Patch(facecolor="none", edgecolor="none", label=legend_text),
 ]
 for p in ["w1p", "w1d", "w2p", "w2d"]:
     all_legend_handles.append(
-        Patch(facecolor="none", edgecolor=bound_colors[p], linewidth=2,
-              linestyle=bound_styles[p], label=f"{p} at bound")
+        Patch(facecolor="none", edgecolor=bound_colors[p], linewidth=bound_widths["lo"],
+              linestyle=bound_styles[p], label=f"{p} at lower bound")
+    )
+    all_legend_handles.append(
+        Patch(facecolor="none", edgecolor=bound_colors[p], linewidth=bound_widths["hi"],
+              linestyle=bound_styles[p], label=f"{p} at upper bound")
     )
 ax.legend(
     handles=all_legend_handles,
@@ -214,12 +227,12 @@ for iv in range(n_Vg):
     for ip in range(n_phi):
         if not bounds_2d[iv][ip]:
             continue
-        for pname in bounds_2d[iv][ip]:
+        for pname, side in bounds_2d[iv][ip]:
             rect = Rectangle(
                 (phiG_vals[ip] - dphiG / 2, Vg_vals[iv] * 1000 - dVg / 2),
                 dphiG, dVg,
                 fill=False, edgecolor=bound_colors[pname],
-                linewidth=3, linestyle=bound_styles[pname],
+                linewidth=bound_widths[side], linestyle=bound_styles[pname],
                 zorder=4,
             )
             ax.add_patch(rect)
@@ -244,3 +257,59 @@ fig.savefig(output, dpi=200, bbox_inches="tight")
 plt.close(fig)
 
 print(f"\nFigure saved to {output}")
+
+# ─── Plot interlayer parameters as function of (Vg, phiG) ───────────────────
+
+param_names = ["w1p", "w1d", "w2p", "w2d"]
+fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
+axes = axes.flatten()
+
+fit_values = {"w1p": w1p_fit, "w1d": w1d_fit, "w2p": w2p_fit, "w2d": w2d_fit}
+
+for idx, pname in enumerate(param_names):
+    ax = axes[idx]
+    im = ax.pcolormesh(
+        phiG_vals, Vg_vals * 1000, param_2d[pname] * 1000,
+        cmap="viridis", shading="auto",
+    )
+    cbar = fig.colorbar(im, ax=ax, pad=0.02)
+    cbar.set_label(f"{pname} (meV)", fontsize=10)
+
+    # Mark global minimum
+    ax.scatter(
+        phiG[idx_best], Vg[idx_best] * 1000,
+        marker="*", s=150, c="red", edgecolors="white", linewidths=1.5,
+        zorder=5,
+    )
+
+    # Draw bound rectangles
+    for iv in range(n_Vg):
+        for ip in range(n_phi):
+            cell_params = [p for p, _ in bounds_2d[iv][ip]]
+            if pname not in cell_params:
+                continue
+            side = [s for p, s in bounds_2d[iv][ip] if p == pname][0]
+            rect = Rectangle(
+                (phiG_vals[ip] - dphiG / 2, Vg_vals[iv] * 1000 - dVg / 2),
+                dphiG, dVg,
+                fill=False, edgecolor=bound_colors[pname],
+                linewidth=bound_widths[side], linestyle=bound_styles[pname],
+                zorder=4,
+            )
+            ax.add_patch(rect)
+
+    ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=11)
+    ax.set_ylabel(r"$V_G$ (meV)", fontsize=11)
+    ax.set_title(f"{pname}  (center = {fit_values[pname]*1000:.1f} meV)", fontsize=12)
+
+fig.suptitle(
+    f"Interlayer parameters at min distance\n"
+    f"Run: {run_id}",
+    fontsize=13, y=1.02,
+)
+
+param_output = run_dir / "analysis_params.png"
+fig.savefig(param_output, dpi=200, bbox_inches="tight")
+plt.close(fig)
+
+print(f"Parameter figure saved to {param_output}")

@@ -33,6 +33,7 @@ from tmdmoire.plotting.bilayer import (
     plot_moire_bands_simulated,
     plot_arpes_data,
     plot_moire_bands_half_arpes,
+    plot_moire_bands_simulated_with_arpes,
 )
 from tmdmoire.constants import ENERGY_OFFSETS
 
@@ -307,6 +308,18 @@ def main():
     plot_moire_bands_simulated(
         norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
         shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
+    )
+
+    print("Loading bilayer ARPES data for overlay")
+    from tmdmoire.bilayer.data import BilayerData
+    from tmdmoire.utils.paths import get_repo_root
+    repo_root = get_repo_root()
+    bilayer_data = BilayerData(repo_root, pts=200)
+
+    print("Plotting simulated bands with ARPES overlay")
+    plot_moire_bands_simulated_with_arpes(
+        norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
+        bilayer_data, shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
     )
 
     print("Loading ARPES data")

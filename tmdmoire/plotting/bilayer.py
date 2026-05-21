@@ -449,3 +449,52 @@ def plot_moire_bands_half_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
     fig.savefig(fn, dpi=200, bbox_inches="tight")
     print(f"Saved: {fn}")
     plt.close(fig)
+
+
+def plot_moire_bands_simulated_with_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
+                                           bilayer_data, shade_factor_e=3.0, save_dir=None):
+    """Plot simulated moire bands with ARPES band overlay on K'->G->K left half.
+
+    Left subplot (K'->Gamma->K): left side (k < 0) shows simulated intensity
+    with ARPES bands overlaid as thin red lines; right side (k > 0) is
+    simulated-only. Right subplot (K->M->K') is simulated-only.
+    """
+    spread_kgk = _apply_energy_shading(spread_kgk, e_list, shade_factor_e)
+    spread_kmkp = _apply_energy_shading(spread_kmkp, e_list, shade_factor_e)
+
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    ax1.pcolormesh(k_kgk, e_list, spread_kgk.T, cmap="Greys", shading="auto")
+    for ib in range(bilayer_data.n_bands):
+        rd = bilayer_data.raw_data[ib]
+        left_mask = rd[:, 0] < 0
+        rd_left = rd[left_mask]
+        valid = ~np.isnan(rd_left[:, 1])
+        ax1.plot(rd_left[valid, 0], rd_left[valid, 1],
+                 color="red", lw=1.0, alpha=0.8, zorder=3)
+
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    ax2.pcolormesh(k_kmkp, e_list, spread_kmkp.T, cmap="Greys", shading="auto")
+    ax2.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Moiré bilayer bands — simulated + ARPES overlay",
+                 fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "moire_bands_simulated_with_arpes.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
