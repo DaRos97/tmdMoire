@@ -215,7 +215,7 @@ def compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d):
 
 # ─── Run grid ────────────────────────────────────────────────────────────────
 
-out_dir = Path("Data") / f"edc_gamma_run_{run_id}"
+out_dir = Path("Data") / f"edc_gamma_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # Save combined metadata

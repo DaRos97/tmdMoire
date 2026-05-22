@@ -204,7 +204,7 @@ def compute_and_fit(Vk, phiK_deg):
 
 # ─── Run grid ────────────────────────────────────────────────────────────────
 
-out_dir = Path("Data") / f"edc_grid_k_run_{run_id}"
+out_dir = Path("Data") / f"edc_grid_k_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # Copy grid config and interlayer params into run directory for reproducibility
