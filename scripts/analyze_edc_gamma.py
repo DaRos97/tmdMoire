@@ -29,7 +29,7 @@ from tmdmoire import EDC_G_POSITIONS
 
 run_id = "default"
 output = None
-cutoff_ev = 0.050  # 50 meV default
+cutoff_ev = 0.026  # 26 meV default
 
 args = sys.argv[1:]
 i = 0
@@ -74,23 +74,21 @@ with open(meta_fn) as f:
     meta = json.load(f)
 
 grid_cfg = meta["grid_config"]
-fitted_interlayer = np.array([
-    meta["fitted_interlayer"]["w1p"],
-    meta["fitted_interlayer"]["w1d"],
-    meta["fitted_interlayer"]["w2p"],
-    meta["fitted_interlayer"]["w2d"],
-])
-w1p_fit, w1d_fit, w2p_fit, w2d_fit = fitted_interlayer
 
-il = grid_cfg["interlayer"]
-bounds = {
-    "w1p": (w1p_fit - il["w1p"]["range_ev"], w1p_fit + il["w1p"]["range_ev"]),
-    "w1d": (w1d_fit - il["w1d"]["range_ev"], w1d_fit + il["w1d"]["range_ev"]),
-    "w2p": (w2p_fit - il["w2p"]["range_ev"], w2p_fit + il["w2p"]["range_ev"]),
-    "w2d": (w2d_fit - il["w2d"]["range_ev"], w2d_fit + il["w2d"]["range_ev"]),
-}
+# ─── Determine actual parameter bounds from data ─────────────────────────────
+# (metadata.json range_ev may be inaccurate; use observed min/max)
 
-tol = 1e-6  # tolerance for "at bound" comparison
+param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+bounds = {}
+for pname, parr in param_arrays.items():
+    lo = float(np.nanmin(parr))
+    hi = float(np.nanmax(parr))
+    bounds[pname] = (lo, hi)
+    center = (lo + hi) / 2
+    half_range = (hi - lo) / 2
+    print(f"  {pname}: [{lo:+.4f}, {hi:+.4f}] (center {center:+.4f}, ±{half_range:.4f})")
+
+tol = 1e-4  # tolerance for "at bound" comparison
 
 n_points = len(Vg)
 print(f"Loaded {n_points} points from {combined_fn}")
@@ -146,8 +144,6 @@ n_phi = len(phiG_vals)
 n_Vg = len(Vg_vals)
 
 print(f"\nGrid: {n_Vg} Vg values x {n_phi} phiG values")
-
-param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
 
 # Build 2D array: for each (Vg, phiG) cell, take min over all interlayer combos
 dist_2d = np.full((n_Vg, n_phi), np.nan)
@@ -264,7 +260,7 @@ param_names = ["w1p", "w1d", "w2p", "w2d"]
 fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
 axes = axes.flatten()
 
-fit_values = {"w1p": w1p_fit, "w1d": w1d_fit, "w2p": w2p_fit, "w2d": w2d_fit}
+fit_values = {p: (bounds[p][0] + bounds[p][1]) / 2 for p in param_names}
 
 for idx, pname in enumerate(param_names):
     ax = axes[idx]
