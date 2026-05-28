@@ -7,6 +7,7 @@ with the global best-fit point marked and interlayer parameters shown.
 Usage:
     python scripts/analyze_edc_gamma.py --id 001
     python scripts/analyze_edc_gamma.py --id 001 --cutoff 0.030
+    python scripts/analyze_edc_gamma.py --id 001 --ratio-cutoff 0.15
     python scripts/analyze_edc_gamma.py --id 001 --output Figures/edc_gamma_analysis.png
 """
 import sys
@@ -30,6 +31,7 @@ from tmdmoire import EDC_G_POSITIONS
 run_id = "default"
 output = None
 cutoff_ev = 0.026  # 26 meV default
+ratio_cutoff = 0.1  # 10% default
 
 args = sys.argv[1:]
 i = 0
@@ -42,6 +44,9 @@ while i < len(args):
         i += 2
     elif args[i] == "--cutoff" and i + 1 < len(args):
         cutoff_ev = float(args[i + 1])
+        i += 2
+    elif args[i] == "--ratio-cutoff" and i + 1 < len(args):
+        ratio_cutoff = float(args[i + 1])
         i += 2
     else:
         i += 1
@@ -66,6 +71,8 @@ with h5py.File(combined_fn, "r") as f:
     c1 = f["c1"][:]
     c2 = f["c2"][:]
     c3 = f["c3"][:]
+    a1 = f["a1"][:]
+    a2 = f["a2"][:]
 
 # ─── Load metadata ───────────────────────────────────────────────────────────
 
@@ -109,16 +116,25 @@ dist[valid] = (
     + np.abs(c3[valid] - exp[2])
 )
 
-# ─── Apply cutoff ────────────────────────────────────────────────────────────
+# ─── Apply cutoffs ───────────────────────────────────────────────────────────
 
 above_cutoff = dist > cutoff_ev
 dist[above_cutoff] = np.nan
 n_cutoff = above_cutoff.sum()
 n_within_cutoff = np.sum(~np.isnan(dist))
-print(f"Points within cutoff: {n_within_cutoff} / {n_points}")
+print(f"Points within distance cutoff: {n_within_cutoff} / {n_points}")
 
-if n_within_cutoff == 0:
-    print("No points within cutoff. Exiting.")
+ratio = np.full(n_points, np.nan)
+ratio[valid & ~np.isnan(dist)] = a2[valid & ~np.isnan(dist)] / a1[valid & ~np.isnan(dist)]
+
+below_ratio_cutoff = ~np.isnan(ratio) & (ratio < ratio_cutoff)
+dist[below_ratio_cutoff] = np.nan
+n_below_ratio = below_ratio_cutoff.sum()
+n_after_ratio = np.sum(~np.isnan(dist))
+print(f"Points above ratio cutoff a2/a1 >= {ratio_cutoff}: {n_after_ratio} / {n_points}")
+
+if n_after_ratio == 0:
+    print("No points pass both cutoffs. Exiting.")
     sys.exit(0)
 
 # ─── Find global minimum ─────────────────────────────────────────────────────
@@ -134,6 +150,7 @@ print(f"  w2d  = {w2d[idx_best]:+.4f} eV")
 print(f"  c1   = {c1[idx_best]:.4f} eV (exp: {exp[0]:.4f} eV)")
 print(f"  c2   = {c2[idx_best]:.4f} eV (exp: {exp[1]:.4f} eV)")
 print(f"  c3   = {c3[idx_best]:.4f} eV (exp: {exp[2]:.4f} eV)")
+print(f"  a2/a1 = {ratio[idx_best]:.4f}")
 
 # ─── Aggregate: min distance over (Vg, phiG) grid ───────────────────────────
 
@@ -189,7 +206,8 @@ legend_text = (
     f"w1p = {w1p[idx_best]:+.4f} eV\n"
     f"w1d = {w1d[idx_best]:+.4f} eV\n"
     f"w2p = {w2p[idx_best]:+.4f} eV\n"
-    f"w2d = {w2d[idx_best]:+.4f} eV"
+    f"w2d = {w2d[idx_best]:+.4f} eV\n"
+    f"Cutoffs: dist <= {cutoff_ev*1000:.0f} meV, a2/a1 >= {ratio_cutoff:.2f}"
 )
 from matplotlib.patches import Patch
 
@@ -211,7 +229,7 @@ for p in ["w1p", "w1d", "w2p", "w2d"]:
     )
 ax.legend(
     handles=all_legend_handles,
-    loc="upper left", fontsize=9, framealpha=0.9,
+    loc="lower left", fontsize=9, framealpha=0.9,
 )
 
 # ─── Draw borders for cells at parameter bounds ─────────────────────────────
@@ -240,7 +258,7 @@ ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
 ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
 ax.set_title(
     f"EDC Gamma: min distance over interlayer params\n"
-    f"Run: {run_id}  |  {n_within_cutoff}/{n_points} within {cutoff_ev*1000:.0f} meV cutoff",
+    f"Run: {run_id}  |  {n_after_ratio}/{n_points} pass both cutoffs",
     fontsize=12,
 )
 
@@ -309,3 +327,48 @@ fig.savefig(param_output, dpi=200, bbox_inches="tight")
 plt.close(fig)
 
 print(f"Parameter figure saved to {param_output}")
+
+# ─── Aggregate: intensity ratio a2/a1 over (Vg, phiG) grid ──────────────────
+
+ratio_2d = np.full((n_Vg, n_phi), np.nan)
+
+for iv, vg in enumerate(Vg_vals):
+    for ip, pg in enumerate(phiG_vals):
+        mask = (Vg == vg) & (phiG == pg) & ~np.isnan(dist)
+        if mask.any():
+            idx_min = np.nanargmin(dist[mask])
+            idx_global = np.where(mask)[0][idx_min]
+            if a1[idx_global] > 0:
+                ratio_2d[iv, ip] = a2[idx_global] / a1[idx_global]
+
+# ─── Plot intensity ratio ────────────────────────────────────────────────────
+
+fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+
+im = ax.pcolormesh(
+    phiG_vals, Vg_vals * 1000, ratio_2d,
+    cmap="viridis", shading="auto",
+)
+
+ax.scatter(
+    phiG[idx_best], Vg[idx_best] * 1000,
+    marker="*", s=200, c="red", edgecolors="white", linewidths=1.5,
+    zorder=5, label="Best fit",
+)
+
+cbar = fig.colorbar(im, ax=ax, pad=0.02)
+cbar.set_label(r"$a_2 / a_1$ (adjacent band / TVB)", fontsize=11)
+
+ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
+ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
+ax.set_title(
+    f"EDC Gamma: adjacent band intensity relative to TVB\n"
+    f"Run: {run_id}  |  at min-distance interlayer params",
+    fontsize=12,
+)
+
+ratio_output = run_dir / "analysis_ratio.png"
+fig.savefig(ratio_output, dpi=200, bbox_inches="tight")
+plt.close(fig)
+
+print(f"Ratio figure saved to {ratio_output}")
