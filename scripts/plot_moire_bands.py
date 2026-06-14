@@ -9,7 +9,7 @@ Usage:
     python scripts/plot_moire_bands.py [--k-pts 300] [--n-shells 2] ...
 
 All parameters are loaded from Inputs/plot_bilayer/:
-    tb_WSe2.npy, tb_WS2.npy, interlayer_G.npy, interlayer_K.npy
+    tb_WSe2.npy, tb_WS2.npy, interlayer_G.json, interlayer_K.json
 
 Outputs:
     Data/plot_bilayer_moire/diag_k<k-pts>_n<n-shells>/diag.npz
@@ -17,6 +17,7 @@ Outputs:
     Data/plot_bilayer_moire/diag_k<k-pts>_n<n-shells>/intensity_<...>/*.png
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -34,6 +35,8 @@ from tmdmoire.plotting.bilayer import (
     plot_arpes_data,
     plot_moire_bands_half_arpes,
     plot_moire_bands_simulated_with_arpes,
+    plot_diag_half_bands,
+    plot_diag_bands_over_arpes,
 )
 from tmdmoire.constants import ENERGY_OFFSETS
 
@@ -83,8 +86,10 @@ def load_params():
     """Load all parameters from Inputs/plot_bilayer/."""
     tb_wse2 = np.load(INPUT_DIR / "tb_WSe2.npy")
     tb_ws2 = np.load(INPUT_DIR / "tb_WS2.npy")
-    interlayer_g = np.load(INPUT_DIR / "interlayer_G.npy", allow_pickle=True).item()
-    interlayer_k = np.load(INPUT_DIR / "interlayer_K.npy", allow_pickle=True).item()
+    with open(INPUT_DIR / "interlayer_G.json") as f:
+        interlayer_g = json.load(f)
+    with open(INPUT_DIR / "interlayer_K.json") as f:
+        interlayer_k = json.load(f)
 
     interlayer = {
         "w1p": interlayer_g["w1p"],
@@ -94,20 +99,52 @@ def load_params():
     }
     moire = {
         "Vg": interlayer_g["Vg"],
-        "phiG": interlayer_g["phiG"],
+        "phiG": interlayer_g["phiG_deg"] * np.pi / 180,
         "Vk": interlayer_k["Vk"],
-        "phiK": interlayer_k["phiK"],
+        "phiK": interlayer_k["phiK_deg"] * np.pi / 180,
     }
-    return tb_wse2, tb_ws2, interlayer, moire, interlayer_g, interlayer_k
+    return tb_wse2, tb_ws2, interlayer, moire
 
 
 def compute_diag_dir_name(n_shells, k_pts, interlayer, moire):
     """Human-readable directory name for diagonalization cache."""
     Vg_meV = moire["Vg"] * 1000
     Vk_meV = moire["Vk"] * 1000
+    phiG_deg = moire["phiG"] * 180 / np.pi
+    phiK_deg = moire["phiK"] * 180 / np.pi
     return (f"diag_k{k_pts}_n{n_shells}_"
             f"{interlayer['w1p']:.4f}_{interlayer['w1d']:.4f}_{interlayer['w2p']:.4f}_{interlayer['w2d']:.4f}_"
-            f"{Vg_meV:.1f}_{moire['phiG']:.0f}_{Vk_meV:.1f}_{moire['phiK']:.0f}")
+            f"{Vg_meV:.1f}_{phiG_deg:.1f}_{Vk_meV:.1f}_{phiK_deg:.1f}")
+
+
+def save_metadata(diag_dir, k_pts, n_shells, n_cells, interlayer, moire, theta, sample):
+    """Save metadata.json with all run parameters."""
+    meta = {
+        "k_pts": k_pts,
+        "n_shells": n_shells,
+        "n_cells": n_cells,
+        "theta_deg": theta,
+        "sample": sample,
+        "interlayer": {
+            "w1p": interlayer["w1p"],
+            "w1d": interlayer["w1d"],
+            "w2p": interlayer["w2p"],
+            "w2d": interlayer["w2d"],
+        },
+        "moire": {
+            "Vg_ev": moire["Vg"],
+            "Vg_meV": moire["Vg"] * 1000,
+            "phiG_deg": moire["phiG"] * 180 / np.pi,
+            "phiG_rad": moire["phiG"],
+            "Vk_ev": moire["Vk"],
+            "Vk_meV": moire["Vk"] * 1000,
+            "phiK_deg": moire["phiK"] * 180 / np.pi,
+            "phiK_rad": moire["phiK"],
+        },
+    }
+    meta_fn = diag_dir / "metadata.json"
+    with open(meta_fn, "w") as f:
+        json.dump(meta, f, indent=2)
 
 
 def compute_intensity_dir_name(spread_type, spread_k, spread_e, pow_factor,
@@ -159,14 +196,12 @@ def main():
     args = parse_args()
 
     print("Loading parameters from Inputs/plot_bilayer/")
-    tb_wse2, tb_ws2, interlayer, moire, interlayer_g, interlayer_k = load_params()
+    tb_wse2, tb_ws2, interlayer, moire = load_params()
 
     if args.Vg is not None:
         moire["Vg"] = args.Vg
-        interlayer_g["Vg"] = args.Vg
     if args.Vk is not None:
         moire["Vk"] = args.Vk
-        interlayer_k["Vk"] = args.Vk
 
     wse2 = TMDMaterial("WSe2", params=tb_wse2)
     ws2 = TMDMaterial("WS2", params=tb_ws2)
@@ -210,6 +245,7 @@ def main():
         norm_kgk_mono = d["norm_kgk_mono"]
         k_list_kgk = d["k_list_kgk"]
         k_list_kmkp = d["k_list_kmkp"]
+        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire, theta, args.sample)
     else:
         print(f"Building G->K->M path (k_pts={args.k_pts})")
         k_list_gkm, norm_gkm = get_k_list("G-K-M", args.k_pts, tmd="WSe2", return_norm=True)
@@ -275,6 +311,39 @@ def main():
             k_list_kgk=k_list_kgk,
             k_list_kmkp=k_list_kmkp,
         )
+        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire, theta, args.sample)
+
+    print("Loading ARPES intensity data for band-line plots")
+    k_kgk_arpes, e_kgk_arpes, intensity_kgk, k_kk_arpes, e_kk_arpes, intensity_kk = load_arpes_intensity()
+
+    print("Plotting half-ARPES / half-bands split")
+    plot_diag_half_bands(
+        norm_kgk, norm_kmkp, evals_kgk, evals_kmkp,
+        k_kgk_arpes, k_kk_arpes, e_kgk_arpes,
+        intensity_kgk, intensity_kk,
+        save_dir=diag_dir
+    )
+
+    print("Plotting bands over ARPES background")
+    plot_diag_bands_over_arpes(
+        norm_kgk, norm_kmkp, evals_kgk, evals_kmkp,
+        k_kgk_arpes, k_kk_arpes, e_kgk_arpes,
+        intensity_kgk, intensity_kk,
+        save_dir=diag_dir
+    )
+
+    if args.n_shells == 0:
+        print("Exporting top 8 valence bands to txt")
+        band_cols_top8 = list(range(-1, -9, -1))
+        header = "k_Angstrom\tBand27_eV\tBand26_eV\tBand25_eV\tBand24_eV\tBand23_eV\tBand22_eV\tBand21_eV\tBand20_eV"
+        out_kgk = np.column_stack([norm_kgk] + [evals_kgk[:, i] for i in band_cols_top8])
+        np.savetxt(diag_dir / "bands_KpGK.txt", out_kgk, fmt="%.8f", delimiter="\t",
+                    header=header, comments="")
+        print(f"  {diag_dir / 'bands_KpGK.txt'}")
+        out_kmkp = np.column_stack([norm_kmkp] + [evals_kmkp[:, i] for i in band_cols_top8])
+        np.savetxt(diag_dir / "bands_KpMK.txt", out_kmkp, fmt="%.8f", delimiter="\t",
+                    header=header, comments="")
+        print(f"  {diag_dir / 'bands_KpMK.txt'}")
 
     if spread_cached:
         print(f"Loading spread intensity from {intensity_dir_name}")
@@ -304,6 +373,34 @@ def main():
             spread_kmkp=spread_kmkp,
         )
 
+    print("Exporting intensity to txt (ARPES format)")
+    np.savetxt(intensity_dir / "intensity_KpGK.txt", spread_kgk, fmt="%.8f", delimiter="\t")
+    print(f"  {intensity_dir / 'intensity_KpGK.txt'}")
+    np.savetxt(intensity_dir / "intensity_KpMK.txt", spread_kmkp, fmt="%.8f", delimiter="\t")
+    print(f"  {intensity_dir / 'intensity_KpMK.txt'}")
+
+    print("Saving intensity axis metadata")
+    import json
+    meta_fn = intensity_dir / "intensity_meta.json"
+    with open(meta_fn, "w") as f:
+        json.dump({
+            "k_KpGK": norm_kgk.tolist(),
+            "k_KpMK": norm_kmkp.tolist(),
+            "e_list": e_list.tolist(),
+            "e_min": args.e_min,
+            "e_max": args.e_max,
+            "delta_e": args.delta_e,
+            "k_pts": args.k_pts,
+            "n_shells": args.n_shells,
+            "spread_type": args.spread_type,
+            "spread_k": args.spread_k,
+            "spread_e": args.spread_e,
+            "pow_factor": args.pow_factor,
+            "shade_ws2": args.shade_ws2,
+            "shade_e_factor": args.shade_e_factor,
+        }, f, indent=2)
+    print(f"  {meta_fn}")
+
     print("Plotting simulated bands")
     plot_moire_bands_simulated(
         norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
@@ -321,9 +418,6 @@ def main():
         norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
         bilayer_data, shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
     )
-
-    print("Loading ARPES data")
-    k_kgk_arpes, e_kgk_arpes, intensity_kgk, k_kk_arpes, e_kk_arpes, intensity_kk = load_arpes_intensity()
 
     print("Plotting ARPES data")
     plot_arpes_data(

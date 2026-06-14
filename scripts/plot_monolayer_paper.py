@@ -20,6 +20,7 @@ Usage
 import sys
 import os
 import argparse
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -166,6 +167,8 @@ def main():
     hso_dft = _find_HSO(dft_pars[-2:])
     args_h_dft = (hopping_dft, epsilon_dft, hso_dft, offset_dft)
 
+    param_hash = hashlib.md5(fit_pars.tobytes() + dft_pars.tobytes()).hexdigest()[:8]
+
     cache_dir = Path("Data") / "monolayer_figure_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -173,7 +176,7 @@ def main():
     list_k_fit_i, norm_fit_i = _get_gkm_path(args.n_k_int, tmd, endpoint=True)
     n_k_fit_i = len(list_k_fit_i)
 
-    en_fn = cache_dir / f"intensity_fit_en_{n_k_fit_i}_{tmd}.npz"
+    en_fn = cache_dir / f"intensity_fit_en_{n_k_fit_i}_{tmd}_{param_hash}.npz"
     if not args.no_cache and en_fn.is_file():
         print("Loading cached energies for intensity")
         ens_fit = np.load(en_fn)["ens"]
@@ -188,7 +191,7 @@ def main():
         np.savez(en_fn, ens=ens_fit, evs=evs_fit)
 
     # ── Intensity matrix (spectral weight spreading) ─────────────────────
-    we_fn = cache_dir / f"intensity_fit_we_{n_k_fit_i}_{tmd}_{args.spread_k:.6f}_{args.spread_e:.6f}_Lorentz.npy"
+    we_fn = cache_dir / f"intensity_fit_we_{n_k_fit_i}_{tmd}_{param_hash}_{args.spread_k:.6f}_{args.spread_e:.6f}_Lorentz.npy"
     if not args.no_cache and we_fn.is_file():
         print("Loading cached intensity weights")
         intensity_fit = np.load(we_fn)
@@ -214,7 +217,7 @@ def main():
     list_k_orb, norm_orb = _get_gkm_path(n_k_orb, tmd, endpoint=True)
     n_k_orb = len(list_k_orb)
 
-    orb_fn = cache_dir / f"orbitals_{n_k_orb}_{tmd}.npz"
+    orb_fn = cache_dir / f"orbitals_{n_k_orb}_{tmd}_{param_hash}.npz"
     if not args.no_cache and orb_fn.is_file():
         print("Loading cached orbitals")
         ens_fit_orb = np.load(orb_fn)["ens_fit"]
@@ -259,14 +262,14 @@ def main():
     arpes_bands = data.fit_data
 
     # ── Fit and DFT bands ────────────────────────────────────────────────
-    bands_fn = cache_dir / f"bands_en_{tmd}_{args.n_k_bands}.npz"
+    bands_fn = cache_dir / f"bands_en_{tmd}_{args.n_k_bands}_{param_hash}.npz"
     if not args.no_cache and bands_fn.is_file():
         print("Loading cached bands")
         bands_fit = np.load(bands_fn)["fit"]
         bands_dft = np.load(bands_fn)["dft"]
     else:
         print("Computing energy bands")
-        k_pts_bands = arpes_bands[:, :2]
+        k_pts_bands = arpes_bands[:, 1:3]
         bands_fit = ham.eigenvalues(k_pts_bands, *args_h).T
         bands_dft = ham.eigenvalues(k_pts_bands, *args_h_dft).T
         np.savez(bands_fn, fit=bands_fit, dft=bands_dft)
@@ -382,7 +385,9 @@ def main():
     # ── Panel 3: Band comparison ─────────────────────────────────────────
     ax = fig.add_subplot(gs[1, 1])
     lw = 0.7
-    for b in range(arpes_bands.shape[1] - 3):
+    nbands = arpes_bands.shape[1] - 3
+    tvb_idx = 13
+    for b in range(nbands):
         xline = arpes_bands[:, 0]
         ax.plot(
             xline, arpes_bands[:, 3 + b],
@@ -390,12 +395,12 @@ def main():
             label="ARPES" if b == 0 else "", zorder=-1, mec="k", mew=0.2
         )
         ax.plot(
-            xline, bands_fit[b, :],
+            xline, bands_fit[tvb_idx - b, :],
             color="blue", ls="-", lw=lw,
             label="Fit" if b == 0 else "", zorder=2, alpha=0.7
         )
         ax.plot(
-            xline, bands_dft[b, :],
+            xline, bands_dft[tvb_idx - b, :],
             color="orange", ls="-", lw=lw,
             label="DFT" if b == 0 else "", zorder=1, alpha=0.7
         )

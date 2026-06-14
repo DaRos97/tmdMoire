@@ -498,3 +498,101 @@ def plot_moire_bands_simulated_with_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spr
     fig.savefig(fn, dpi=200, bbox_inches="tight")
     print(f"Saved: {fn}")
     plt.close(fig)
+
+
+def plot_diag_half_bands(k_kgk_comp, k_kmkp_comp, evals_kgk, evals_kmkp,
+                          k_kgk_arpes, k_kmkp_arpes, e_arpes,
+                          arpes_kgk, arpes_kmkp, save_dir=None):
+    """Half ARPES / half computed bands split for both BZ cuts.
+
+    Left side (k < 0) shows ARPES intensity; right side (k >= 0)
+    shows all computed moire bands as thin red lines on a white background.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    zero_arpes = np.argmin(np.abs(k_kgk_arpes))
+    ax1.pcolormesh(k_kgk_arpes[:zero_arpes + 1], e_arpes,
+                    arpes_kgk[:zero_arpes + 1].T,
+                    cmap="Greys", shading="auto")
+    mask_right = k_kgk_comp >= 0
+    for ib in range(evals_kgk.shape[1]):
+        ax1.plot(k_kgk_comp[mask_right], evals_kgk[mask_right, ib],
+                  color="red", lw=0.5, alpha=0.7, zorder=5)
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (Å$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    zero_arpes_km = np.argmin(np.abs(k_kmkp_arpes))
+    ax2.pcolormesh(k_kmkp_arpes[:zero_arpes_km + 1], e_arpes,
+                    arpes_kmkp[:zero_arpes_km + 1].T,
+                    cmap="Greys", shading="auto")
+    mask_right_km = k_kmkp_comp >= 0
+    for ib in range(evals_kmkp.shape[1]):
+        ax2.plot(k_kmkp_comp[mask_right_km], evals_kmkp[mask_right_km, ib],
+                  color="red", lw=0.5, alpha=0.7, zorder=5)
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlabel("Momentum (Å$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Moiré bilayer bands — half ARPES / half computed bands",
+                  fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "diag_half_bands.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
+
+
+def plot_diag_bands_over_arpes(k_kgk_comp, k_kmkp_comp, evals_kgk, evals_kmkp,
+                                k_kgk_arpes, k_kmkp_arpes, e_arpes,
+                                arpes_kgk, arpes_kmkp, save_dir=None):
+    """ARPES intensity background with all computed moire bands overlaid.
+
+    Full ARPES pcolormesh at full opacity with all computed bands
+    superimposed as thin red lines.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
+
+    ax1 = axes[0]
+    ax1.pcolormesh(k_kgk_arpes, e_arpes, arpes_kgk.T,
+                    cmap="Greys", shading="auto")
+    for ib in range(evals_kgk.shape[1]):
+        ax1.plot(k_kgk_comp, evals_kgk[:, ib],
+                  color="red", lw=0.5, alpha=0.7, zorder=5)
+    ax1.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax1.set_ylabel("Energy (eV)", fontsize=12)
+    ax1.set_xlabel("Momentum (Å$^{-1}$)", fontsize=12)
+    ax1.set_title("K'$\\rightarrow\\Gamma\\rightarrow$K", fontsize=13, fontweight="bold")
+    ax1.set_xlim(-1.4, 1.4)
+
+    ax2 = axes[1]
+    ax2.pcolormesh(k_kmkp_arpes, e_arpes, arpes_kmkp.T,
+                    cmap="Greys", shading="auto")
+    for ib in range(evals_kmkp.shape[1]):
+        ax2.plot(k_kmkp_comp, evals_kmkp[:, ib],
+                  color="red", lw=0.5, alpha=0.7, zorder=5)
+    ax2.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
+    ax2.set_xlabel("Momentum (Å$^{-1}$)", fontsize=12)
+    ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")
+    ax2.set_xlim(-1.2, 1.2)
+
+    fig.suptitle("Moiré bilayer bands — ARPES with computed bands overlay",
+                  fontsize=14, fontweight="bold", y=1.02)
+
+    if save_dir is None:
+        save_dir = Path(__file__).resolve().parents[2] / "Figures"
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fn = save_dir / "diag_bands_over_arpes.png"
+    fig.savefig(fn, dpi=200, bbox_inches="tight")
+    print(f"Saved: {fn}")
+    plt.close(fig)
