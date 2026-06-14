@@ -493,7 +493,7 @@ dist = |c1 - E_TVB| + |c2 - E_side| + |c3 - E_LVB|
 ```
 where experimental values are `EDC_G_POSITIONS = [-1.1599, -1.2531, -1.82]` eV for sample S11.
 
-**Analysis**: 2D heatmap of minimum distance over (Vg, φG), minimizing over all interlayer parameter combinations.
+**Analysis**: 2D heatmap of minimum distance over (Vg, φG), minimizing over all interlayer parameter combinations. The global best-fit point is marked with a red star and its parameters shown in the legend. Supports a **cell-selection mode** (`--vg`/`--phig`) to drill into a specific (Vg, φG) cell: highlights the chosen cell on the heatmap with a cyan diamond marker, prints its interlayer params and peak positions to stdout, exports parameters to a JSON file, and produces a separate EDC intensity profile plot with the 3-Lorentzian fit overlaid:
 
 ### K-Point Sweep
 
@@ -523,8 +523,18 @@ python scripts/edc_grid_gamma.py --chunk 0/1000000 --id test
 # Gamma sweep: combine chunks
 python scripts/combine_edc_chunks.py --bz-point gamma --id test
 
-# Gamma sweep: analyze results
+# Gamma sweep: analyze results (global best)
 python scripts/analyze_edc_gamma.py --id test
+
+# Gamma sweep: select specific (Vg, phiG) cell
+#   - highlights cell on 2D heatmap (cyan diamond vs red star global best)
+#   - prints interlayer params + peak positions to stdout
+#   - exports params to <run_dir>/Vg<X>meV_phiG<Y>deg.json
+#   - produces EDC intensity profile plot with 3-Lorentzian fit
+python scripts/analyze_edc_gamma.py --id test --vg 0.012 --phig 177
+
+# With custom distance cutoff and ratio cutoff
+python scripts/analyze_edc_gamma.py --id test --cutoff 0.030 --ratio-cutoff 0.15
 
 # K sweep (after Gamma best fit is known)
 python scripts/edc_grid_k.py --chunk 0/10000 --id test_k
@@ -557,13 +567,17 @@ Each run is stored in a self-contained directory:
 ```
 Data/
   edc_gamma_run_001/
-    metadata.json             ← run info + grid config + fitted interlayer params
-    interlayer_params.npy     ← snapshot of fitted interlayer params
+    metadata.json              ← run info + grid config + fitted interlayer params
+    interlayer_params.npy      ← snapshot of fitted interlayer params
     chunk_0_128.h5
     chunk_1_128.h5
     ...
-    combined.h5               ← all chunks concatenated
-    analysis.png              ← 2D distance heatmap
+    combined.h5                    ← all chunks concatenated
+    analysis.png                   ← 2D distance heatmap (with selection marker if --vg/--phig used)
+    analysis_params.png            ← per-parameter heatmaps
+    analysis_ratio.png             ← intensity ratio heatmap
+    edc_profile_Vg<N>meV_phiG<N>deg.png  ← EDC intensity + fit (selection mode)
+    Vg<N>meV_phiG<N>deg.json            ← exported params (selection mode)
 ```
 
 ### EDC Output Format

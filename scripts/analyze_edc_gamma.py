@@ -4,11 +4,16 @@ Loads combined.h5 from a run directory, computes distance from experimental
 peak positions, and produces a 2D heatmap of minimum distance over (Vg, phiG)
 with the global best-fit point marked and interlayer parameters shown.
 
+Selection mode (--vg/--phig): highlights the chosen cell on the heatmap,
+prints its details to stdout, and produces an EDC intensity profile plot
+with the Lorentzian fit overlaid.
+
 Usage:
     python scripts/analyze_edc_gamma.py --id 001
     python scripts/analyze_edc_gamma.py --id 001 --cutoff 0.030
     python scripts/analyze_edc_gamma.py --id 001 --ratio-cutoff 0.15
     python scripts/analyze_edc_gamma.py --id 001 --output Figures/edc_gamma_analysis.png
+    python scripts/analyze_edc_gamma.py --id sm03 --vg 0.012 --phig 176
 """
 import sys
 import os
@@ -22,9 +27,13 @@ import json
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Patch
 
-from tmdmoire import EDC_G_POSITIONS
+from tmdmoire import EDC_G_POSITIONS, TMDMaterial, MoireGeometry, MoireHamiltonian
+from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire.utils.paths import get_repo_root
+
+master_folder = get_repo_root()
 
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
@@ -32,6 +41,8 @@ run_id = "default"
 output = None
 cutoff_ev = 0.026  # 26 meV default
 ratio_cutoff = 0.1  # 10% default
+vg_selected = None
+phig_selected = None
 
 args = sys.argv[1:]
 i = 0
@@ -48,8 +59,18 @@ while i < len(args):
     elif args[i] == "--ratio-cutoff" and i + 1 < len(args):
         ratio_cutoff = float(args[i + 1])
         i += 2
+    elif args[i] == "--vg" and i + 1 < len(args):
+        vg_selected = float(args[i + 1])
+        i += 2
+    elif args[i] == "--phig" and i + 1 < len(args):
+        phig_selected = float(args[i + 1])
+        i += 2
     else:
         i += 1
+
+have_selection = vg_selected is not None and phig_selected is not None
+if have_selection:
+    print(f"Selection mode: Vg = {vg_selected*1000:.0f} meV, phiG = {phig_selected:.0f} deg")
 
 # ─── Load combined data ──────────────────────────────────────────────────────
 
@@ -73,6 +94,11 @@ with h5py.File(combined_fn, "r") as f:
     c3 = f["c3"][:]
     a1 = f["a1"][:]
     a2 = f["a2"][:]
+    a3 = f["a3"][:]
+    g1 = f["g1"][:]
+    g2 = f["g2"][:]
+    g3 = f["g3"][:]
+    redchi = f["redchi"][:]
 
 # ─── Load metadata ───────────────────────────────────────────────────────────
 
@@ -137,6 +163,48 @@ if n_after_ratio == 0:
     print("No points pass both cutoffs. Exiting.")
     sys.exit(0)
 
+# ─── Selection mode: find specific (Vg, phiG) cell ───────────────────────────
+
+idx_selected = None
+if have_selection:
+    tol_vg = 1e-6
+    tol_phig = 1e-6
+    mask_sel = (
+        np.abs(Vg - vg_selected) < tol_vg
+    ) & (
+        np.abs(phiG - phig_selected) < tol_phig
+    ) & ~np.isnan(dist)
+
+    if not mask_sel.any():
+        vg_vals = sorted(set(Vg))
+        pg_vals = sorted(set(phiG))
+        print(f"No valid fits at Vg={vg_selected*1000:.0f} meV, phiG={phig_selected:.0f} deg")
+        print(f"Available Vg [meV]: {[v*1000 for v in vg_vals]}")
+        print(f"Available phiG [deg]: {pg_vals}")
+        if have_selection:
+            print("Exiting due to invalid selection.")
+            sys.exit(1)
+
+    idx_sel_local = np.nanargmin(dist[mask_sel])
+    idx_selected = np.where(mask_sel)[0][idx_sel_local]
+
+    print(f"\n{'─'*60}")
+    print(f"Selected cell: Vg = {Vg[idx_selected]*1000:.1f} meV, phiG = {phiG[idx_selected]:.1f} deg")
+    print(f"  w1p  = {w1p[idx_selected]:+.4f} eV")
+    print(f"  w1d  = {w1d[idx_selected]:+.4f} eV")
+    print(f"  w2p  = {w2p[idx_selected]:+.4f} eV")
+    print(f"  w2d  = {w2d[idx_selected]:+.4f} eV")
+    print(f"  c1   = {c1[idx_selected]:.4f} eV (exp: {exp[0]:.4f} eV)")
+    print(f"  c2   = {c2[idx_selected]:.4f} eV (exp: {exp[1]:.4f} eV)")
+    print(f"  c3   = {c3[idx_selected]:.4f} eV (exp: {exp[2]:.4f} eV)")
+    print(f"  a1   = {a1[idx_selected]:.4f}")
+    print(f"  a2   = {a2[idx_selected]:.4f}")
+    print(f"  a3   = {a3[idx_selected]:.4f}")
+    print(f"  redchi = {redchi[idx_selected]:.6f}")
+    print(f"  a2/a1 = {ratio[idx_selected]:.4f}")
+    print(f"  distance = {dist[idx_selected]*1000:.2f} meV")
+    print(f"{'─'*60}")
+
 # ─── Find global minimum ─────────────────────────────────────────────────────
 
 idx_best = np.nanargmin(dist)
@@ -200,24 +268,48 @@ ax.scatter(
     zorder=5, label="Best fit",
 )
 
+# Mark selected cell
+if idx_selected is not None:
+    ax.scatter(
+        phiG[idx_selected], Vg[idx_selected] * 1000,
+        marker="D", s=120, c="cyan", edgecolors="black", linewidths=2.0,
+        zorder=6, label="Selected",
+    )
+
 # Legend with interlayer params
 legend_text = (
     f"Best fit (dist = {dist[idx_best]*1000:.1f} meV)\n"
     f"w1p = {w1p[idx_best]:+.4f} eV\n"
     f"w1d = {w1d[idx_best]:+.4f} eV\n"
     f"w2p = {w2p[idx_best]:+.4f} eV\n"
-    f"w2d = {w2d[idx_best]:+.4f} eV\n"
-    f"Cutoffs: dist <= {cutoff_ev*1000:.0f} meV, a2/a1 >= {ratio_cutoff:.2f}"
+    f"w2d = {w2d[idx_best]:+.4f} eV"
 )
-from matplotlib.patches import Patch
-
 bound_colors = {"w1p": "red", "w1d": "blue", "w2p": "green", "w2d": "orange"}
 bound_styles = {"w1p": "-", "w1d": "--", "w2p": "-.", "w2d": ":"}
 bound_widths = {"lo": 2, "hi": 4}
 
-all_legend_handles = [
-    Patch(facecolor="none", edgecolor="none", label=legend_text),
-]
+all_legend_handles = [False]
+
+if idx_selected is not None:
+    sel_legend_text = (
+        f"Selected (Vg={Vg[idx_selected]*1000:.1f} meV, phiG={phiG[idx_selected]:.0f} deg)\n"
+        f"dist = {dist[idx_selected]*1000:.1f} meV, redchi = {redchi[idx_selected]:.4f}\n"
+        f"w1p = {w1p[idx_selected]:+.4f}  w1d = {w1d[idx_selected]:+.4f}\n"
+        f"w2p = {w2p[idx_selected]:+.4f}  w2d = {w2d[idx_selected]:+.4f}\n"
+        f"c1 = {c1[idx_selected]:.4f}  c2 = {c2[idx_selected]:.4f}  c3 = {c3[idx_selected]:.4f} eV\n"
+        f"a2/a1 = {ratio[idx_selected]:.4f}"
+    )
+    all_legend_handles.append(
+        Patch(facecolor="none", edgecolor="none", label=sel_legend_text)
+    )
+
+all_legend_handles[0] = Patch(facecolor="none", edgecolor="none", label=legend_text)
+cutoff_handle = Patch(
+    facecolor="none", edgecolor="none",
+    label=f"Cutoffs: dist <= {cutoff_ev*1000:.0f} meV, a2/a1 >= {ratio_cutoff:.2f}"
+)
+all_legend_handles.append(cutoff_handle)
+
 for p in ["w1p", "w1d", "w2p", "w2d"]:
     all_legend_handles.append(
         Patch(facecolor="none", edgecolor=bound_colors[p], linewidth=bound_widths["lo"],
@@ -296,6 +388,14 @@ for idx, pname in enumerate(param_names):
         zorder=5,
     )
 
+    # Mark selected cell
+    if idx_selected is not None:
+        ax.scatter(
+            phiG[idx_selected], Vg[idx_selected] * 1000,
+            marker="D", s=90, c="cyan", edgecolors="black", linewidths=1.8,
+            zorder=6,
+        )
+
     # Draw bound rectangles
     for iv in range(n_Vg):
         for ip in range(n_phi):
@@ -356,6 +456,14 @@ ax.scatter(
     zorder=5, label="Best fit",
 )
 
+# Mark selected cell
+if idx_selected is not None:
+    ax.scatter(
+        phiG[idx_selected], Vg[idx_selected] * 1000,
+        marker="D", s=120, c="cyan", edgecolors="black", linewidths=2.0,
+        zorder=6, label="Selected",
+    )
+
 cbar = fig.colorbar(im, ax=ax, pad=0.02)
 cbar.set_label(r"$a_2 / a_1$ (adjacent band / TVB)", fontsize=11)
 
@@ -372,3 +480,151 @@ fig.savefig(ratio_output, dpi=200, bbox_inches="tight")
 plt.close(fig)
 
 print(f"Ratio figure saved to {ratio_output}")
+
+# ─── EDC intensity profile plot for selected (Vg, phiG) ─────────────────────
+
+if idx_selected is None:
+    sys.exit(0)
+
+print(f"\nProducing EDC intensity profile for selected cell...")
+
+_vg = Vg[idx_selected]
+_phig_deg = phiG[idx_selected]
+_w1p = w1p[idx_selected]
+_w1d = w1d[idx_selected]
+_w2p = w2p[idx_selected]
+_w2d = w2d[idx_selected]
+_c1 = c1[idx_selected]
+_c2 = c2[idx_selected]
+_c3 = c3[idx_selected]
+_a1 = a1[idx_selected]
+_a2 = a2[idx_selected]
+_a3 = a3[idx_selected]
+_g1 = g1[idx_selected]
+_g2 = g2[idx_selected]
+_g3 = g3[idx_selected]
+
+sample = "S11"
+n_shells = 2
+theta = TWIST_ANGLES[sample]
+spreadE = 0.03
+n_cells_geom = MoireGeometry.n_cells(n_shells)
+
+Vk = meta["fixed_params"].get("Vk_ev", 0.0077)
+phiK_deg = meta["fixed_params"].get("phiK_deg", 106)
+phiG_rad = _phig_deg / 180 * np.pi
+phiK_rad = phiK_deg / 180 * np.pi
+pars_V = (_vg, Vk, phiG_rad, phiK_rad)
+
+monolayer_fns = {
+    "WSe2": master_folder + "/Inputs/monolayer_fitting/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy",
+    "WS2": master_folder + "/Inputs/monolayer_fitting/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
+}
+
+_wse2 = TMDMaterial("WSe2")
+_wse2.load_fitted(monolayer_fns["WSe2"])
+_ws2 = TMDMaterial("WS2")
+_ws2.load_fitted(monolayer_fns["WS2"])
+
+pars_interlayer = {"stacking": "P", "w1p": _w1p, "w2p": _w2p, "w1d": _w1d, "w2d": _w2d}
+geometry = MoireGeometry(theta)
+
+moire_ham = MoireHamiltonian(_wse2, _ws2, geometry)
+evals_raw, evecs_raw = moire_ham.diagonalize(
+    np.array([np.zeros(2)]), n_shells, pars_interlayer, pars_V
+)
+evals_raw = evals_raw[0] + ENERGY_OFFSETS.get(sample, 0.0)
+evecs_raw = evecs_raw[0]
+
+ab = np.absolute(evecs_raw) ** 2
+weights = np.sum(ab[:22, :], axis=0) + np.sum(ab[22 * n_cells_geom:22 * (1 + n_cells_geom), :], axis=0)
+
+index_tvb = 28 * n_cells_geom - 1
+index_lvb = 26 * n_cells_geom - 1
+index_l = index_lvb - 2 * n_cells_geom + 1
+
+full_energy_values = evals_raw[index_l:index_tvb + 1]
+full_weight_values = weights[index_l:index_tvb + 1]
+
+min_e = full_energy_values[0]
+max_e = full_energy_values[-1]
+delta = max_e - min_e
+min_e -= delta / 2
+max_e += delta / 2
+n_e = int((max_e - min_e) / 0.005)
+energy_list = np.linspace(min_e, max_e, n_e)
+weight_list = np.zeros(len(energy_list))
+
+for j in range(len(full_energy_values)):
+    weight_list += spreadE / np.pi * full_weight_values[j] / (
+        (energy_list - full_energy_values[j]) ** 2 + spreadE ** 2
+    )
+
+
+def _lorentz_peak(x, amp, cen, gam):
+    return amp * gam**2 / ((x - cen)**2 + gam**2)
+
+
+fit_total = (
+    _lorentz_peak(energy_list, _a1, _c1, _g1)
+    + _lorentz_peak(energy_list, _a2, _c2, _g2)
+    + _lorentz_peak(energy_list, _a3, _c3, _g3)
+)
+
+fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
+
+_redchi = redchi[idx_selected]
+ax.plot(energy_list, weight_list, "k-", lw=1.5, label="EDC intensity")
+ax.plot(energy_list, fit_total, "r--", lw=2,
+        label=rf"3-Lorentzian fit ($\chi^2_\nu$ = {_redchi:.4f})")
+
+colors_pk = ["C0", "C1", "C2"]
+c_vals = [_c1, _c2, _c3]
+amps = [_a1, _a2, _a3]
+gams = [_g1, _g2, _g3]
+for k, (amp, cen, gam, col) in enumerate(zip(amps, c_vals, gams, colors_pk)):
+    pk_curve = _lorentz_peak(energy_list, amp, cen, gam)
+    ax.plot(energy_list, pk_curve, color=col, ls="-.", lw=1.2, alpha=0.7,
+            label=rf"peak {k+1}: $E$={cen:.3f} eV")
+
+ax.set_xlabel("Energy (eV)", fontsize=12)
+ax.set_ylabel("Intensity (a.u.)", fontsize=12)
+ax.set_title(
+    f"EDC at Gamma: Vg={_vg*1000:.0f} meV, phiG={_phig_deg:.0f} deg\n"
+    f"w1p={_w1p:.3f}, w1d={_w1d:.3f}, w2p={_w2p:.3f}, w2d={_w2d:.3f}",
+    fontsize=11,
+)
+ax.set_xlim(-1.4, -1.0)
+ax.legend(fontsize=9, loc="upper left")
+
+edc_output = run_dir / f"edc_profile_Vg{_vg*1000:.0f}meV_phiG{_phig_deg:.0f}deg.png"
+fig.savefig(edc_output, dpi=200, bbox_inches="tight")
+plt.close(fig)
+
+print(f"EDC profile saved to {edc_output}")
+
+params_output = run_dir / f"Vg{_vg*1000:.0f}meV_phiG{_phig_deg:.0f}deg.json"
+exported = {
+    "Vg_ev": float(_vg),
+    "Vg_meV": float(_vg * 1000),
+    "phiG_deg": float(_phig_deg),
+    "phiG_rad": float(_phig_deg / 180 * np.pi),
+    "w1p": float(_w1p),
+    "w1d": float(_w1d),
+    "w2p": float(_w2p),
+    "w2d": float(_w2d),
+    "c1": float(_c1),
+    "c2": float(_c2),
+    "c3": float(_c3),
+    "a1": float(_a1),
+    "a2": float(_a2),
+    "a3": float(_a3),
+    "g1": float(_g1),
+    "g2": float(_g2),
+    "g3": float(_g3),
+    "redchi": float(_redchi),
+    "distance_meV": float(dist[idx_selected] * 1000),
+}
+with open(params_output, "w") as f:
+    json.dump(exported, f, indent=2)
+print(f"Params exported to {params_output}")
