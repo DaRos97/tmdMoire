@@ -58,11 +58,21 @@ print(f"Columns: {columns}")
 total_points = 0
 data = {col: [] for col in columns}
 
+skipped = []
+
 for fn in chunk_files:
-    with h5py.File(fn, "r") as f:
-        for col in columns:
-            data[col].append(f[col][:])
-        total_points += f[columns[0]].shape[0]
+    try:
+        with h5py.File(fn, "r") as f:
+            for col in columns:
+                data[col].append(f[col][:])
+            total_points += f[columns[0]].shape[0]
+    except OSError:
+        skipped.append(str(fn))
+
+if skipped:
+    print(f"Skipped {len(skipped)} corrupt file(s):")
+    for s in skipped:
+        print(f"  {s}")
 
 print(f"Total points: {total_points}")
 
