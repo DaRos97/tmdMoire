@@ -84,18 +84,18 @@ w1p_fit, w1d_fit, w2p_fit, w2d_fit = fitted_interlayer
 il = grid_cfg["interlayer"]
 mo = grid_cfg["moire"]
 
-list_w1p = np.arange(w1p_fit - il["w1p"]["range_ev"],
-                     w1p_fit + il["w1p"]["range_ev"] + il["w1p"]["step_ev"] * 0.5,
-                     il["w1p"]["step_ev"])
-list_w1d = np.arange(w1d_fit - il["w1d"]["range_ev"],
-                     w1d_fit + il["w1d"]["range_ev"] + il["w1d"]["step_ev"] * 0.5,
-                     il["w1d"]["step_ev"])
-list_w2p = np.arange(w2p_fit - il["w2p"]["range_ev"],
-                     w2p_fit + il["w2p"]["range_ev"] + il["w2p"]["step_ev"] * 0.5,
-                     il["w2p"]["step_ev"])
-list_w2d = np.arange(w2d_fit - il["w2d"]["range_ev"],
-                     w2d_fit + il["w2d"]["range_ev"] + il["w2d"]["step_ev"] * 0.5,
-                     il["w2d"]["step_ev"])
+def _build_interlayer_grid(cfg, fit_val):
+    if "min_ev" in cfg and "max_ev" in cfg:
+        return np.arange(cfg["min_ev"], cfg["max_ev"] + cfg["step_ev"] * 0.5, cfg["step_ev"])
+    else:
+        return np.arange(fit_val - cfg["range_ev"],
+                         fit_val + cfg["range_ev"] + cfg["step_ev"] * 0.5,
+                         cfg["step_ev"])
+
+list_w1p = _build_interlayer_grid(il["w1p"], w1p_fit)
+list_w1d = _build_interlayer_grid(il["w1d"], w1d_fit)
+list_w2p = _build_interlayer_grid(il["w2p"], w2p_fit)
+list_w2d = _build_interlayer_grid(il["w2d"], w2d_fit)
 list_Vg = np.arange(mo["Vg"]["min_ev"], mo["Vg"]["max_ev"] + mo["Vg"]["step_ev"] * 0.5,
                     mo["Vg"]["step_ev"])
 list_phiG = np.arange(mo["phiG"]["min_deg"], mo["phiG"]["max_deg"] + mo["phiG"]["step_deg"] * 0.5,
