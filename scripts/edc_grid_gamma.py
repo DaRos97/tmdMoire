@@ -202,6 +202,9 @@ def compute_and_fit(Vg, phiG_deg, w1p_val, w1d_val):
         params_fit[p].set(min=0)
     for p in ["g1", "g2", "g3", "g4"]:
         params_fit[p].set(min=1e-4, max=0.2)
+    for i, p in enumerate(["c1", "c2", "c3", "c4"]):
+        seed = peak_states[i][0]
+        params_fit[p].set(min=seed - 0.05, max=seed + 0.05)
 
     result = model.fit(weight_list, params_fit, x=energy_list)
 

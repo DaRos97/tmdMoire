@@ -118,7 +118,7 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
 - **Default Gamma grid**: 11×37×11×11 = ~49K combinations (4D: Vg×phiG×w1p×w1d). ~0.6s per point (836×836 diagonalization dominates).
 - **Default K grid**: 20×37 = 740 combinations (configurable).
-- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV) + 3-Lorentzian fit at Gamma, 2-Lorentzian fit at K.
+- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV). Peak seeds are the 4 highest-weight eigenstates (separated by > 0.01 eV). At Gamma: 4-Lorentzian fit (TVB main/side + LVB main/side); only first 3 peaks saved to HDF5. At K: 2-Lorentzian fit.
 - **Band plotting**: computes single G→K→M path (--k-pts points), mirrors to K'→G→K and K→M→K'. Keeps bands 18–27 per cell (10 bands including TVB). Two-level cache: `Data/plot_bilayer_moire/diag_<params>/diag.npz` for diagonalization, `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` for intensity spreading.
 
 ## Workflow
@@ -267,7 +267,7 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
 - **Default Gamma grid**: 11×37×11×11 = ~49K combinations (4D: Vg×phiG×w1p×w1d). ~0.6s per point (836×836 diagonalization dominates).
 - **Default K grid**: 20×37 = 740 combinations (configurable).
-- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV) + 3-Lorentzian fit at Gamma, 2-Lorentzian fit at K.
+- **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV). Peak seeds are the 4 highest-weight eigenstates (separated by > 0.01 eV). At Gamma: 4-Lorentzian fit (TVB main/side + LVB main/side); only first 3 peaks saved to HDF5. At K: 2-Lorentzian fit.
 - **Band plotting**: computes single G→K→M path (--k-pts points), mirrors to K'→G→K and K→M→K'. Keeps bands 18–27 per cell (10 bands including TVB). Two-level cache: `Data/plot_bilayer_moire/diag_<params>/diag.npz` for diagonalization, `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` for intensity spreading.
 
 ## Workflow

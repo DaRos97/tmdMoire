@@ -479,7 +479,7 @@ The EDC intensity at a given k-point is computed from the supercell Hamiltonian 
    ```
    I(E) = Σ_i w_i · (spreadE/π) / [(E - E_i)² + spreadE²]
    ```
-4. **Peak fitting**: Fit a sum of Lorentzians to the resulting intensity profile using `lmfit`.
+4. **Peak fitting**: The intensity profile is fitted with a sum of Lorentzians. Peak seeds are determined by finding the 4 highest-weight eigenstates (separated by > 0.01 eV) from the spectral weights. These seeds initialize a `scipy.optimize.curve_fit` or `lmfit` minimization. At Gamma, 4 Lorentzians are fitted (TVB main, TVB side, LVB main, LVB side); at K, 2 Lorentzians are fitted.
 
 ### Gamma-Point Sweep
 

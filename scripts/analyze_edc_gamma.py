@@ -355,6 +355,64 @@ plt.close(fig)
 
 print(f"\nFigure saved to {output}")
 
+# ─── Aggregate: min distance over (w1p, w1d) grid ───────────────────────────
+
+w1p_vals = np.unique(w1p)
+w1d_vals = np.unique(w1d)
+n_w1p = len(w1p_vals)
+n_w1d = len(w1d_vals)
+
+dist_w_2d = np.full((n_w1d, n_w1p), np.nan)
+best_per_cell_w = {}
+
+for i in range(n_points):
+    if np.isnan(dist[i]):
+        continue
+    key = (w1p[i], w1d[i])
+    if key not in best_per_cell_w or dist[i] < dist[best_per_cell_w[key]]:
+        best_per_cell_w[key] = i
+
+w1p_to_iw = {wp: iw for iw, wp in enumerate(w1p_vals)}
+w1d_to_iw = {wd: iw for iw, wd in enumerate(w1d_vals)}
+
+for (wp, wd), idx in best_per_cell_w.items():
+    iw1p = w1p_to_iw[wp]
+    iw1d = w1d_to_iw[wd]
+    dist_w_2d[iw1d, iw1p] = dist[idx]
+
+w1p_step = w1p_vals[1] - w1p_vals[0] if n_w1p > 1 else 0.002
+w1p_edges = np.append(w1p_vals - w1p_step / 2, w1p_vals[-1] + w1p_step / 2)
+w1d_step = w1d_vals[1] - w1d_vals[0] if n_w1d > 1 else 0.002
+w1d_edges = np.append(w1d_vals - w1d_step / 2, w1d_vals[-1] + w1d_step / 2)
+
+print(f"w1p/w1d distance grid: {n_w1p} x {n_w1d}")
+
+# ─── Plot w1p/w1d distance heatmap ────────────────────────────────────────
+
+fig_w, ax_w = plt.subplots(figsize=(10, 6), constrained_layout=True)
+
+im_w = ax_w.pcolormesh(
+    w1p_edges * 1000, w1d_edges * 1000, dist_w_2d * 1000,
+    cmap="viridis_r", shading="flat",
+)
+
+cbar_w = fig_w.colorbar(im_w, ax=ax_w, pad=0.02)
+cbar_w.set_label("Min distance (meV)", fontsize=11)
+
+ax_w.set_xlabel(r"$w_{1p}$ (meV)", fontsize=12)
+ax_w.set_ylabel(r"$w_{1d}$ (meV)", fontsize=12)
+ax_w.set_title(
+    f"EDC Gamma: min distance over Vg, phiG\n"
+    f"Run: {run_id}  |  {n_after_ratio}/{n_points} pass both cutoffs",
+    fontsize=12,
+)
+
+pw_output = run_dir / "analysis_wpw_d.png"
+fig_w.savefig(pw_output, dpi=200, bbox_inches="tight")
+plt.close(fig_w)
+
+print(f"w1p/w1d distance figure saved to {pw_output}")
+
 # ─── Plot interlayer parameters as function of (Vg, phiG) ───────────────────
 
 param_names = ["w1p", "w1d"]
@@ -623,31 +681,72 @@ print(f"EDC profile saved to {edc_output}")
 # ─── Full-range EDC profile with 4-Lorentzian fit ─────────────────────────────
 print(f"\nProducing full-range EDC with 4-Lorentzian fit...")
 
-from scipy.optimize import curve_fit
-
 def _four_lorentzians(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
     return (_lorentz_peak(x, a1, c1, g1) +
             _lorentz_peak(x, a2, c2, g2) +
             _lorentz_peak(x, a3, c3, g3) +
             _lorentz_peak(x, a4, c4, g4))
 
-p0_4 = [_a1, _c1, _g1, _a2, _c2, _g2, _a3, _c3, _g3, _a3 / 2, _c3 - 0.05, 0.05]
-bounds_4 = (
-    [0, -2.5, 0.001, 0, -2.5, 0.001, 0, -2.5, 0.001, 0, -2.5, 0.001],
-    [np.inf, 0.0, 0.2, np.inf, 0.0, 0.2, np.inf, 0.0, 0.2, np.inf, 0.0, 0.3],
+sorted_idx_4 = np.argsort(full_weight_values)[::-1]
+peak_states_4 = []
+seen_centers_4 = []
+for si in sorted_idx_4:
+    e = full_energy_values[si]
+    w = full_weight_values[si]
+    if w < 1e-4:
+        break
+    too_close = any(abs(e - c) < 0.01 for c in seen_centers_4)
+    if not too_close:
+        peak_states_4.append((e, w))
+        seen_centers_4.append(e)
+    if len(peak_states_4) == 4:
+        break
+
+if len(peak_states_4) < 4:
+    peak_states_4 = [(float(_c1), float(_a1)), (float(_c2), float(_a2)),
+                     (float(_c3), float(_a3)), (float(_c3) - 0.05, float(_a3) / 2)]
+
+peak_states_4.sort(key=lambda x: x[0], reverse=True)
+
+import lmfit as lmfit_mod_4L
+model_4L = lmfit_mod_4L.Model(_four_lorentzians)
+params_fit_4L = model_4L.make_params(
+    a1=peak_states_4[0][1], c1=peak_states_4[0][0], g1=spreadE,
+    a2=peak_states_4[1][1], c2=peak_states_4[1][0], g2=spreadE,
+    a3=peak_states_4[2][1], c3=peak_states_4[2][0], g3=spreadE,
+    a4=peak_states_4[3][1], c4=peak_states_4[3][0], g4=spreadE,
 )
+for p in ["a1", "a2", "a3", "a4"]:
+    params_fit_4L[p].set(min=0)
+for p in ["g1", "g2", "g3", "g4"]:
+    params_fit_4L[p].set(min=1e-4, max=0.2)
+for i, p in enumerate(["c1", "c2", "c3", "c4"]):
+    seed = peak_states_4[i][0]
+    params_fit_4L[p].set(min=seed - 0.05, max=seed + 0.05)
 
 try:
-    popt_4, pcov_4 = curve_fit(_four_lorentzians, energy_list, weight_list,
-                                p0=p0_4, bounds=bounds_4, maxfev=50000)
-    fit_total_4 = _four_lorentzians(energy_list, *popt_4)
-    residuals_4 = weight_list - fit_total_4
-    dof_4 = len(weight_list) - len(popt_4)
-    redchi_4 = np.sum(residuals_4**2) / dof_4 if dof_4 > 0 else 0
-
-    centers_4 = [popt_4[1], popt_4[4], popt_4[7], popt_4[10]]
-    print(f"  4-Lorentzian fit centers: {[f'{c:.4f}' for c in centers_4]} eV")
-    print(f"  Reduced chi-squared: {redchi_4:.6f}")
+    result_4L = model_4L.fit(weight_list, params_fit_4L, x=energy_list)
+    if result_4L.success:
+        fits = [
+            (result_4L.best_values["a1"], result_4L.best_values["c1"], result_4L.best_values["g1"]),
+            (result_4L.best_values["a2"], result_4L.best_values["c2"], result_4L.best_values["g2"]),
+            (result_4L.best_values["a3"], result_4L.best_values["c3"], result_4L.best_values["g3"]),
+            (result_4L.best_values["a4"], result_4L.best_values["c4"], result_4L.best_values["g4"]),
+        ]
+        fits.sort(key=lambda x: x[1], reverse=True)
+        popt_4 = [
+            fits[0][0], fits[0][1], fits[0][2],
+            fits[1][0], fits[1][1], fits[1][2],
+            fits[2][0], fits[2][1], fits[2][2],
+            fits[3][0], fits[3][1], fits[3][2],
+        ]
+        centers_4 = [fits[0][1], fits[1][1], fits[2][1], fits[3][1]]
+        fit_total_4 = _four_lorentzians(energy_list, *popt_4)
+        redchi_4 = result_4L.redchi
+        print(f"  4-Lorentzian fit centers: {[f'{c:.4f}' for c in centers_4]} eV")
+        print(f"  Reduced chi-squared: {redchi_4:.6f}")
+    else:
+        raise RuntimeError("lmfit did not converge")
 except Exception as exc:
     print(f"  4-Lorentzian fit failed: {exc}")
     popt_4 = None
