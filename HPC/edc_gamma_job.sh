@@ -20,9 +20,9 @@ NODES='compute-2-11|compute-2-12|compute-2-13|compute-3-01|compute-3-02|compute-
 if [ "$N_TASKS" -gt 128 ]; then
     # First 128 tasks on rademaker queue
     echo "Submitting tasks 1-128 on queue rademaker..."
-    qsub -N edc_gamma_${RUN_ID}_rad \
-         -o HPC/out_edc_gamma_${RUN_ID}_rad.out \
-         -e HPC/out_edc_gamma_${RUN_ID}_rad.err \
+    qsub -N edc_G_${RUN_ID}_rad \
+         -o HPC/out_edc_G_${RUN_ID}_rad.out \
+         -e HPC/out_edc_G_${RUN_ID}_rad.err \
          -t 1-128 \
          -q rademaker \
          HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID}
@@ -30,16 +30,16 @@ if [ "$N_TASKS" -gt 128 ]; then
     # Remaining tasks on specified compute nodes
     REMAINING=$((N_TASKS - 128))
     echo "Submitting tasks 129-${N_TASKS} (${REMAINING} tasks) on compute nodes..."
-    qsub -N edc_gamma_${RUN_ID}_nodes \
-         -o HPC/out_edc_gamma_${RUN_ID}_nodes.out \
-         -e HPC/out_edc_gamma_${RUN_ID}_nodes.err \
+    qsub -N edc_G_${RUN_ID}_nodes \
+         -o HPC/out_edc_G_${RUN_ID}_nodes.out \
+         -e HPC/out_edc_G_${RUN_ID}_nodes.err \
          -t 1-${REMAINING} \
          -l hostname="${NODES}" \
          HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 128
 else
-    qsub -N edc_gamma_${RUN_ID} \
-         -o HPC/out_edc_gamma_${RUN_ID}.out \
-         -e HPC/out_edc_gamma_${RUN_ID}.err \
+    qsub -N edc_G_${RUN_ID} \
+         -o HPC/out_edc_G_${RUN_ID}.out \
+         -e HPC/out_edc_G_${RUN_ID}.err \
          -t 1-${N_TASKS} \
          -l hostname="${NODES}" \
          HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID}
