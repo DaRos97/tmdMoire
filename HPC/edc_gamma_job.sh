@@ -1,6 +1,6 @@
 # SGE job array submission for EDC Gamma grid sweep
 # Submits N_TASKS parallel tasks (one per CPU on selected compute nodes)
-# Each task computes a chunk of the 6D parameter grid
+# Each task computes a chunk of the 4D parameter grid (Vg, phiG, w1p, w1d; w2p/w2d fixed)
 #
 # When N_TASKS > 128: first 128 tasks run on queue rademaker,
 # remaining tasks run on the specified compute nodes.

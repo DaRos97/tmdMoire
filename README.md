@@ -466,7 +466,7 @@ Fitted interlayer parameters are saved to:
 
 With monolayer parameters and interlayer couplings fixed, this stage sweeps the moiré potential parameters to match experimental Energy Distribution Curve (EDC) peak positions. The workflow runs in two stages:
 
-1. **Gamma-point sweep** — 6D grid over Vg, φG, w1p, w1d, w2p, w2d (Vk and φK fixed). Fits 3 Lorentzians to the EDC intensity profile (TVB main/side + LVB main).
+1. **Gamma-point sweep** — 4D grid over Vg, φG, w1p, w1d (w2p/w2d fixed to Step 2 values; Vk and φK fixed). Fits 3 Lorentzians to the EDC intensity profile (TVB main/side + LVB main).
 2. **K-point sweep** — 2D grid over Vk, φK with all other parameters fixed to the Gamma best fit. Fits 2 Lorentzians (TVB + moire side band) and computes the band gap near K.
 
 ### EDC Intensity Profile
@@ -483,7 +483,7 @@ The EDC intensity at a given k-point is computed from the supercell Hamiltonian 
 
 ### Gamma-Point Sweep
 
-**Grid**: 6 dimensions — Vg, φG, w1p, w1d, w2p, w2d. Fixed parameters: Vk = 7.7 meV, φK = 106°.
+**Grid**: 4 dimensions — Vg, φG, w1p, w1d. Fixed parameters: Vk = 7.7 meV, φK = 106°. The w2p and w2d hopping parameters are also fixed to the Step 2 interlayer coupling fit, as they control the momentum dependence of the interlayer coupling; since the EDC analysis focuses on small k-variations around Gamma, their values are already well constrained by the main band dispersion fit.
 
 **Peak structure**: 4 Lorentzians are fitted (TVB main, TVB side, LVB main, LVB side), but only the first three peak details (c1–c3, a1–a3, g1–g3) are saved. The first three peaks are the ones compared against ARPES experimental positions; the fourth peak (LVB side band) is fitted to improve the overall fit quality but is not used in the distance metric.
 
@@ -497,7 +497,7 @@ where experimental values are `EDC_G_POSITIONS = [-1.1599, -1.2531, -1.82]` eV f
 
 ### K-Point Sweep
 
-**Grid**: 2 dimensions — Vk, φK. Fixed parameters: Vg, φG, w1p, w1d, w2p, w2d from the Gamma best fit.
+**Grid**: 2 dimensions — Vk, φK. Fixed parameters: Vg, φG, w1p, w1d from the Gamma best fit; w2p, w2d from Step 2.
 
 **Peak structure**: 2 Lorentzians — TVB and moire side band.
 
@@ -510,7 +510,7 @@ Each BZ point has its own config file in `Inputs/bilayer_fitting/`:
 | File | Purpose |
 |---|---|
 | `grid_config_gamma.json` | Gamma sweep: interlayer ranges/steps, Vg/φG grid, fixed Vk/φK |
-| `grid_config_k.json` | K sweep: Vk/φK grid, fixed Vg/φG/w1p/w1d/w2p/w2d |
+| `grid_config_k.json` | K sweep: Vk/φK grid, fixed Vg/φG/w1p/w1d (w2p/w2d from Step 2) |
 
 Interlayer parameter ranges are specified as `range_ev` (± around fitted value) and `step_ev`. Moiré parameters use `min_ev`/`max_ev`/`step_ev` or `min_deg`/`max_deg`/`step_deg`.
 
@@ -586,7 +586,7 @@ Each `.h5` file contains 16 datasets. Note: 4 Lorentzians are fitted per EDC, bu
 
 | Column | Description |
 |---|---|
-| `Vg`, `phiG`, `w1p`, `w1d`, `w2p`, `w2d` | Input parameters |
+| `Vg`, `phiG`, `w1p`, `w1d` | Input parameters (w2p/w2d are fixed, stored in metadata) |
 | `c1`–`c3` | Fitted peak centers (eV) — TVB main, TVB side, LVB main |
 | `a1`–`a3` | Fitted peak amplitudes |
 | `g1`–`g3` | Fitted peak widths (gamma) |

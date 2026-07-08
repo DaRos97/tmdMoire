@@ -7,14 +7,6 @@
     "w1d": {
       "range_ev": 0.000,
       "step_ev": 0.002
-    },
-    "w2p": {
-      "range_ev": 0.000,
-      "step_ev": 0.002
-    },
-    "w2d": {
-      "range_ev": 0.000,
-      "step_ev": 0.002
     }
   },
   "moire": {

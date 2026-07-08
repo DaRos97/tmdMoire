@@ -98,8 +98,6 @@ with h5py.File(combined_fn, "r") as f:
     phiG = f["phiG"][:]
     w1p = f["w1p"][:]
     w1d = f["w1d"][:]
-    w2p = f["w2p"][:]
-    w2d = f["w2d"][:]
     c1 = f["c1"][:]
     c2 = f["c2"][:]
     c3 = f["c3"][:]
@@ -119,10 +117,19 @@ with open(meta_fn) as f:
 
 grid_cfg = meta["grid_config"]
 
+# Read fixed w2p/w2d from metadata (not in HDF5 after 6D→4D change)
+fixed_params = meta.get("fixed_params", {})
+w2p_fixed = fixed_params.get("w2p_ev", None)
+w2d_fixed = fixed_params.get("w2d_ev", None)
+if w2p_fixed is None or w2d_fixed is None:
+    fitted_il = meta.get("fitted_interlayer", {})
+    w2p_fixed = fitted_il.get("w2p", None)
+    w2d_fixed = fitted_il.get("w2d", None)
+
 # ─── Determine actual parameter bounds from data ─────────────────────────────
 # (metadata.json range_ev may be inaccurate; use observed min/max)
 
-param_arrays = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+param_arrays = {"w1p": w1p, "w1d": w1d}
 bounds = {}
 for pname, parr in param_arrays.items():
     lo = float(np.nanmin(parr))
@@ -203,8 +210,10 @@ if have_selection:
     print(f"Selected cell: Vg = {Vg[idx_selected]*1000:.1f} meV, phiG = {phiG[idx_selected]:.1f} deg")
     print(f"  w1p  = {w1p[idx_selected]:+.4f} eV")
     print(f"  w1d  = {w1d[idx_selected]:+.4f} eV")
-    print(f"  w2p  = {w2p[idx_selected]:+.4f} eV")
-    print(f"  w2d  = {w2d[idx_selected]:+.4f} eV")
+    if w2p_fixed is not None:
+        print(f"  w2p  = {w2p_fixed:+.4f} eV  (fixed)")
+    if w2d_fixed is not None:
+        print(f"  w2d  = {w2d_fixed:+.4f} eV  (fixed)")
     print(f"  c1   = {c1[idx_selected]:.4f} eV (exp: {exp[0]:.4f} eV)")
     print(f"  c2   = {c2[idx_selected]:.4f} eV (exp: {exp[1]:.4f} eV)")
     print(f"  c3   = {c3[idx_selected]:.4f} eV (exp: {exp[2]:.4f} eV)")
@@ -224,8 +233,6 @@ print(f"  Vg   = {Vg[idx_best]*1000:.1f} meV")
 print(f"  phiG = {phiG[idx_best]:.1f} deg")
 print(f"  w1p  = {w1p[idx_best]:+.4f} eV")
 print(f"  w1d  = {w1d[idx_best]:+.4f} eV")
-print(f"  w2p  = {w2p[idx_best]:+.4f} eV")
-print(f"  w2d  = {w2d[idx_best]:+.4f} eV")
 print(f"  c1   = {c1[idx_best]:.4f} eV (exp: {exp[0]:.4f} eV)")
 print(f"  c2   = {c2[idx_best]:.4f} eV (exp: {exp[1]:.4f} eV)")
 print(f"  c3   = {c3[idx_best]:.4f} eV (exp: {exp[2]:.4f} eV)")
@@ -350,8 +357,8 @@ print(f"\nFigure saved to {output}")
 
 # ─── Plot interlayer parameters as function of (Vg, phiG) ───────────────────
 
-param_names = ["w1p", "w1d", "w2p", "w2d"]
-fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
+param_names = ["w1p", "w1d"]
+fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
 axes = axes.flatten()
 
 for idx, pname in enumerate(param_names):
@@ -502,8 +509,8 @@ _vg = Vg[idx_selected]
 _phig_deg = phiG[idx_selected]
 _w1p = w1p[idx_selected]
 _w1d = w1d[idx_selected]
-_w2p = w2p[idx_selected]
-_w2d = w2d[idx_selected]
+_w2p = w2p_fixed
+_w2d = w2d_fixed
 _c1 = c1[idx_selected]
 _c2 = c2[idx_selected]
 _c3 = c3[idx_selected]
@@ -686,8 +693,8 @@ exported = {
     "phiG_rad": float(_phig_deg / 180 * np.pi),
     "w1p": float(_w1p),
     "w1d": float(_w1d),
-    "w2p": float(_w2p),
-    "w2d": float(_w2d),
+    "w2p": float(w2p_fixed) if w2p_fixed is not None else None,
+    "w2d": float(w2d_fixed) if w2d_fixed is not None else None,
     "c1": float(_c1),
     "c2": float(_c2),
     "c3": float(_c3),

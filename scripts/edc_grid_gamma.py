@@ -1,7 +1,7 @@
 """EDC intensity grid sweep at Gamma for HPC.
 
 Loads grid parameters from Inputs/bilayer_fitting/grid_config.json,
-sweeps 6D parameter space (Vg, phiG, w1p, w1d, w2p, w2d),
+sweeps 4D parameter space (Vg, phiG, w1p, w1d) with w2p/w2d fixed,
 fits 3 Lorentzians to each EDC, and saves results.
 
 Usage:
@@ -94,25 +94,27 @@ def _build_interlayer_grid(cfg, fit_val):
 
 list_w1p = _build_interlayer_grid(il["w1p"], w1p_fit)
 list_w1d = _build_interlayer_grid(il["w1d"], w1d_fit)
-list_w2p = _build_interlayer_grid(il["w2p"], w2p_fit)
-list_w2d = _build_interlayer_grid(il["w2d"], w2d_fit)
 list_Vg = np.arange(mo["Vg"]["min_ev"], mo["Vg"]["max_ev"] + mo["Vg"]["step_ev"] * 0.5,
                     mo["Vg"]["step_ev"])
 list_phiG = np.arange(mo["phiG"]["min_deg"], mo["phiG"]["max_deg"] + mo["phiG"]["step_deg"] * 0.5,
                       mo["phiG"]["step_deg"])
 
-total_jobs = len(list_Vg) * len(list_phiG) * len(list_w1p) * len(list_w1d) * len(list_w2p) * len(list_w2d)
+# w2p/w2d fixed to step-2 fitted values
+w2p = w2p_fit
+w2d = w2d_fit
+
+total_jobs = len(list_Vg) * len(list_phiG) * len(list_w1p) * len(list_w1d)
 
 chunk_size = total_jobs // n_chunks
 remainder = total_jobs % n_chunks
 start = int(chunk_id * chunk_size + min(chunk_id, remainder))
 end = int(start + chunk_size + (1 if chunk_id < remainder else 0))
 
-grid = product(list_Vg, list_phiG, list_w1p, list_w1d, list_w2p, list_w2d)
+grid = product(list_Vg, list_phiG, list_w1p, list_w1d)
 grid_chunk = islice(grid, start, end)
 
 print(f"Grid: Vg={len(list_Vg)}, phiG={len(list_phiG)}, "
-      f"w1p={len(list_w1p)}, w1d={len(list_w1d)}, w2p={len(list_w2p)}, w2d={len(list_w2d)}")
+      f"w1p={len(list_w1p)}, w1d={len(list_w1d)}")
 print(f"Total grid points: {total_jobs:,}")
 print(f"Chunk {chunk_id}/{n_chunks}: points {start}–{end-1} ({end - start} points)")
 
@@ -135,10 +137,10 @@ def _four_lorentzian(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
     return (_lorentzian(x, a1, c1, g1) + _lorentzian(x, a2, c2, g2)
             + _lorentzian(x, a3, c3, g3) + _lorentzian(x, a4, c4, g4))
 
-def compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d):
+def compute_and_fit(Vg, phiG_deg, w1p_val, w1d_val):
     phiG = phiG_deg / 180 * np.pi
     pars_V = (Vg, Vk, phiG, phiK)
-    pars_interlayer = {"stacking": "P", "w1p": w1p, "w2p": w2p, "w1d": w1d, "w2d": w2d}
+    pars_interlayer = {"stacking": "P", "w1p": w1p_val, "w2p": w2p, "w1d": w1d_val, "w2d": w2d}
 
     moire_ham = MoireHamiltonian(wse2, ws2, geometry)
     evals_raw, evecs_raw = moire_ham.diagonalize(k_list, n_shells, pars_interlayer, pars_V)
@@ -231,16 +233,16 @@ if not meta_fn.exists():
         "grid_sizes": {
             "Vg": len(list_Vg), "phiG": len(list_phiG),
             "w1p": len(list_w1p), "w1d": len(list_w1d),
-            "w2p": len(list_w2p), "w2d": len(list_w2d),
         },
         "fixed_params": {
             "Vk_ev": Vk,
             "phiK_deg": phiK_deg,
+            "w2p_ev": float(w2p),
+            "w2d_ev": float(w2d),
         },
         "total_points": total_jobs,
         "fitted_interlayer": {
             "w1p": float(w1p_fit), "w1d": float(w1d_fit),
-            "w2p": float(w2p_fit), "w2d": float(w2d_fit),
         },
         "grid_config": grid_cfg_src,
     }
@@ -254,7 +256,7 @@ if not interlayer_dst.exists() or os.path.getmtime(interlayer_src) > interlayer_
 
 out_fn = out_dir / f"chunk_{chunk_id}_{n_chunks}.h5"
 
-columns = ["Vg", "phiG", "w1p", "w1d", "w2p", "w2d",
+columns = ["Vg", "phiG", "w1p", "w1d",
            "c1", "a1", "g1", "c2", "a2", "g2", "c3", "a3", "g3", "redchi"]
 
 t_start = time.perf_counter()
@@ -265,15 +267,13 @@ with h5py.File(out_fn, "w") as hf:
     dsets = {col: hf.create_dataset(col, (end - start,), dtype="f8", fillvalue=np.nan)
              for col in columns}
 
-    for i, (Vg, phiG_deg, w1p, w1d, w2p, w2d) in enumerate(grid_chunk):
-        result = compute_and_fit(Vg, phiG_deg, w1p, w1d, w2p, w2d)
+    for i, (Vg_val, phiG_deg, w1p_val, w1d_val) in enumerate(grid_chunk):
+        result = compute_and_fit(Vg_val, phiG_deg, w1p_val, w1d_val)
 
-        dsets["Vg"][i] = Vg
+        dsets["Vg"][i] = Vg_val
         dsets["phiG"][i] = phiG_deg
-        dsets["w1p"][i] = w1p
-        dsets["w1d"][i] = w1d
-        dsets["w2p"][i] = w2p
-        dsets["w2d"][i] = w2d
+        dsets["w1p"][i] = w1p_val
+        dsets["w1d"][i] = w1d_val
 
         if result is not None:
             for col in ["c1", "a1", "g1", "c2", "a2", "g2", "c3", "a3", "g3", "redchi"]:
