@@ -28,11 +28,11 @@ INPUT_DIR = Path("Inputs") / "plot_bilayer"
 OUTPUT_DIR = Path("Data") / "show_moire_effect"
 
 K_RANGE = 0.4
-N_K_PTS = 100
-N_SHELLS = 1
+N_K_PTS = 151
+N_SHELLS = 2
 SAMPLE = "S11"
 
-BAND_LO = 18
+BAND_LO = 26
 BAND_HI = 28
 BAND_LO_YLIM = 22
 BAND_HI_YLIM = 28
@@ -139,7 +139,7 @@ def main():
                     ax.scatter(
                         k_vals[mask], evals[mask, ib],
                         s=dot_sizes[mask, ib],
-                        c="#1f77b4", alpha=0.6, zorder=2,
+                        c="#1f77b4", alpha=1.0, zorder=2,
                         edgecolors="none", linewidths=0,
                     )
 
@@ -157,7 +157,7 @@ def main():
     fig.suptitle(
         f"Moiré potential effect on bands around Γ\n"
         f"(n_shells={N_SHELLS}, ϕ_G=176°, {interlayer_str})",
-        fontsize=14, fontweight="bold", y=1.02,
+        fontsize=14, fontweight="bold", y=1.08,
     )
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

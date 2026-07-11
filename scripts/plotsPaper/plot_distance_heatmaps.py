@@ -4,8 +4,8 @@ Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_edc_gamma_data.py.
 
 Produces:
-  distance_heatmap.png       -- full-range 2D heatmap
-  distance_heatmap_zoom.png  -- zoomed to phiG in [150, 210]
+  distance_heatmap.png       -- 1x2 subplots (L1 + separation) over (Vg, phiG)
+  distance_heatmap_zoom.png  -- same, zoomed to phiG in [160, 200]
 
 Usage:
     python plot_distance_heatmaps.py <data.npz>
@@ -18,6 +18,23 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+
+def _make_heatmap(ax, phi_edges, Vg_edges_meV, d2d_meV, Vg_vals_meV, title):
+    im = ax.pcolormesh(phi_edges, Vg_edges_meV, d2d_meV,
+                       cmap="viridis_r", shading="flat")
+    for deg in [60, 180, 300]:
+        ax.axvline(x=deg, color="red", ls="--", lw=1, alpha=0.6)
+    vg_line_vals = np.arange(8, float(np.nanmax(Vg_vals_meV)) + 0.1, 2)
+    for v in vg_line_vals:
+        ax.axhline(y=v, color="gray", ls="--", lw=0.5, alpha=0.6)
+    ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
+    ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
+    ax.set_xticks([160, 170, 180, 190, 200])
+    ax.set_ylim(bottom=None, top=float(np.nanmax(Vg_vals_meV)))
+    ax.set_xlim(160, 200)
+    ax.set_title(title, fontsize=11)
+    return im
 
 
 def main():
@@ -41,89 +58,44 @@ def main():
 
     run_id = str(d["run_id"])
     Vg_vals_meV = d["Vg_vals_meV"]
-    dist_2d_meV = d["dist_2d_meV"]
     phi_edges = d["phi_edges"]
     Vg_edges_meV = d["Vg_edges_meV"]
-    best_Vg_meV = float(d["best_Vg_meV"])
-    best_phiG_deg = float(d["best_phiG_deg"])
-    best_dist_meV = float(d["best_dist_meV"])
-    best_w1p_ev = float(d["best_w1p_ev"])
-    best_w1d_ev = float(d["best_w1d_ev"])
+    dist_2d_meV = d["dist_2d_meV"]
+    dist_sep_2d_meV = d["dist_sep_2d_meV"]
+    phiG_vals = d["phiG_vals_deg"]
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    vg_line_vals = np.arange(8, float(np.nanmax(Vg_vals_meV)) + 0.1, 2)
-    vg_max = float(np.nanmax(Vg_vals_meV))
+    titles = [
+        (dist_2d_meV, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$"),
+        (dist_sep_2d_meV, r"Separation: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$"),
+    ]
 
-    # ── Full-range heatmap ───────────────────────────────────────────────────
+    # ── Full-range ────────────────────────────────────────────────────────────
 
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(20, 6), constrained_layout=True)
 
-    im = ax.pcolormesh(
-        phi_edges, Vg_edges_meV, dist_2d_meV,
-        cmap="viridis_r", shading="flat",
-    )
+    for ax, (d2d, title) in zip(axes, titles):
+        im = _make_heatmap(ax, phi_edges, Vg_edges_meV, d2d, Vg_vals_meV, title)
+        cbar = fig.colorbar(im, ax=ax, pad=0.02)
+        cbar.set_label("Min distance (meV)", fontsize=11)
 
-    ax.scatter(
-        best_phiG_deg, best_Vg_meV,
-        marker="*", s=200, c="red", edgecolors="white", linewidths=1.0, zorder=6,
-    )
-
-    for deg in [60, 180, 300]:
-        ax.axvline(x=deg, color="red", ls="--", lw=1, alpha=0.6)
-    for v in vg_line_vals:
-        ax.axhline(y=v, color="gray", ls="--", lw=0.5, alpha=0.6)
-
-    cbar = fig.colorbar(im, ax=ax, pad=0.02)
-    cbar.set_label("Min distance (meV)", fontsize=11)
-
-    ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
-    ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
-    ax.set_xticks([0, 60, 120, 180, 240, 300])
-    ax.set_ylim(bottom=None, top=vg_max)
-    ax.set_title(
-        f"EDC Gamma: min distance over interlayer params\n"
-        f"Run: {run_id}  |  best: {best_dist_meV:.1f} meV  |  "
-        f"w1p={best_w1p_ev:.3f}, w1d={best_w1d_ev:.3f}",
-        fontsize=12,
-    )
-
+    fig.suptitle(f"EDC Gamma: {run_id}", fontsize=13, y=1.02)
     fig.savefig(output_dir / "distance_heatmap.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {output_dir / 'distance_heatmap.png'}")
 
-    # ── Zoomed heatmap ───────────────────────────────────────────────────────
+    # ── Zoomed ────────────────────────────────────────────────────────────────
 
-    fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(18, 6), constrained_layout=True)
 
-    im = ax.pcolormesh(
-        phi_edges, Vg_edges_meV, dist_2d_meV,
-        cmap="viridis_r", shading="flat",
-    )
+    for ax, (d2d, title) in zip(axes, titles):
+        im = _make_heatmap(ax, phi_edges, Vg_edges_meV, d2d, Vg_vals_meV, title)
+        ax.set_xlim(160, 200)
+        cbar = fig.colorbar(im, ax=ax, pad=0.02)
+        cbar.set_label("Min distance (meV)", fontsize=11)
 
-    ax.scatter(
-        best_phiG_deg, best_Vg_meV,
-        marker="*", s=200, c="red", edgecolors="white", linewidths=1.0, zorder=6,
-    )
-
-    for deg in [60, 180, 300]:
-        ax.axvline(x=deg, color="red", ls="--", lw=1, alpha=0.6)
-    for v in vg_line_vals:
-        ax.axhline(y=v, color="gray", ls="--", lw=0.3, alpha=0.6, zorder=0)
-
-    cbar = fig.colorbar(im, ax=ax, pad=0.02)
-    cbar.set_label("Min distance (meV)", fontsize=11)
-
-    ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
-    ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
-    ax.set_xlim(150, 210)
-    ax.set_ylim(bottom=None, top=vg_max)
-    ax.set_title(
-        f"EDC Gamma: distance heatmap (zoom)\n"
-        f"Run: {run_id}  |  best: {best_dist_meV:.1f} meV",
-        fontsize=12,
-    )
-
+    fig.suptitle(f"EDC Gamma (zoom): {run_id}", fontsize=13, y=1.02)
     fig.savefig(output_dir / "distance_heatmap_zoom.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {output_dir / 'distance_heatmap_zoom.png'}")

@@ -78,16 +78,26 @@ Order: 7 on-site energies, 21 t1 hoppings, 8 t5 hoppings, 4 t6 hoppings,
 
 # ─── Sample configuration ────────────────────────────────────────────────────
 
-TWIST_ANGLES = {"S3": 1.8, "S11": 2.8}
+TWIST_ANGLES = {"S3": 1.8, "S11": 2.8, "S11_m25": 2.5, "S11_p31": 3.1}
 """Twist angles in degrees for experimental samples (from LEED)."""
 
-ENERGY_OFFSETS = {"S3": 0, "S11": -0.47}
+ENERGY_OFFSETS = {"S3": 0, "S11": -0.47, "S11_m25": -0.47, "S11_p31": -0.47}
 """Energy offsets in eV applied to each sample's ARPES data."""
 
-EDC_G_POSITIONS = {"S11": np.array([-1.1599, -1.2531, -1.82]), "S3": (np.nan,)}
+EDC_G_POSITIONS = {
+    "S11": np.array([-1.1599, -1.2531, -1.82]),
+    "S11_m25": np.array([-1.1599, -1.2531, -1.82]),
+    "S11_p31": np.array([-1.1599, -1.2531, -1.82]),
+    "S3": (np.nan,),
+}
 """Experimental EDC peak positions at Gamma (eV): TVB, side band, WS2 band."""
 
-EDC_K_POSITIONS = {"S11": np.array([-0.8990, -1.0696]), "S3": (np.nan,)}
+EDC_K_POSITIONS = {
+    "S11": np.array([-0.8990, -1.0696]),
+    "S11_m25": np.array([-0.8990, -1.0696]),
+    "S11_p31": np.array([-0.8990, -1.0696]),
+    "S3": (np.nan,),
+}
 """Experimental EDC peak positions at K (eV): TVB, moire band."""
 
 SAMPLE_PARAMS = {

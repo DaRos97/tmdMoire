@@ -60,7 +60,7 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | Plot | Content |
 |---|---|
 | `distance_heatmap.png` | 2D pcolormesh of min distance over (Vg, phiG), global best marked with red star, vertical ref lines at 60/180/300 deg |
-| `distance_heatmap_zoom.png` | Same, zoomed to phiG in [150, 210] |
+| `distance_heatmap_zoom.png` | Same, zoomed to phiG in [160, 200] |
 
 **`plot_distance_w_heatmap.py`:**
 | Plot | Content |
@@ -81,7 +81,8 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | `run_id` | Run identifier string |
 | `Vg_vals_meV` | Vg grid centers in meV (shape: n_Vg) |
 | `phiG_vals_deg` | phiG grid centers in degrees (shape: n_phi) |
-| `dist_2d_meV` | Minimum L1 distance per cell (shape: n_Vg, n_phi) |
+| `dist_2d_meV` | Minimum L1 distance per (Vg, phiG) cell (shape: n_Vg, n_phi) |
+| `dist_sep_2d_meV` | Minimum separation distance per (Vg, phiG) cell |
 | `phi_edges` | pcolormesh edge coordinates for phiG axis |
 | `Vg_edges_meV` | pcolormesh edge coordinates for Vg axis |
 | `best_Vg_meV` | Global best Vg value |
@@ -91,7 +92,8 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | `best_w1d_ev` | w1d at global best |
 | `w1p_vals_meV` | w1p grid centers in meV (shape: n_w1p) |
 | `w1d_vals_meV` | w1d grid centers in meV (shape: n_w1d) |
-| `dist_w_2d_meV` | Min distance per (w1p, w1d) cell, minimizing over (Vg, phiG) (shape: n_w1d, n_w1p) |
+| `dist_w_2d_meV` | Min L1 distance per (w1p, w1d) cell (shape: n_w1d, n_w1p) |
+| `dist_sep_w_2d_meV` | Min separation distance per (w1p, w1d) cell |
 | `w1p_edges_meV` | pcolormesh edge coordinates for w1p axis |
 | `w1d_edges_meV` | pcolormesh edge coordinates for w1d axis |
 
@@ -112,10 +114,18 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | `selected_w2p_ev` | Fixed w2p from Step 2 |
 | `selected_w2d_ev` | Fixed w2d from Step 2 |
 
-## Distance metric
+## Distance metrics
 
+Two metrics are computed for each fitted EDC point:
+
+**L1 distance** — sum of absolute differences between fitted peak positions and experimental values:
 ```
 dist = |c1 - E_TVB| + |c2 - E_side| + |c3 - E_LVB|
 ```
 
-where experimental values for S11 are `[-1.1599, -1.2531, -1.82]` eV. The 2D grid shows the minimum distance over all (w1p, w1d) combinations at each (Vg, phiG) cell.
+**Separation distance** — sum of absolute differences between peak separations (insensitive to global energy shifts):
+```
+dist_sep = ||c1 - c2| - |E_TVB - E_side|| + ||c1 - c3| - |E_TVB - E_LVB||
+```
+
+where experimental values for S11 are `[-1.1599, -1.2531, -1.82]` eV. Both heatmaps show the minimum over the marginalized dimensions at each cell.

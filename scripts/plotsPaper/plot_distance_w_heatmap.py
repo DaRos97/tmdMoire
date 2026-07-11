@@ -1,10 +1,10 @@
-"""Standalone w1p/w1d distance heatmap for EDC Gamma results.
+"""Standalone w1p/w1d distance heatmaps for EDC Gamma results.
 
 Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_edc_gamma_data.py.
 
 Produces:
-  distance_w_heatmap.png  -- 2D heatmap of min distance over (w1p, w1d)
+  distance_w_heatmap.png  -- 1x2 subplots (L1 + separation) over (w1p, w1d)
 
 Usage:
     python plot_distance_w_heatmap.py <data.npz>
@@ -38,47 +38,29 @@ def main():
 
     d = np.load(data_path)
 
-    if "w1p_vals_meV" not in d:
-        print("Error: .npz does not contain w1p/w1d distance data.")
-        print("This .npz was exported with an older version of export_edc_gamma_data.py.")
-        print("Re-export with the current version.")
-        sys.exit(1)
-
     run_id = str(d["run_id"])
-    w1p_vals_meV = d["w1p_vals_meV"]
-    w1d_vals_meV = d["w1d_vals_meV"]
-    dist_w_2d_meV = d["dist_w_2d_meV"]
     w1p_edges_meV = d["w1p_edges_meV"]
     w1d_edges_meV = d["w1d_edges_meV"]
-    best_w1p_ev = float(d["best_w1p_ev"])
-    best_w1d_ev = float(d["best_w1d_ev"])
-    best_dist_meV = float(d["best_dist_meV"])
+    dist_w_2d_meV = d["dist_w_2d_meV"]
+    dist_sep_w_2d_meV = d["dist_sep_w_2d_meV"]
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), constrained_layout=True)
 
-    im = ax.pcolormesh(
-        w1p_edges_meV, w1d_edges_meV, dist_w_2d_meV,
-        cmap="viridis_r", shading="flat",
-    )
+    for ax, d2d, title in [
+        (ax1, dist_w_2d_meV, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$"),
+        (ax2, dist_sep_w_2d_meV, r"Separation: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$"),
+    ]:
+        im = ax.pcolormesh(w1p_edges_meV, w1d_edges_meV, d2d,
+                           cmap="viridis_r", shading="flat")
+        cbar = fig.colorbar(im, ax=ax, pad=0.02)
+        cbar.set_label("Min distance (meV)", fontsize=11)
+        ax.set_xlabel(r"$w_{1p}$ (meV)", fontsize=12)
+        ax.set_ylabel(r"$w_{1d}$ (meV)", fontsize=12)
+        ax.set_title(title, fontsize=11)
 
-    ax.scatter(
-        best_w1p_ev * 1000, best_w1d_ev * 1000,
-        marker="*", s=200, c="red", edgecolors="white", linewidths=1.0, zorder=6,
-    )
-
-    cbar = fig.colorbar(im, ax=ax, pad=0.02)
-    cbar.set_label("Min distance (meV)", fontsize=11)
-
-    ax.set_xlabel(r"$w_{1p}$ (meV)", fontsize=12)
-    ax.set_ylabel(r"$w_{1d}$ (meV)", fontsize=12)
-    ax.set_title(
-        f"EDC Gamma: min distance over Vg, phiG\n"
-        f"Run: {run_id}  |  best: {best_dist_meV:.1f} meV",
-        fontsize=12,
-    )
-
+    fig.suptitle(f"EDC Gamma: min distance over Vg, phiG  |  Run: {run_id}", fontsize=13, y=1.02)
     fig.savefig(output_dir / "distance_w_heatmap.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {output_dir / 'distance_w_heatmap.png'}")

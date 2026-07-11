@@ -34,6 +34,7 @@ master_folder = get_repo_root()
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
 run_id = "default"
+sample = "S11"
 chunk_id = 0
 n_chunks = 1
 args = sys.argv[1:]
@@ -48,6 +49,9 @@ while i < len(args):
         i += 2
     elif args[i] == "--id" and i + 1 < len(args):
         run_id = args[i + 1]
+        i += 2
+    elif args[i] == "--sample" and i + 1 < len(args):
+        sample = args[i + 1]
         i += 2
     else:
         i += 1
@@ -104,7 +108,6 @@ print(f"Chunk {chunk_id}/{n_chunks}: points {start}–{end-1} ({end - start} poi
 
 # ─── Geometry and constants ─────────────────────────────────────────────────
 
-sample = "S11"
 n_shells = 2
 theta = TWIST_ANGLES[sample]
 spreadE = 0.03

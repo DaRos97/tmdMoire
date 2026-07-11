@@ -98,6 +98,8 @@ if w2p_fixed is None or w2d_fixed is None:
 # ─── Compute distance ────────────────────────────────────────────────────────
 
 exp = EDC_G_POSITIONS["S11"]
+exp_sep_TVB_side = np.abs(exp[0] - exp[1])
+exp_sep_TVB_LVB = np.abs(exp[0] - exp[2])
 
 valid = ~np.isnan(c1) & ~np.isnan(c2) & ~np.isnan(c3)
 
@@ -106,6 +108,12 @@ dist[valid] = (
     np.abs(c1[valid] - exp[0])
     + np.abs(c2[valid] - exp[1])
     + np.abs(c3[valid] - exp[2])
+)
+
+dist_sep = np.full(n_points, np.nan)
+dist_sep[valid] = (
+    np.abs(np.abs(c1[valid] - c2[valid]) - exp_sep_TVB_side)
+    + np.abs(np.abs(c1[valid] - c3[valid]) - exp_sep_TVB_LVB)
 )
 
 # ─── Aggregate: min distance per (Vg, phiG) cell ────────────────────────────
@@ -119,6 +127,7 @@ vg_to_iv = {vg: iv for iv, vg in enumerate(Vg_vals)}
 pg_to_ip = {pg: ip for ip, pg in enumerate(phiG_vals)}
 
 dist_2d = np.full((n_Vg, n_phi), np.nan)
+dist_sep_2d = np.full((n_Vg, n_phi), np.nan)
 w1p_best_2d = np.full((n_Vg, n_phi), np.nan)
 w1d_best_2d = np.full((n_Vg, n_phi), np.nan)
 
@@ -134,6 +143,7 @@ for (vg, pg), idx in best_per_cell.items():
     iv = vg_to_iv[vg]
     ip = pg_to_ip[pg]
     dist_2d[iv, ip] = dist[idx]
+    dist_sep_2d[iv, ip] = dist_sep[idx]
     w1p_best_2d[iv, ip] = w1p[idx]
     w1d_best_2d[iv, ip] = w1d[idx]
 
@@ -147,21 +157,31 @@ n_w1p = len(w1p_vals)
 n_w1d = len(w1d_vals)
 
 dist_w_2d = np.full((n_w1d, n_w1p), np.nan)
+dist_sep_w_2d = np.full((n_w1d, n_w1p), np.nan)
 w1p_to_iw = {wp: iw for iw, wp in enumerate(w1p_vals)}
 w1d_to_iw = {wd: iw for iw, wd in enumerate(w1d_vals)}
 
 best_per_cell_w = {}
+best_per_cell_w_sep = {}
 for idx in range(n_points):
     if np.isnan(dist[idx]):
         continue
     key = (w1p[idx], w1d[idx])
     if key not in best_per_cell_w or dist[idx] < dist[best_per_cell_w[key]]:
         best_per_cell_w[key] = idx
+    if not np.isnan(dist_sep[idx]):
+        if key not in best_per_cell_w_sep or dist_sep[idx] < dist_sep[best_per_cell_w_sep[key]]:
+            best_per_cell_w_sep[key] = idx
 
 for (wp, wd), idx in best_per_cell_w.items():
     iw1p = w1p_to_iw[wp]
     iw1d = w1d_to_iw[wd]
     dist_w_2d[iw1d, iw1p] = dist[idx]
+
+for (wp, wd), idx in best_per_cell_w_sep.items():
+    iw1p = w1p_to_iw[wp]
+    iw1d = w1d_to_iw[wd]
+    dist_sep_w_2d[iw1d, iw1p] = dist_sep[idx]
 
 dist_w_2d_meV = dist_w_2d * 1000.0
 
@@ -200,6 +220,7 @@ export = {
     "Vg_vals_meV": Vg_vals * 1000,
     "phiG_vals_deg": phiG_vals,
     "dist_2d_meV": dist_2d_meV,
+    "dist_sep_2d_meV": dist_sep_2d * 1000.0,
     "phi_edges": phi_edges,
     "Vg_edges_meV": Vg_edges_meV,
     "best_Vg_meV": best_Vg_meV,
@@ -210,6 +231,7 @@ export = {
     "w1p_vals_meV": w1p_vals * 1000,
     "w1d_vals_meV": w1d_vals * 1000,
     "dist_w_2d_meV": dist_w_2d_meV,
+    "dist_sep_w_2d_meV": dist_sep_w_2d * 1000.0,
     "w1p_edges_meV": w1p_edges * 1000,
     "w1d_edges_meV": w1d_edges * 1000,
 }
