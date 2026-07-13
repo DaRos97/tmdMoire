@@ -34,9 +34,9 @@ N_VG = 20
 
 SPREAD_E = 0.03
 
-EDC_SHIFT_MEV = -7.0
+EDC_SHIFT_MEV = 0.0
 
-INTERLAYER = {"w1p": -1.19, "w1d": 0.445, "w2p": -0.139, "w2d": 0.011}
+INTERLAYER = {"w1p": -1.220, "w1d": 0.460, "w2p": -0.1694, "w2d": 0.0215}
 
 PHI_G_DEG = 175.0
 PHI_G = PHI_G_DEG * np.pi / 180.0

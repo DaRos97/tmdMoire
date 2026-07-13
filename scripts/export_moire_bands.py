@@ -25,18 +25,18 @@ INPUT_DIR = Path("Inputs") / "plot_bilayer"
 OUTPUT_DIR = Path("scripts") / "plotsPaper" / "data"
 
 K_RANGE = 0.4
-N_K_PTS = 101
+N_K_PTS = 301
 N_SHELLS = 2
 SAMPLE = "S11"
 
 BAND_LO = 26
 BAND_HI = 28
 
-INTERLAYER = {"w1p": -1.19, "w1d": 0.445, "w2p": -0.139, "w2d": 0.011}
+INTERLAYER = {"w1p": -1.220, "w1d": 0.460, "w2p": -0.1694, "w2d": 0.0215}
 
 PHI_G = 175.0 * np.pi / 180.0
-V_G_VALUES = [0.0, 0.012]
-V_G_LABELS = ["0 meV", "12 meV"]
+V_G_VALUES = [0.0, 0.0105]
+V_G_LABELS = ["0 meV", "10.5 meV"]
 
 
 def main():
@@ -63,7 +63,7 @@ def main():
 
     export = {
         "k_vals": k_vals,
-        "Vg_values_meV": np.array([0, 12], dtype=np.float64),
+        "Vg_values_meV": np.array([0, 10.5], dtype=np.float64),
         "Vg_labels": np.array(V_G_LABELS, dtype=object),
         "n_shells": N_SHELLS,
         "n_cells": n_cells,
@@ -94,7 +94,7 @@ def main():
         print(f"  Done.", flush=True)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_fn = OUTPUT_DIR / f"moire_bands_k{N_K_PTS}_n{N_SHELLS}_Vg0_12.npz"
+    out_fn = OUTPUT_DIR / f"moire_bands_k{N_K_PTS}_n{N_SHELLS}_Vg0_10.5.npz"
     np.savez(out_fn, **export)
     print(f"Exported: {out_fn}")
 

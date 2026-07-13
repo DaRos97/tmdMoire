@@ -27,7 +27,7 @@ def main():
         sys.exit(1)
 
     data_path = Path(args[0])
-    output_dir = Path("figures")
+    output_dir = Path(__file__).resolve().parent / "figures"
 
     i = 1
     while i < len(args):

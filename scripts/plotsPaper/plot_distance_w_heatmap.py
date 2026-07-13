@@ -26,7 +26,7 @@ def main():
         sys.exit(1)
 
     data_path = Path(args[0])
-    output_dir = Path("figures")
+    output_dir = Path(__file__).resolve().parent / "figures"
 
     i = 1
     while i < len(args):
@@ -48,12 +48,12 @@ def main():
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), constrained_layout=True)
 
-    for ax, d2d, title in [
-        (ax1, dist_w_2d_meV, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$"),
-        (ax2, dist_sep_w_2d_meV, r"Separation: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$"),
+    for ax, d2d, title, cmap in [
+        (ax1, dist_w_2d_meV, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$", "viridis_r"),
+        (ax2, dist_sep_w_2d_meV, r"Separation: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$", "plasma_r"),
     ]:
         im = ax.pcolormesh(w1p_edges_meV, w1d_edges_meV, d2d,
-                           cmap="viridis_r", shading="flat")
+                           cmap=cmap, shading="flat")
         cbar = fig.colorbar(im, ax=ax, pad=0.02)
         cbar.set_label("Min distance (meV)", fontsize=11)
         ax.set_xlabel(r"$w_{1p}$ (meV)", fontsize=12)
@@ -61,9 +61,9 @@ def main():
         ax.set_title(title, fontsize=11)
 
     fig.suptitle(f"EDC Gamma: min distance over Vg, phiG  |  Run: {run_id}", fontsize=13, y=1.02)
-    fig.savefig(output_dir / "distance_w_heatmap.png", dpi=200, bbox_inches="tight")
+    fig.savefig(output_dir / f"distance_w_heatmap_{run_id}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved {output_dir / 'distance_w_heatmap.png'}")
+    print(f"Saved {output_dir / f'distance_w_heatmap_{run_id}.png'}")
 
 
 if __name__ == "__main__":

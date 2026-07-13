@@ -44,7 +44,8 @@ master_folder = get_repo_root()
 run_id = "default"
 sample = "S11"
 output = None
-cutoff_ev = 0.030  # 30 meV default, applied to separation distance
+l1_cutoff_ev = 0.026  # 26 meV default, applied to L1 (peak position) distance
+l2_cutoff_ev = 0.010  # 10 meV default, applied to L2 (separation) distance
 ratio_cutoff = 0.1  # 10% default
 vg_selected = None
 phig_selected = None
@@ -60,8 +61,11 @@ while i < len(args):
     elif args[i] == "--output" and i + 1 < len(args):
         output = Path(args[i + 1])
         i += 2
+    elif args[i] == "--l1-cutoff" and i + 1 < len(args):
+        l1_cutoff_ev = float(args[i + 1])
+        i += 2
     elif args[i] == "--cutoff" and i + 1 < len(args):
-        cutoff_ev = float(args[i + 1])
+        l2_cutoff_ev = float(args[i + 1])
         i += 2
     elif args[i] == "--ratio-cutoff" and i + 1 < len(args):
         ratio_cutoff = float(args[i + 1])
@@ -86,7 +90,7 @@ while i < len(args):
 
 have_selection = vg_selected is not None and phig_selected is not None
 if have_selection:
-    print(f"Selection mode: Vg = {vg_selected*1000:.0f} meV, phiG = {phig_selected:.0f} deg")
+    print(f"Selection mode: Vg = {vg_selected*1000:.1f} meV, phiG = {phig_selected:.0f} deg")
 
 # ─── Load combined data ──────────────────────────────────────────────────────
 
@@ -113,8 +117,6 @@ with h5py.File(combined_fn, "r") as f:
     g2 = f["g2"][:]
     g3 = f["g3"][:]
     redchi = f["redchi"][:]
-phiG = phiG - 1
-
 # ─── Load metadata ───────────────────────────────────────────────────────────
 
 meta_fn = run_dir / "metadata.json"
@@ -185,12 +187,17 @@ dist_sep[valid] = (
 
 # ─── Apply cutoffs ───────────────────────────────────────────────────────────
 
-above_cutoff = dist_sep > cutoff_ev
-dist[above_cutoff] = np.nan
-dist_sep[above_cutoff] = np.nan
-n_cutoff = above_cutoff.sum()
-n_within_cutoff = np.sum(~np.isnan(dist_sep))
-print(f"Points within separation cutoff: {n_within_cutoff} / {n_points}")
+above_l1_cutoff = dist > l1_cutoff_ev
+dist[above_l1_cutoff] = np.nan
+dist_sep[above_l1_cutoff] = np.nan
+n_l1 = (~np.isnan(dist_sep)).sum()
+print(f"Points within L1 cutoff ({l1_cutoff_ev*1000:.0f} meV): {n_l1} / {n_points}")
+
+above_l2_cutoff = dist_sep > l2_cutoff_ev
+dist[above_l2_cutoff] = np.nan
+dist_sep[above_l2_cutoff] = np.nan
+n_l2 = (~np.isnan(dist_sep)).sum()
+print(f"Points within L2 cutoff ({l2_cutoff_ev*1000:.0f} meV): {n_l2} / {n_points}")
 
 ratio = np.full(n_points, np.nan)
 ratio[valid & ~np.isnan(dist)] = a2[valid & ~np.isnan(dist)] / a1[valid & ~np.isnan(dist)]
@@ -221,7 +228,7 @@ if have_selection:
     if not mask_sel.any():
         vg_vals = sorted(set(Vg))
         pg_vals = sorted(set(phiG))
-        print(f"No valid fits at Vg={vg_selected*1000:.0f} meV, phiG={phig_selected:.0f} deg")
+        print(f"No valid fits at Vg={vg_selected*1000:.1f} meV, phiG={phig_selected:.0f} deg")
         print(f"Available Vg [meV]: {[v*1000 for v in vg_vals]}")
         print(f"Available phiG [deg]: {pg_vals}")
         if have_selection:
@@ -457,8 +464,8 @@ if idx_selected is not None:
     fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
 
     im = ax.pcolormesh(
-        phi_edges, vg_edges_mev, dist_2d * 1000,
-        cmap="viridis_r", shading="flat",
+        phi_edges, vg_edges_mev, dist_sep_2d * 1000,
+        cmap="plasma_r", shading="flat",
     )
 
     ax.scatter(
@@ -473,7 +480,7 @@ if idx_selected is not None:
         ax.axhline(y=v, color="gray", ls="--", lw=0.3, alpha=0.6, zorder=0)
 
     cbar = fig.colorbar(im, ax=ax, pad=0.02)
-    cbar.set_label("Min distance (meV)", fontsize=11)
+    cbar.set_label("L2 distance (meV)", fontsize=11)
 
     ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
     ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
@@ -481,8 +488,8 @@ if idx_selected is not None:
     ax.set_ylim(0, 22)
     ax.set_xlim(160, 200)
     ax.set_title(
-        f"EDC Gamma: zoom phiG [150, 210]\n"
-        f"Run: {run_id}  |  Vg={vg_selected*1000:.0f} meV, phiG={phig_selected:.0f} deg",
+        f"EDC Gamma: L2 distance zoom phiG [160, 200]\n"
+        f"Run: {run_id}  |  Vg={vg_selected*1000:.1f} meV, phiG={phig_selected:.0f} deg",
         fontsize=12,
     )
 
@@ -599,14 +606,14 @@ for k, (amp, cen, gam, col) in enumerate(zip(amps, c_vals, gams, colors_pk)):
 ax.set_xlabel("Energy (eV)", fontsize=12)
 ax.set_ylabel("Intensity (a.u.)", fontsize=12)
 ax.set_title(
-    f"EDC at Gamma: Vg={_vg*1000:.0f} meV, phiG={_phig_deg:.0f} deg\n"
+    f"EDC at Gamma: Vg={_vg*1000:.1f} meV, phiG={_phig_deg:.0f} deg\n"
     f"w1p={_w1p:.3f}, w1d={_w1d:.3f}, w2p={_w2p:.3f}, w2d={_w2d:.3f}",
     fontsize=11,
 )
 ax.set_xlim(-1.4, -1.0)
 ax.legend(fontsize=9, loc="upper left")
 
-edc_output = run_dir / f"edc_profile_Vg{_vg*1000:.0f}meV_phiG{_phig_deg:.0f}deg.png"
+edc_output = run_dir / f"edc_profile_Vg{_vg*1000:.1f}meV_phiG{_phig_deg:.0f}deg.png"
 fig.savefig(edc_output, dpi=200, bbox_inches="tight")
 plt.close(fig)
 
@@ -691,18 +698,18 @@ for i, c_val in enumerate(centers_4):
 ax4.set_xlabel("Energy (eV)", fontsize=12)
 ax4.set_ylabel("Intensity (a.u.)", fontsize=12)
 ax4.set_title(
-    f"EDC at Gamma (full range): Vg={_vg*1000:.0f} meV, phiG={_phig_deg:.0f} deg\n"
+    f"EDC at Gamma (full range): Vg={_vg*1000:.1f} meV, phiG={_phig_deg:.0f} deg\n"
     f"w1p={_w1p:.3f}, w1d={_w1d:.3f}, w2p={_w2p:.3f}, w2d={_w2d:.3f}",
     fontsize=11,
 )
 ax4.legend(fontsize=9, loc="upper left")
 
-edc4_output = run_dir / f"edc_profile_4L_Vg{_vg*1000:.0f}meV_phiG{_phig_deg:.0f}deg.png"
+edc4_output = run_dir / f"edc_profile_4L_Vg{_vg*1000:.1f}meV_phiG{_phig_deg:.0f}deg.png"
 fig4.savefig(edc4_output, dpi=200, bbox_inches="tight")
 plt.close(fig4)
 print(f"Full-range EDC profile saved to {edc4_output}")
 
-params_output = run_dir / f"Vg{_vg*1000:.0f}meV_phiG{_phig_deg:.0f}deg.json"
+params_output = run_dir / f"Vg{_vg*1000:.1f}meV_phiG{_phig_deg:.0f}deg.json"
 exported = {
     "Vg_ev": float(_vg),
     "Vg_meV": float(_vg * 1000),

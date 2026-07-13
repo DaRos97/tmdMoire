@@ -41,11 +41,14 @@ class BilayerFitter:
 
     def __init__(self, wse2: TMDMaterial, ws2: TMDMaterial,
                  master_folder: str, n_kpts: int = 51,
-                 gamma_weight: float = 5.0, gamma_sigma: float = 0.15):
+                 gamma_weight: float = 5.0, gamma_sigma: float = 0.15,
+                 sample: str = "S11"):
         self.wse2 = wse2
         self.ws2 = ws2
         self.n_kpts = n_kpts
         self.n_bands = 3
+        self.sample = sample
+        self.energy_offset = ENERGY_OFFSETS[sample]
         self._debug_iter = 0
         self._debug_dir = None
         self._debug_max = None
@@ -99,7 +102,7 @@ class BilayerFitter:
         w1p, w1d, w2p, w2d = self._clip_params(params)
 
         evals, _ = self._build_hamiltonian(w1p, w1d, w2p, w2d)
-        evals_shifted = evals + ENERGY_OFFSETS["S11"]
+        evals_shifted = evals + self.energy_offset
 
         band_indices = [27, 26, 25]
         computed = evals_shifted[:, band_indices]
@@ -129,7 +132,7 @@ class BilayerFitter:
             chi2_val = self.chi2(params)
 
         evals, _ = self._build_hamiltonian(w1p, w1d, w2p, w2d)
-        evals = evals + ENERGY_OFFSETS["S11"]
+        evals = evals + self.energy_offset
 
         fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
         band_indices = [27, 26, 25, 24]
@@ -193,7 +196,7 @@ class BilayerFitter:
         if self._debug_dir:
             self._debug_dir.mkdir(parents=True, exist_ok=True)
             evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
-            self._debug_no_coupling_evals = evals_nc + ENERGY_OFFSETS["S11"]
+            self._debug_no_coupling_evals = evals_nc + self.energy_offset
 
         callback = self._make_callback(debug_every=debug_every) if self._debug_dir else None
 
@@ -219,9 +222,9 @@ class BilayerFitter:
         best_params = self._clip_params(best.x)
 
         evals, _ = self._build_hamiltonian(*best_params)
-        evals = evals + ENERGY_OFFSETS["S11"]
+        evals = evals + self.energy_offset
         evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
-        evals_nc = evals_nc + ENERGY_OFFSETS["S11"]
+        evals_nc = evals_nc + self.energy_offset
 
         return {
             "x": best_params,

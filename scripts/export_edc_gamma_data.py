@@ -11,6 +11,7 @@ Usage:
     python scripts/export_edc_gamma_data.py --id 001
     python scripts/export_edc_gamma_data.py --id 001 --vg 0.012 --phig 176
     python scripts/export_edc_gamma_data.py --id 001 --vg 0.012 --phig 176 --output my_data.npz
+    python scripts/export_edc_gamma_data.py --id 001 --cutoff 0.026 --ratio-cutoff 0.1
 """
 import sys
 import os
@@ -24,6 +25,7 @@ import h5py
 
 from tmdmoire import EDC_G_POSITIONS, TMDMaterial, MoireGeometry, MoireHamiltonian
 from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
 master_folder = get_repo_root()
@@ -34,6 +36,9 @@ run_id = "default"
 output = None
 vg_selected = None
 phig_selected = None
+l1_cutoff_ev = 0.026  # 26 meV default, applied to L1 (peak position) distance
+l2_cutoff_ev = 0.010  # 10 meV default, applied to L2 (separation) distance
+ratio_cutoff = 0.1  # 10% default
 
 args = sys.argv[1:]
 i = 0
@@ -49,6 +54,15 @@ while i < len(args):
         i += 2
     elif args[i] == "--phig" and i + 1 < len(args):
         phig_selected = float(args[i + 1])
+        i += 2
+    elif args[i] == "--l1-cutoff" and i + 1 < len(args):
+        l1_cutoff_ev = float(args[i + 1])
+        i += 2
+    elif args[i] == "--cutoff" and i + 1 < len(args):
+        l2_cutoff_ev = float(args[i + 1])
+        i += 2
+    elif args[i] == "--ratio-cutoff" and i + 1 < len(args):
+        ratio_cutoff = float(args[i + 1])
         i += 2
     else:
         i += 1
@@ -116,6 +130,29 @@ dist_sep[valid] = (
     + np.abs(np.abs(c1[valid] - c3[valid]) - exp_sep_TVB_LVB)
 )
 
+# ─── Apply cutoffs ─────────────────────────────────────────────────────────
+
+above_l1 = dist > l1_cutoff_ev
+dist[above_l1] = np.nan
+dist_sep[above_l1] = np.nan
+n_l1 = np.sum(~np.isnan(dist_sep))
+print(f"L1 cutoff ({l1_cutoff_ev*1000:.0f} meV): {n_l1}/{n_points} pass")
+
+above_l2 = dist_sep > l2_cutoff_ev
+dist[above_l2] = np.nan
+dist_sep[above_l2] = np.nan
+n_l2 = np.sum(~np.isnan(dist_sep))
+print(f"L2 cutoff ({l2_cutoff_ev*1000:.0f} meV): {n_l2}/{n_points} pass")
+
+if ratio_cutoff is not None:
+    ratio = np.full(n_points, np.nan)
+    ratio[valid & ~np.isnan(dist)] = a2[valid & ~np.isnan(dist)] / a1[valid & ~np.isnan(dist)]
+    below_ratio = ~np.isnan(ratio) & (ratio < ratio_cutoff)
+    dist[below_ratio] = np.nan
+    dist_sep[below_ratio] = np.nan
+    n_after = np.sum(~np.isnan(dist))
+    print(f"Ratio cutoff a2/a1 >= {ratio_cutoff}: {n_after}/{n_points} pass")
+
 # ─── Aggregate: min distance per (Vg, phiG) cell ────────────────────────────
 
 Vg_vals = np.unique(Vg)
@@ -133,10 +170,10 @@ w1d_best_2d = np.full((n_Vg, n_phi), np.nan)
 
 best_per_cell = {}
 for idx in range(n_points):
-    if np.isnan(dist[idx]):
+    if np.isnan(dist_sep[idx]):
         continue
     key = (Vg[idx], phiG[idx])
-    if key not in best_per_cell or dist[idx] < dist[best_per_cell[key]]:
+    if key not in best_per_cell or dist_sep[idx] < dist_sep[best_per_cell[key]]:
         best_per_cell[key] = idx
 
 for (vg, pg), idx in best_per_cell.items():
@@ -193,7 +230,7 @@ w1d_edges = np.append(w1d_vals - w1d_step / 2, w1d_vals[-1] + w1d_step / 2)
 print(f"w1p/w1d distance grid: {n_w1p} x {n_w1d}")
 
 # Global best fit
-idx_best = np.nanargmin(dist)
+idx_best = np.nanargmin(dist_sep)
 best_Vg_meV = float(Vg[idx_best] * 1000)
 best_phiG_deg = float(phiG[idx_best])
 best_dist_meV = float(dist[idx_best] * 1000)
@@ -245,7 +282,7 @@ if have_selection:
         np.abs(Vg - vg_selected) < tol_vg
     ) & (
         np.abs(phiG - phig_selected) < tol_phig
-    ) & ~np.isnan(dist)
+    ) & ~np.isnan(dist_sep)
 
     if not mask_sel.any():
         print(f"No valid fits at Vg={vg_selected*1000:.0f} meV, phiG={phig_selected:.0f} deg")
@@ -255,7 +292,7 @@ if have_selection:
         print(f"Available phiG [deg]: {pg_vals_list}")
         sys.exit(1)
 
-    sel_idx = np.nanargmin(dist[mask_sel])
+    sel_idx = np.nanargmin(dist_sep[mask_sel])
     idx_selected = np.where(mask_sel)[0][sel_idx]
 
     _vg = float(Vg[idx_selected])
@@ -338,26 +375,7 @@ if have_selection:
                 _lorentz_peak(x, a3, c3, g3) +
                 _lorentz_peak(x, a4, c4, g4))
 
-    sorted_idx = np.argsort(full_weight_values)[::-1]
-    peak_states = []
-    seen_centers = []
-    for si in sorted_idx:
-        e = full_energy_values[si]
-        w = full_weight_values[si]
-        if w < 1e-4:
-            break
-        too_close = any(abs(e - c) < 0.01 for c in seen_centers)
-        if not too_close:
-            peak_states.append((e, w))
-            seen_centers.append(e)
-        if len(peak_states) == 4:
-            break
-
-    if len(peak_states) < 4:
-        print("Warning: fewer than 4 peak states found, using hardcoded seeds")
-        peak_states = [(-1.15, 1.5), (-1.25, 0.8), (-1.82, 1.0), (-1.87, 0.5)]
-
-    peak_states.sort(key=lambda x: x[0], reverse=True)
+    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
 
     import lmfit as lmfit_mod
     model = lmfit_mod.Model(_four_lorentzians)
@@ -424,7 +442,7 @@ if output is None:
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = ""
     if have_selection:
-        suffix = f"_Vg_{_vg*1000:.0f}meV_phiG_{_phig_deg:.0f}deg"
+        suffix = f"_Vg_{_vg*1000:.1f}meV_phiG_{_phig_deg:.0f}deg"
     output = out_dir / f"edc_gamma_{run_id}{suffix}.npz"
 
 np.savez_compressed(output, **export)

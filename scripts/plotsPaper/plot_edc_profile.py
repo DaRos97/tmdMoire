@@ -26,7 +26,7 @@ def main():
         sys.exit(1)
 
     data_path = Path(args[0])
-    output_dir = Path("figures")
+    output_dir = Path(__file__).resolve().parent / "figures"
 
     i = 1
     while i < len(args):
@@ -52,6 +52,7 @@ def main():
     exp_positions = d["exp_positions_ev"]
     sel_Vg_meV = float(d["selected_Vg_meV"])
     sel_phiG_deg = float(d["selected_phiG_deg"])
+    run_id = str(d["run_id"])
     sel_w1p = float(d["selected_w1p_ev"])
     sel_w1d = float(d["selected_w1d_ev"])
     sel_w2p = float(d["selected_w2p_ev"])
@@ -82,15 +83,15 @@ def main():
     ax.set_xlabel("Energy (eV)", fontsize=12)
     ax.set_ylabel("Intensity (a.u.)", fontsize=12)
     ax.set_title(
-        f"EDC at Gamma: Vg={sel_Vg_meV:.0f} meV, phiG={sel_phiG_deg:.0f} deg\n"
+        f"EDC at Gamma: Vg={sel_Vg_meV:.1f} meV, phiG={sel_phiG_deg:.0f} deg\n"
         f"w1p={sel_w1p:.3f}, w1d={sel_w1d:.3f}, w2p={sel_w2p:.3f}, w2d={sel_w2d:.3f}",
         fontsize=11,
     )
     ax.legend(fontsize=9, loc="upper left")
 
-    fig.savefig(output_dir / "edc_profile_4L.png", dpi=200, bbox_inches="tight")
+    fig.savefig(output_dir / f"edc_profile_4L_{run_id}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved {output_dir / 'edc_profile_4L.png'}")
+    print(f"Saved {output_dir / f'edc_profile_4L_{run_id}.png'}")
 
 
 if __name__ == "__main__":

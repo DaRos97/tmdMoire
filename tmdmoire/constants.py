@@ -88,7 +88,7 @@ EDC_G_POSITIONS = {
     "S11": np.array([-1.1599, -1.2531, -1.82]),
     "S11_m25": np.array([-1.1599, -1.2531, -1.82]),
     "S11_p31": np.array([-1.1599, -1.2531, -1.82]),
-    "S3": (np.nan,),
+    "S3": np.array([-0.69484, -0.77307, np.nan]),
 }
 """Experimental EDC peak positions at Gamma (eV): TVB, side band, WS2 band."""
 
@@ -96,7 +96,7 @@ EDC_K_POSITIONS = {
     "S11": np.array([-0.8990, -1.0696]),
     "S11_m25": np.array([-0.8990, -1.0696]),
     "S11_p31": np.array([-0.8990, -1.0696]),
-    "S3": (np.nan,),
+    "S3": np.array([np.nan, np.nan]),
 }
 """Experimental EDC peak positions at K (eV): TVB, moire band."""
 
