@@ -28,7 +28,7 @@ INPUT_DIR = Path("Inputs") / "plot_bilayer"
 OUTPUT_DIR = Path("Data") / "show_moire_effect"
 
 K_RANGE = 0.4
-N_K_PTS = 151
+N_K_PTS = 101
 N_SHELLS = 2
 SAMPLE = "S11"
 
@@ -37,11 +37,11 @@ BAND_HI = 28
 BAND_LO_YLIM = 22
 BAND_HI_YLIM = 28
 
-INTERLAYER = {"w1p": -1.378, "w1d": 0.511, "w2p": -0.139, "w2d": 0.011}
+INTERLAYER = {"w1p": -1.19, "w1d": 0.445, "w2p": -0.139, "w2d": 0.011}
 
-PHI_G = 176.0 * np.pi / 180.0
-V_G_VALUES = [0.0, 0.012, 0.025]
-V_G_LABELS = ["0 meV", "12 meV", "25 meV"]
+PHI_G = 175.0 * np.pi / 180.0
+V_G_VALUES = [0.0, 0.012]
+V_G_LABELS = ["0 meV", "12 meV"]
 
 
 def _cache_filename():
@@ -123,7 +123,7 @@ def main():
 
     print("Plotting (energy range: -1.5 to -1.0 eV)")
 
-    fig, axes = plt.subplots(1, 3, figsize=(24, 7), sharey=True, constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True, constrained_layout=True)
 
     for ax, evals, weights, label in zip(axes, all_evals, all_weights, V_G_LABELS):
         for ib in range(evals.shape[1]):
@@ -144,7 +144,7 @@ def main():
                     )
 
         ax.axvline(0, color="gray", lw=0.5, ls="--", alpha=0.5)
-        ax.set_xlabel(r"$k$ (\AA$^{-1}$)", fontsize=12)
+        ax.set_xlabel(r"$k$ ($\mathrm{\AA}^{-1}$)", fontsize=12)
         ax.set_title(f"$V_G = {label}$", fontsize=14, fontweight="bold")
         ax.set_xlim(-K_RANGE, K_RANGE)
         ax.set_ylim(y_min, y_max)
@@ -156,7 +156,7 @@ def main():
     )
     fig.suptitle(
         f"Moiré potential effect on bands around Γ\n"
-        f"(n_shells={N_SHELLS}, ϕ_G=176°, {interlayer_str})",
+        f"(n_shells={N_SHELLS}, ϕ_G=175°, {interlayer_str})",
         fontsize=14, fontweight="bold", y=1.08,
     )
 

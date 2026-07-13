@@ -1,23 +1,29 @@
 # Plots for paper
 
-Self-contained system for producing paper-quality EDC Gamma plots that can be shared with others.
+Self-contained system for producing paper-quality plots that can be shared with others. Covers EDC Gamma analysis, EDC vs V_G, and moiré band structure around Γ.
 
 ## Files
 
 ```
 scripts/
 ├── export_edc_gamma_data.py              # Extracts shareable .npz from an EDC run
+├── export_edc_vs_V.py                    # Computes EDC TVB–side distance vs V_G, exports .npz
+├── export_moire_bands.py                 # Computes moiré band structure and exports .npz
 └── plotsPaper/
     ├── README.md                          # This file
     ├── data/                              # Exported .npz data files
-├── plot_distance_heatmaps.py          # 2D distance heatmaps (full + zoom over Vg/phiG)
-├── plot_distance_w_heatmap.py         # 2D distance heatmap over w1p/w1d
-└── plot_edc_profile.py                # EDC intensity profile + 4-Lorentzian fit
+    ├── plot_distance_heatmaps.py          # 2D distance heatmaps (full + zoom over Vg/phiG)
+    ├── plot_distance_w_heatmap.py         # 2D distance heatmap over w1p/w1d
+    ├── plot_edc_profile.py                # EDC intensity profile + 4-Lorentzian fit
+    ├── plot_edc_vs_V.py                   # EDC TVB–side distance vs V_G
+    └── plot_moire_bands.py                # Moiré bands around Γ (V_G = 0 vs 12 meV)
 ```
 
 ## Workflow
 
-### 1. Export data from an EDC run
+### EDC Gamma
+
+#### 1. Export data from an EDC run
 
 ```bash
 # Heatmap data only (any run with combined.h5)
@@ -34,11 +40,11 @@ python scripts/export_edc_gamma_data.py --id 001 --vg 0.012 --phig 176 --output 
 
 This step requires the tmdmoire environment. It reads `Data/edc_gamma_<id>/combined.h5` and `metadata.json`, aggregates the 2D distance grid, and optionally recomputes the full EDC intensity profile at the selected cell via Hamiltonian diagonalization + 4-Lorentzian fitting.
 
-### 2. Share
+#### 2. Share
 
-Send the `.npz` file together with the two plotter scripts to anyone.
+Send the `.npz` file together with the plotter scripts to anyone.
 
-### 3. Plot (standalone, no tmdmoire needed)
+#### 3. Plot (standalone, no tmdmoire needed)
 
 ```bash
 # Distance heatmaps over Vg/phiG (full-range + zoom)
@@ -54,7 +60,51 @@ python plot_edc_profile.py data/edc_gamma_001_Vg_12meV_phiG_176deg.npz
 python plot_edc_profile.py data.npz --output-dir ./figures
 ```
 
-#### Plots produced
+### Moiré bands around Γ
+
+#### 1. Export data
+
+```bash
+python scripts/export_moire_bands.py
+# -> scripts/plotsPaper/data/moire_bands_k251_n1_Vg0_12.npz
+```
+
+This step requires the tmdmoire environment. Computes the supercell band structure along a G→K line through Γ (±0.4 Å⁻¹) for V_G = 0 and 12 meV at n_shells=1 (7 cells, 308×308 Hamiltonian).
+
+#### 2. Share
+
+Send the `.npz` file together with `plot_moire_bands.py` to anyone.
+
+#### 3. Plot (standalone, no tmdmoire needed)
+
+```bash
+python plot_moire_bands.py data/moire_bands_k251_n1_Vg0_12.npz
+python plot_moire_bands.py data.npz --output-dir ./figures
+```
+
+### EDC vs V_G at Γ
+
+#### 1. Export data
+
+```bash
+python scripts/export_edc_vs_V.py
+# -> scripts/plotsPaper/data/edc_vs_V_n20_Vg1-20.npz
+```
+
+This step requires the tmdmoire environment. Computes EDC intensity profiles at Gamma for V_G = 1–20 meV (20 points), fits 4 Lorentzians, and extracts the distance between the TVB main peak and the side-band peak.
+
+#### 2. Share
+
+Send the `.npz` file together with `plot_edc_vs_V.py` to anyone.
+
+#### 3. Plot (standalone, no tmdmoire needed)
+
+```bash
+python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz
+python plot_edc_vs_V.py data.npz --output-dir ./figures
+```
+
+### Plots produced
 
 **`plot_distance_heatmaps.py`:**
 | Plot | Content |
@@ -72,9 +122,19 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 |---|---|
 | `edc_profile_4L.png` | EDC intensity curve + 4-Lorentzian total fit + experimental ARPES positions |
 
+**`plot_moire_bands.py`:**
+| Plot | Content |
+|---|---|
+| `moire_bands_gamma.png` | 1×2 panels: TVB bands along k ∈ [−0.4, 0.4] Å⁻¹ for V_G = 0 and 12 meV, thin gray lines + weight-proportional blue circles |
+
+**`plot_edc_vs_V.py`:**
+| Plot | Content |
+|---|---|
+| `edc_vs_V.png` | TVB–side band distance (meV) vs V_G (meV), black markers + red dashed line at ARPES distance |
+
 ## .npz data format
 
-### Always present
+### EDC Gamma — always present
 
 | Key | Description |
 |---|---|
@@ -97,7 +157,7 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | `w1p_edges_meV` | pcolormesh edge coordinates for w1p axis |
 | `w1d_edges_meV` | pcolormesh edge coordinates for w1d axis |
 
-### Present when --vg/--phig given
+### EDC Gamma — present when --vg/--phig given
 
 | Key | Description |
 |---|---|
@@ -113,6 +173,41 @@ python plot_edc_profile.py data.npz --output-dir ./figures
 | `selected_w1d_ev` | Selected cell w1d |
 | `selected_w2p_ev` | Fixed w2p from Step 2 |
 | `selected_w2d_ev` | Fixed w2d from Step 2 |
+
+### Moiré bands around Γ
+
+| Key | Description |
+|---|---|
+| `k_vals` | k-axis values in Å⁻¹ (shape: n_kpts) |
+| `evals_0` | Eigenvalues for V_G = 0 meV (shape: n_kpts, n_bands) |
+| `weights_0` | Central-cell weights for V_G = 0 (shape: n_kpts, n_bands) |
+| `evals_1` | Eigenvalues for V_G = 12 meV (shape: n_kpts, n_bands) |
+| `weights_1` | Central-cell weights for V_G = 12 meV (shape: n_kpts, n_bands) |
+| `Vg_values_meV` | Array of V_G values: `[0, 12]` |
+| `Vg_labels` | Label strings: `["0 meV", "12 meV"]` |
+| `n_shells` | Number of moiré shells |
+| `n_cells` | Number of mini-BZ cells |
+| `n_kpts` | Number of k-points |
+| `k_range` | k-axis range in Å⁻¹ (symmetric: [−k_range, k_range]) |
+| `phiG_deg` | Moiré potential phase at Γ (degrees) |
+| `interlayer_w1p` | Interlayer coupling w1p (eV) |
+| `interlayer_w1d` | Interlayer coupling w1d (eV) |
+| `interlayer_w2p` | Interlayer coupling w2p (eV) |
+| `interlayer_w2d` | Interlayer coupling w2d (eV) |
+
+### EDC vs V_G at Γ
+
+| Key | Description |
+|---|---|
+| `Vg_vals_meV` | V_G values in meV (shape: n_Vg) |
+| `distances_meV` | TVB–side band distances in meV (shape: n_Vg) |
+| `arpes_distance_meV` | Experimental ARPES TVB–side distance (scalar) |
+| `interlayer_w1p` | Interlayer coupling w1p (eV) |
+| `interlayer_w1d` | Interlayer coupling w1d (eV) |
+| `interlayer_w2p` | Interlayer coupling w2p (eV) |
+| `interlayer_w2d` | Interlayer coupling w2d (eV) |
+| `phiG_deg` | Moiré potential phase at Γ (degrees) |
+| `n_shells` | Number of moiré shells |
 
 ## Distance metrics
 

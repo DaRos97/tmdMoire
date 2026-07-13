@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 
 from tmdmoire import EDC_G_POSITIONS, TMDMaterial, MoireGeometry, MoireHamiltonian
 from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
 master_folder = get_repo_root()
@@ -112,6 +113,7 @@ with h5py.File(combined_fn, "r") as f:
     g2 = f["g2"][:]
     g3 = f["g3"][:]
     redchi = f["redchi"][:]
+phiG = phiG - 1
 
 # ─── Load metadata ───────────────────────────────────────────────────────────
 
@@ -147,6 +149,15 @@ tol = 1e-4  # tolerance for "at bound" comparison
 
 n_points = len(Vg)
 print(f"Loaded {n_points} points from {combined_fn}")
+
+# ─── Apply Vg limit ───────────────────────────────────────────────────────────
+
+if vg_max_mev is not None:
+    mask_vg_high = Vg * 1000 >= vg_max_mev
+    n_excluded = mask_vg_high.sum()
+    for arr in [c1, c2, c3, a1, a2, a3, g1, g2, g3, redchi]:
+        arr[mask_vg_high] = np.nan
+    print(f"Excluded {n_excluded} points with Vg >= {vg_max_mev:.0f} meV")
 
 # ─── Compute distance ────────────────────────────────────────────────────────
 
@@ -205,7 +216,7 @@ if have_selection:
         np.abs(Vg - vg_selected) < tol_vg
     ) & (
         np.abs(phiG - phig_selected) < tol_phig
-    ) & ~np.isnan(dist)
+    ) & ~np.isnan(dist_sep)
 
     if not mask_sel.any():
         vg_vals = sorted(set(Vg))
@@ -217,7 +228,7 @@ if have_selection:
             print("Exiting due to invalid selection.")
             sys.exit(1)
 
-    idx_sel_local = np.nanargmin(dist[mask_sel])
+    idx_sel_local = np.nanargmin(dist_sep[mask_sel])
     idx_selected = np.where(mask_sel)[0][idx_sel_local]
 
     print(f"\n{'─'*60}")
@@ -236,16 +247,15 @@ if have_selection:
     print(f"  a3   = {a3[idx_selected]:.4f}")
     print(f"  redchi = {redchi[idx_selected]:.6f}")
     print(f"  a2/a1 = {ratio[idx_selected]:.4f}")
-    print(f"  distance = {dist[idx_selected]*1000:.2f} meV")
-    if not np.isnan(dist_sep[idx_selected]):
-        print(f"  dist_sep = {dist_sep[idx_selected]*1000:.2f} meV")
+    print(f"  L2    = {dist_sep[idx_selected]*1000:.2f} meV")
+    if not np.isnan(dist[idx_selected]):
+        print(f"  L1    = {dist[idx_selected]*1000:.2f} meV")
     print(f"{'─'*60}")
 
 # ─── Find global minimum ─────────────────────────────────────────────────────
 
-idx_best = np.nanargmin(dist)
-idx_best_sep = np.nanargmin(dist_sep)
-print(f"\nGlobal minimum distance (L1): {dist[idx_best]*1000:.2f} meV")
+idx_best = np.nanargmin(dist_sep)
+print(f"\nGlobal minimum L2 distance: {dist_sep[idx_best]*1000:.2f} meV")
 print(f"  Vg   = {Vg[idx_best]*1000:.1f} meV")
 print(f"  phiG = {phiG[idx_best]:.1f} deg")
 print(f"  w1p  = {w1p[idx_best]:+.4f} eV")
@@ -253,17 +263,8 @@ print(f"  w1d  = {w1d[idx_best]:+.4f} eV")
 print(f"  c1   = {c1[idx_best]:.4f} eV (exp: {exp[0]:.4f} eV)")
 print(f"  c2   = {c2[idx_best]:.4f} eV (exp: {exp[1]:.4f} eV)")
 print(f"  c3   = {c3[idx_best]:.4f} eV (exp: {exp[2]:.4f} eV)")
+print(f"  L1   = {dist[idx_best]*1000:.2f} meV")
 print(f"  a2/a1 = {ratio[idx_best]:.4f}")
-
-if not np.isnan(dist_sep[idx_best_sep]):
-    print(f"\nGlobal minimum separation distance: {dist_sep[idx_best_sep]*1000:.2f} meV")
-    print(f"  Vg   = {Vg[idx_best_sep]*1000:.1f} meV")
-    print(f"  phiG = {phiG[idx_best_sep]:.1f} deg")
-    print(f"  w1p  = {w1p[idx_best_sep]:+.4f} eV")
-    print(f"  w1d  = {w1d[idx_best_sep]:+.4f} eV")
-    print(f"  c1   = {c1[idx_best_sep]:.4f} eV")
-    print(f"  c2   = {c2[idx_best_sep]:.4f} eV")
-    print(f"  c3   = {c3[idx_best_sep]:.4f} eV")
 
 # ─── Aggregate: min distance over (Vg, phiG) grid ───────────────────────────
 
@@ -284,13 +285,13 @@ param_2d = {pname: np.full((n_Vg, n_phi), np.nan) for pname in param_arrays}
 vg_to_iv = {vg: iv for iv, vg in enumerate(Vg_vals)}
 pg_to_ip = {pg: ip for ip, pg in enumerate(phiG_vals)}
 
-# dict: (vg, pg) -> index in original arrays of the min-distance point
+# dict: (vg, pg) -> index in original arrays of the min-L2 point
 best_per_cell = {}
 for i in range(n_points):
-    if np.isnan(dist[i]):
+    if np.isnan(dist_sep[i]):
         continue
     key = (Vg[i], phiG[i])
-    if key not in best_per_cell or dist[i] < dist[best_per_cell[key]]:
+    if key not in best_per_cell or dist_sep[i] < dist_sep[best_per_cell[key]]:
         best_per_cell[key] = i
 
 if vg_max_mev is not None:
@@ -338,25 +339,25 @@ else:
     print(f"Cells at interlayer parameter bounds (included in heatmap): {n_at_bounds} / {n_Vg * n_phi}")
 
 phi_step = phiG_vals[1] - phiG_vals[0]
-phi_edges = np.insert(phiG_vals, 0, phiG_vals[0] - phi_step)
+phi_edges = np.append(phiG_vals - phi_step / 2, phiG_vals[-1] + phi_step / 2)
 vg_step = Vg_vals[1] - Vg_vals[0]
 vg_half_step_mev = vg_step * 1000 / 2
 vg_edges_mev = np.append(Vg_vals * 1000 - vg_half_step_mev, Vg_vals[-1] * 1000 + vg_half_step_mev)
 
-# Horizontal reference lines every 2 meV starting at 8 meV
-vg_line_vals = np.arange(8, Vg_vals[-1] * 1000 + 0.1, 2)
+# Horizontal reference lines every 4 meV
+vg_line_vals = np.arange(4, 23, 4)
 
-# ─── Plot Vg/phiG distance heatmaps (L1 + separation) ─────────────────────
+# ─── Plot Vg/phiG distance heatmaps (L1 + L2) ─────────────────────
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 6), constrained_layout=True)
 
-for ax, d2d, title in [
-    (ax1, dist_2d * 1000, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$"),
-    (ax2, dist_sep_2d * 1000, r"Separation distance: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$"),
+for ax, d2d, title, cmap_name in [
+    (ax1, dist_2d * 1000, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$", "viridis_r"),
+    (ax2, dist_sep_2d * 1000, r"L2 distance: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$", "plasma_r"),
 ]:
     im = ax.pcolormesh(
         phi_edges, vg_edges_mev, d2d,
-        cmap="viridis_r", shading="flat",
+        cmap=cmap_name, shading="flat",
     )
     for deg in [60, 180, 300]:
         ax.axvline(x=deg, color="red", ls="--", lw=1, alpha=0.6)
@@ -367,8 +368,8 @@ for ax, d2d, title in [
     ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
     ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
     ax.set_xticks([160, 170, 180, 190, 200])
-    if vg_max_mev is not None:
-        ax.set_ylim(bottom=None, top=vg_max_mev)
+    ax.set_yticks(np.arange(0, 23, 2))
+    ax.set_ylim(0, 22)
     ax.set_xlim(160, 200)
     ax.set_title(title, fontsize=11)
 
@@ -397,17 +398,13 @@ n_w1d = len(w1d_vals)
 dist_w_2d = np.full((n_w1d, n_w1p), np.nan)
 dist_sep_w_2d = np.full((n_w1d, n_w1p), np.nan)
 best_per_cell_w = {}
-best_per_cell_w_sep = {}
 
 for i in range(n_points):
-    if np.isnan(dist[i]):
+    if np.isnan(dist_sep[i]):
         continue
     key = (w1p[i], w1d[i])
-    if key not in best_per_cell_w or dist[i] < dist[best_per_cell_w[key]]:
+    if key not in best_per_cell_w or dist_sep[i] < dist_sep[best_per_cell_w[key]]:
         best_per_cell_w[key] = i
-    if not np.isnan(dist_sep[i]):
-        if key not in best_per_cell_w_sep or dist_sep[i] < dist_sep[best_per_cell_w_sep[key]]:
-            best_per_cell_w_sep[key] = i
 
 w1p_to_iw = {wp: iw for iw, wp in enumerate(w1p_vals)}
 w1d_to_iw = {wd: iw for iw, wd in enumerate(w1d_vals)}
@@ -416,10 +413,6 @@ for (wp, wd), idx in best_per_cell_w.items():
     iw1p = w1p_to_iw[wp]
     iw1d = w1d_to_iw[wd]
     dist_w_2d[iw1d, iw1p] = dist[idx]
-
-for (wp, wd), idx in best_per_cell_w_sep.items():
-    iw1p = w1p_to_iw[wp]
-    iw1d = w1d_to_iw[wd]
     dist_sep_w_2d[iw1d, iw1p] = dist_sep[idx]
 
 w1p_step = w1p_vals[1] - w1p_vals[0] if n_w1p > 1 else 0.002
@@ -429,17 +422,17 @@ w1d_edges = np.append(w1d_vals - w1d_step / 2, w1d_vals[-1] + w1d_step / 2)
 
 print(f"w1p/w1d distance grid: {n_w1p} x {n_w1d}")
 
-# ─── Plot w1p/w1d distance heatmaps (L1 + separation) ──────────────────────
+# ─── Plot w1p/w1d distance heatmaps (L1 + L2) ──────────────────────
 
 fig_w, (ax_w1, ax_w2) = plt.subplots(1, 2, figsize=(20, 6), constrained_layout=True)
 
-for ax, d2d, title in [
-    (ax_w1, dist_w_2d * 1000, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$"),
-    (ax_w2, dist_sep_w_2d * 1000, r"Separation distance: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$"),
+for ax, d2d, title, cmap_name in [
+    (ax_w1, dist_w_2d * 1000, r"L1 distance: $\Sigma\,|c_i - E_i^{\mathrm{exp}}|$", "viridis_r"),
+    (ax_w2, dist_sep_w_2d * 1000, r"L2 distance: $\Sigma\,|\Delta E - \Delta E^{\mathrm{exp}}|$", "plasma_r"),
 ]:
     im = ax.pcolormesh(
         w1p_edges * 1000, w1d_edges * 1000, d2d,
-        cmap="viridis_r", shading="flat",
+        cmap=cmap_name, shading="flat",
     )
     cbar = fig_w.colorbar(im, ax=ax, pad=0.02)
     cbar.set_label("Min distance (meV)", fontsize=11)
@@ -458,58 +451,6 @@ plt.close(fig_w)
 
 print(f"w1p/w1d distance figure saved to {pw_output}")
 
-# ─── Aggregate: intensity ratio a2/a1 over (Vg, phiG) grid ──────────────────
-
-ratio_2d = np.full((n_Vg, n_phi), np.nan)
-
-for (vg, pg), idx in best_per_cell.items():
-    iv = vg_to_iv[vg]
-    ip = pg_to_ip[pg]
-    if a1[idx] > 0:
-        ratio_2d[iv, ip] = a2[idx] / a1[idx]
-
-# Mask boundary cells in ratio (if exclude_boundary)
-if exclude_boundary:
-    for iv in range(n_Vg):
-        for ip in range(n_phi):
-            if bounds_2d[iv][ip]:
-                ratio_2d[iv, ip] = np.nan
-
-# ─── Plot intensity ratio ────────────────────────────────────────────────────
-
-fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
-
-im = ax.pcolormesh(
-    phi_edges, vg_edges_mev, ratio_2d,
-    cmap="viridis", shading="flat",
-)
-
-# Vertical reference lines
-for deg in [60, 180, 300]:
-    ax.axvline(x=deg, color="red", ls="--", lw=1, alpha=0.6)
-for v in vg_line_vals:
-    ax.axhline(y=v, color="gray", ls="--", lw=0.5, alpha=0.6)
-
-cbar = fig.colorbar(im, ax=ax, pad=0.02)
-cbar.set_label(r"$a_2 / a_1$ (adjacent band / TVB)", fontsize=11)
-
-ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
-ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
-ax.set_xticks([0, 60, 120, 180, 240, 300])
-if vg_max_mev is not None:
-    ax.set_ylim(bottom=None, top=vg_max_mev)
-ax.set_title(
-    f"EDC Gamma: adjacent band intensity relative to TVB\n"
-    f"Run: {run_id}  |  at min-distance interlayer params",
-    fontsize=12,
-)
-
-ratio_output = run_dir / "analysis_ratio.png"
-fig.savefig(ratio_output, dpi=200, bbox_inches="tight")
-plt.close(fig)
-
-print(f"Ratio figure saved to {ratio_output}")
-
 # ─── Zoomed plot (phiG 150–210) with selected cell marker ──────────────────────
 
 if idx_selected is not None:
@@ -521,7 +462,7 @@ if idx_selected is not None:
     )
 
     ax.scatter(
-        phiG[idx_selected] - phi_step / 2, Vg[idx_selected] * 1000,
+        phiG[idx_selected], Vg[idx_selected] * 1000,
         marker="D", s=80, c="cyan", edgecolors="black", linewidths=1.5,
         zorder=6,
     )
@@ -536,6 +477,8 @@ if idx_selected is not None:
 
     ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
     ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
+    ax.set_yticks(np.arange(0, 23, 2))
+    ax.set_ylim(0, 22)
     ax.set_xlim(160, 200)
     ax.set_title(
         f"EDC Gamma: zoom phiG [150, 210]\n"
@@ -678,26 +621,10 @@ def _four_lorentzians(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
             _lorentz_peak(x, a3, c3, g3) +
             _lorentz_peak(x, a4, c4, g4))
 
-sorted_idx_4 = np.argsort(full_weight_values)[::-1]
-peak_states_4 = []
-seen_centers_4 = []
-for si in sorted_idx_4:
-    e = full_energy_values[si]
-    w = full_weight_values[si]
-    if w < 1e-4:
-        break
-    too_close = any(abs(e - c) < 0.01 for c in seen_centers_4)
-    if not too_close:
-        peak_states_4.append((e, w))
-        seen_centers_4.append(e)
-    if len(peak_states_4) == 4:
-        break
-
+peak_states_4 = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
 if len(peak_states_4) < 4:
     peak_states_4 = [(float(_c1), float(_a1)), (float(_c2), float(_a2)),
                      (float(_c3), float(_a3)), (float(_c3) - 0.05, float(_a3) / 2)]
-
-peak_states_4.sort(key=lambda x: x[0], reverse=True)
 
 import lmfit as lmfit_mod_4L
 model_4L = lmfit_mod_4L.Model(_four_lorentzians)
@@ -795,7 +722,8 @@ exported = {
     "g2": float(_g2),
     "g3": float(_g3),
     "redchi": float(_redchi),
-    "distance_meV": float(dist[idx_selected] * 1000),
+    "L2_meV": float(dist_sep[idx_selected] * 1000),
+    "L1_meV": float(dist[idx_selected] * 1000) if not np.isnan(dist[idx_selected]) else None,
 }
 with open(params_output, "w") as f:
     json.dump(exported, f, indent=2)

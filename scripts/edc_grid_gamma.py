@@ -26,6 +26,7 @@ import h5py
 
 from tmdmoire import TMDMaterial, MoireGeometry, MoireHamiltonian
 from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
 master_folder = get_repo_root()
@@ -174,25 +175,7 @@ def compute_and_fit(Vg, phiG_deg, w1p_val, w1d_val):
             (energy_list - full_energy_values[i]) ** 2 + spreadE ** 2
         )
 
-    sorted_indices = np.argsort(full_weight_values)[::-1]
-    peak_states = []
-    seen_centers = []
-    for si in sorted_indices:
-        e = full_energy_values[si]
-        w = full_weight_values[si]
-        if w < 1e-4:
-            break
-        too_close = any(abs(e - c) < 0.01 for c in seen_centers)
-        if not too_close:
-            peak_states.append((e, w))
-            seen_centers.append(e)
-        if len(peak_states) == 4:
-            break
-
-    if len(peak_states) < 4:
-        return None
-
-    peak_states.sort(key=lambda x: x[0], reverse=True)
+    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
 
     model = lmfit.Model(_four_lorentzian)
     params_fit = model.make_params(

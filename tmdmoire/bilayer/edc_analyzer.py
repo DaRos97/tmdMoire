@@ -1,28 +1,60 @@
 """EDC analysis for bilayer moire superlattice.
 
 Computes energy distribution curves from supercell eigenvalues,
-fits Voigt profiles, computes band gaps, and local density of states.
+fits Lorentzian profiles, computes band gaps, and local density of states.
 """
 import numpy as np
-from scipy.special import wofz
-import lmfit
+
 from ..material import TMDMaterial
 from .geometry import MoireGeometry
 from .hamiltonian import MoireHamiltonian
-from ..constants import EDC_G_POSITIONS, EDC_K_POSITIONS, ENERGY_OFFSETS
+from ..constants import ENERGY_OFFSETS
 
 
-def _voigt(x, center, amplitude, gamma, sigma):
-    z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-    return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
+def find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values):
+    """Find 4 peak seeds for Gamma-point EDC using find_peaks on intensity profile.
 
+    Uses scipy.signal.find_peaks to locate local maxima, then classifies
+    by energy region (TVB > -1.5 eV, LVB < -1.5 eV). Side bands are found
+    from raw eigenstates.
 
-def _three_voigt_model(x, amp1, cen1, gam1, amp2, cen2, gam2, amp3, cen3, gam3, sig):
-    return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig) + _voigt(x, cen3, amp3, gam3, sig)
+    Parameters
+    ----------
+    weight_list : np.ndarray
+        Spread intensity profile.
+    energy_list : np.ndarray
+        Energy grid corresponding to weight_list.
+    full_energy_values : np.ndarray
+        Raw eigenvalues in the band window.
+    full_weight_values : np.ndarray
+        Raw orbital weights in the band window.
 
+    Returns
+    -------
+    list of tuple
+        Four (energy, weight) tuples sorted by energy descending.
+    """
+    from scipy.signal import find_peaks
 
-def _two_voigt(x, amp1, cen1, gam1, amp2, cen2, gam2, sig):
-    return _voigt(x, cen1, amp1, gam1, sig) + _voigt(x, cen2, amp2, gam2, sig)
+    peaks_idx, _ = find_peaks(weight_list, height=weight_list.max() * 0.005, distance=int(0.01 / 0.005))
+    peaks_found = list(zip(energy_list[peaks_idx], weight_list[peaks_idx]))
+
+    tvb_region = [(e, h) for e, h in peaks_found if e > -1.5]
+    tvb_main = max(tvb_region, key=lambda x: x[1]) if tvb_region else (-1.16, 10.0)
+
+    lvb_region = [(e, h) for e, h in peaks_found if e < -1.5]
+    lvb_main = max(lvb_region, key=lambda x: x[1]) if lvb_region else (-1.82, 10.0)
+
+    eigen_by_energy = sorted(zip(full_energy_values, full_weight_values), key=lambda x: x[0], reverse=True)
+
+    side_candidates = [e for e in eigen_by_energy if e[0] < tvb_main[0] - 0.01 and e[0] > -1.5]
+    tvb_side = max(side_candidates, key=lambda x: x[1]) if side_candidates else (tvb_main[0] - 0.05, tvb_main[1] * 0.3)
+
+    lvb_side_candidates = [e for e in eigen_by_energy if e[0] < lvb_main[0] - 0.01]
+    lvb_side = max(lvb_side_candidates, key=lambda x: x[1]) if lvb_side_candidates else (lvb_main[0] - 0.05, lvb_main[1] * 0.3)
+
+    peak_states = sorted([tvb_main, tvb_side, lvb_main, lvb_side], key=lambda x: x[0], reverse=True)
+    return peak_states
 
 
 class EDCAnalyzer:
@@ -31,45 +63,6 @@ class EDCAnalyzer:
         self.ws2 = ws2
         self.geometry = geometry
         self.config = config
-
-    def compute_edc(self, params: tuple, bz_point: str, spreadE: float = 0.03,
-                    sample: str = "S11", plot_bands: bool = False, plot_fit: bool = False):
-
-        n_cells = self.config["n_cells"]
-        k_point = self.config["k_point"]
-        interlayer_params = self.config["interlayer_params"]
-        pars_V = self.config["pars_V"]
-
-        if bz_point == "G":
-            Vg, phiG = params
-            pars_V = (Vg, pars_V[1], phiG, pars_V[3])
-        elif bz_point == "K":
-            Vk, phiK = params
-            pars_V = (pars_V[0], Vk, pars_V[2], phiK)
-
-        moire_ham = MoireHamiltonian(self.wse2, self.ws2, self.geometry)
-        evals, evecs = moire_ham.diagonalize(
-            k_point, self.config["n_shells"], interlayer_params, pars_V
-        )
-
-        evals = evals[0]
-        evecs = evecs[0]
-        evals += ENERGY_OFFSETS.get(sample, 0.0)
-
-        ab = np.absolute(evecs) ** 2
-        weights = np.sum(ab[:22, :], axis=0) + np.sum(ab[22 * n_cells:22 * (1 + n_cells), :], axis=0)
-
-        if bz_point == "G":
-            pTVB, pSide, pLVB, success = self._fit_bands_gamma(evals, weights, n_cells, spreadE, sample, plot_fit)
-            if not success:
-                return np.nan, False
-            return (pTVB, pSide, pLVB), True
-
-        pTVB, successTVB = self._fit_bands("TVB", evals, weights, n_cells, spreadE, sample, bz_point, plot_fit)
-        if not successTVB:
-            return np.nan, False
-
-        return pTVB, True
 
     def compute_gap(self, params: tuple, bz_point: str, plot_bands_gap: bool = False):
         n_cells = self.config["n_cells"]
@@ -99,107 +92,6 @@ class EDCAnalyzer:
         n_tvb = 28 * n_cells
         gap = np.min(evals[:, n_tvb - 1] - evals[:, n_tvb - 2])
         return gap
-
-    def _fit_bands_gamma(self, evals, weights, n_cells, spreadE, sample, plot_fit):
-        index_tvb = 28 * n_cells - 1
-        index_lvb = 26 * n_cells - 1
-        index_l = index_lvb - 2 * n_cells + 1
-
-        full_energy_values = evals[index_l:index_tvb + 1]
-        full_weight_values = weights[index_l:index_tvb + 1]
-
-        min_e = full_energy_values[0]
-        max_e = full_energy_values[-1]
-        delta = max_e - min_e
-        min_e -= delta / 2
-        max_e += delta / 2
-        n_e = int((max_e - min_e) / 0.005)
-        energy_list = np.linspace(min_e, max_e, n_e)
-        weight_list = np.zeros(len(energy_list))
-
-        for i in range(len(full_energy_values)):
-            weight_list += spreadE / np.pi * full_weight_values[i] / ((energy_list - full_energy_values[i]) ** 2 + spreadE ** 2)
-
-        model = lmfit.Model(_three_voigt_model)
-        idx_max = np.argmax(weight_list)
-        cen1 = energy_list[idx_max]
-        cen2 = cen1 - 0.09
-        cen3 = cen1 - 0.65
-
-        params_fit = model.make_params(
-            amp1=1.5, cen1=cen1, gam1=0.03,
-            amp2=0.8, cen2=cen2, gam2=0.03,
-            amp3=1.0, cen3=cen3, gam3=0.03,
-            sig=0.07,
-        )
-        params_fit["sig"].set(min=1e-6, max=50)
-        params_fit["gam1"].set(min=1e-6, max=50)
-        params_fit["gam2"].set(min=1e-6, max=50)
-        params_fit["gam3"].set(min=1e-6, max=50)
-        params_fit["amp1"].set(min=0)
-        params_fit["amp2"].set(min=0)
-        params_fit["amp3"].set(min=0)
-
-        result = model.fit(weight_list, params_fit, x=energy_list)
-        amp1 = result.best_values["amp1"]
-        amp2 = result.best_values["amp2"]
-        amp3 = result.best_values["amp3"]
-        cen1 = result.best_values["cen1"]
-        cen2 = result.best_values["cen2"]
-        cen3 = result.best_values["cen3"]
-
-        if result.success and amp1 > 1e-3 and amp2 > 1e-3 and amp3 > 1e-3 and result.redchi < 1.0 and cen1 > cen2 > cen3:
-            return cen1, cen2, cen3, True
-        return 0, 0, 0, False
-
-    def _fit_bands(self, band_type, evals, weights, n_cells, spreadE, sample, bz_point, plot_fit):
-        index_b = 28 * n_cells - 1 if band_type == "TVB" else 26 * n_cells - 1
-        index_l = index_b - 2 * n_cells + 1 if bz_point == "G" else index_b - n_cells + np.argmax(weights[index_b - n_cells:index_b]) + 1
-        n_soc = 2 if bz_point == "G" else 1
-        energy_b = evals[index_b]
-        weight_b = weights[index_b]
-
-        full_energy_values = evals[index_l:index_b + 1]
-        full_weight_values = weights[index_l:index_b + 1]
-
-        min_e = full_energy_values[0]
-        max_e = full_energy_values[-1]
-        delta = max_e - min_e
-        min_e -= delta / 2
-        max_e += delta / 2
-        n_e = int((max_e - min_e) / 0.005)
-        energy_list = np.linspace(min_e, max_e, n_e)
-        weight_list = np.zeros(len(energy_list))
-
-        if np.max(full_weight_values[:-n_soc]) > weight_b:
-            return (0, 0), False
-
-        for i in range(len(full_energy_values)):
-            weight_list += spreadE / np.pi * full_weight_values[i] / ((energy_list - full_energy_values[i]) ** 2 + spreadE ** 2)
-
-        model = lmfit.Model(_two_voigt)
-        cen1 = energy_list[np.argmax(weight_list)]
-        cen2 = cen1 - 0.05 if bz_point == "G" else cen1 - 0.15
-        params_fit = model.make_params(
-            amp1=1.57, cen1=cen1, gam1=0.03,
-            amp2=0.41, cen2=cen2, gam2=0.03,
-            sig=0.07,
-        )
-        params_fit["sig"].set(min=1e-6, max=50)
-        params_fit["gam1"].set(min=1e-6, max=50)
-        params_fit["gam2"].set(min=1e-6, max=50)
-        params_fit["amp1"].set(min=0)
-        params_fit["amp2"].set(min=0)
-
-        result = model.fit(weight_list, params_fit, x=energy_list)
-        amp1 = result.best_values["amp1"]
-        amp2 = result.best_values["amp2"]
-        cen1 = result.best_values["cen1"]
-        cen2 = result.best_values["cen2"]
-
-        if result.success and amp1 > 1e-3 and amp2 > 1e-3 and result.redchi < 1e-2 and amp1 > amp2:
-            return (cen1, cen2), True
-        return (0, 0), False
 
     def compute_ldos(self, evals, evecs, r_list, e_list, k_flat, spreadE):
         n_shells = self.config["n_shells"]

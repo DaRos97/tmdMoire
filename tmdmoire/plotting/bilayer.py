@@ -418,9 +418,13 @@ def plot_moire_bands_half_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
     fig, axes = plt.subplots(1, 2, figsize=(20, 8), constrained_layout=True)
 
     ax1 = axes[0]
-    ax1.pcolormesh(k_kgk_left, e_list, arpes_kgk_left.T, cmap="Greys",
+    arpes_left = arpes_kgk_left.copy()
+    sim_right = spread_kgk_right.copy()
+    arpes_left = arpes_left / np.max(arpes_left) if np.max(arpes_left) > 0 else arpes_left
+    sim_right = sim_right / np.max(sim_right) if np.max(sim_right) > 0 else sim_right
+    ax1.pcolormesh(k_kgk_left, e_list, arpes_left.T, cmap="Greys",
                    shading="auto", alpha=0.7)
-    ax1.pcolormesh(k_kgk_right, e_list, spread_kgk_right.T, cmap="Greys",
+    ax1.pcolormesh(k_kgk_right, e_list, sim_right.T, cmap="Greys",
                    shading="auto")
     ax1.set_ylabel("Energy (eV)", fontsize=12)
     ax1.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
@@ -429,9 +433,13 @@ def plot_moire_bands_half_arpes(k_kgk, k_kmkp, e_list, spread_kgk, spread_kmkp,
     ax1.set_xlim(-1.4, 1.4)
 
     ax2 = axes[1]
-    ax2.pcolormesh(k_kmkp_left, e_list, arpes_kmkp_left.T, cmap="Greys",
+    arpes_km_left = arpes_kmkp_left.copy()
+    sim_km_right = spread_kmkp_right.copy()
+    arpes_km_left = arpes_km_left / np.max(arpes_km_left) if np.max(arpes_km_left) > 0 else arpes_km_left
+    sim_km_right = sim_km_right / np.max(sim_km_right) if np.max(sim_km_right) > 0 else sim_km_right
+    ax2.pcolormesh(k_kmkp_left, e_list, arpes_km_left.T, cmap="Greys",
                    shading="auto", alpha=0.7)
-    ax2.pcolormesh(k_kmkp_right, e_list, spread_kmkp_right.T, cmap="Greys",
+    ax2.pcolormesh(k_kmkp_right, e_list, sim_km_right.T, cmap="Greys",
                    shading="auto")
     ax2.set_xlabel("Momentum (A$^{-1}$)", fontsize=12)
     ax2.set_title("K$\\rightarrow$M$\\rightarrow$K'", fontsize=13, fontweight="bold")

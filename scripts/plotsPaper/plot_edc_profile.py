@@ -26,7 +26,7 @@ def main():
         sys.exit(1)
 
     data_path = Path(args[0])
-    output_dir = Path(".")
+    output_dir = Path("figures")
 
     i = 1
     while i < len(args):
