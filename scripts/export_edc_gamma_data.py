@@ -24,7 +24,7 @@ import numpy as np
 import h5py
 
 from tmdmoire import EDC_G_POSITIONS, TMDMaterial, MoireGeometry, MoireHamiltonian
-from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS, EDC_G_SEED_BOUNDARY
 from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
@@ -306,6 +306,7 @@ if have_selection:
     print("Recomputing EDC intensity profile...")
 
     sample = "S11"
+    seed_boundary = EDC_G_SEED_BOUNDARY.get(sample, -1.5)
     n_shells = 2
     theta = TWIST_ANGLES[sample]
     spreadE = 0.03
@@ -375,7 +376,8 @@ if have_selection:
                 _lorentz_peak(x, a3, c3, g3) +
                 _lorentz_peak(x, a4, c4, g4))
 
-    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
+    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values,
+                                        boundary_ev=seed_boundary)
 
     import lmfit as lmfit_mod
     model = lmfit_mod.Model(_four_lorentzians)

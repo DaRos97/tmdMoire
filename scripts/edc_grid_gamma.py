@@ -25,7 +25,7 @@ import lmfit
 import h5py
 
 from tmdmoire import TMDMaterial, MoireGeometry, MoireHamiltonian
-from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS, EDC_G_SEED_BOUNDARY
 from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
@@ -130,6 +130,7 @@ theta = TWIST_ANGLES[sample]
 spreadE = 0.03
 n_cells = MoireGeometry.n_cells(n_shells)
 geometry = MoireGeometry(theta)
+seed_boundary = EDC_G_SEED_BOUNDARY.get(sample, -1.5)
 k_list = np.array([np.zeros(2)])
 
 # ─── Fit helpers ─────────────────────────────────────────────────────────────
@@ -175,7 +176,8 @@ def compute_and_fit(Vg, phiG_deg, w1p_val, w1d_val):
             (energy_list - full_energy_values[i]) ** 2 + spreadE ** 2
         )
 
-    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
+    peak_states = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values,
+                                        boundary_ev=seed_boundary)
 
     model = lmfit.Model(_four_lorentzian)
     params_fit = model.make_params(

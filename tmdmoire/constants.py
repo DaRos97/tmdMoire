@@ -88,9 +88,13 @@ EDC_G_POSITIONS = {
     "S11": np.array([-1.1599, -1.2531, -1.82]),
     "S11_m25": np.array([-1.1599, -1.2531, -1.82]),
     "S11_p31": np.array([-1.1599, -1.2531, -1.82]),
-    "S3": np.array([-0.69484, -0.77307, np.nan]),
+    "S3": np.array([-0.69484, -0.77307, -1.35]),
 }
 """Experimental EDC peak positions at Gamma (eV): TVB, side band, WS2 band."""
+
+EDC_G_SEED_BOUNDARY = {"S3": -1.03}
+"""Energy boundary (eV) separating TVB/LVB regions for Gamma seed finding.
+Defaults to -1.5 if sample not listed."""
 
 EDC_K_POSITIONS = {
     "S11": np.array([-0.8990, -1.0696]),

@@ -33,7 +33,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from tmdmoire import EDC_G_POSITIONS, TMDMaterial, MoireGeometry, MoireHamiltonian
-from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS
+from tmdmoire import TWIST_ANGLES, ENERGY_OFFSETS, EDC_G_SEED_BOUNDARY
 from tmdmoire.bilayer.edc_analyzer import find_peak_seeds_gamma
 from tmdmoire.utils.paths import get_repo_root
 
@@ -628,7 +628,9 @@ def _four_lorentzians(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
             _lorentz_peak(x, a3, c3, g3) +
             _lorentz_peak(x, a4, c4, g4))
 
-peak_states_4 = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values)
+seed_boundary = EDC_G_SEED_BOUNDARY.get(sample, -1.5)
+peak_states_4 = find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values,
+                                      boundary_ev=seed_boundary)
 if len(peak_states_4) < 4:
     peak_states_4 = [(float(_c1), float(_a1)), (float(_c2), float(_a2)),
                      (float(_c3), float(_a3)), (float(_c3) - 0.05, float(_a3) / 2)]

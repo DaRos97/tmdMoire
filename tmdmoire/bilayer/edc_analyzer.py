@@ -11,12 +11,13 @@ from .hamiltonian import MoireHamiltonian
 from ..constants import ENERGY_OFFSETS
 
 
-def find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values):
+def find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_weight_values,
+                          boundary_ev=-1.5):
     """Find 4 peak seeds for Gamma-point EDC using find_peaks on intensity profile.
 
     Uses scipy.signal.find_peaks to locate local maxima, then classifies
-    by energy region (TVB > -1.5 eV, LVB < -1.5 eV). Side bands are found
-    from raw eigenstates.
+    by energy region (TVB > boundary_ev, LVB < boundary_ev). Side bands
+    are found from raw eigenstates.
 
     Parameters
     ----------
@@ -28,6 +29,8 @@ def find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_wei
         Raw eigenvalues in the band window.
     full_weight_values : np.ndarray
         Raw orbital weights in the band window.
+    boundary_ev : float
+        Energy boundary (eV) separating TVB and LVB regions.
 
     Returns
     -------
@@ -39,15 +42,15 @@ def find_peak_seeds_gamma(weight_list, energy_list, full_energy_values, full_wei
     peaks_idx, _ = find_peaks(weight_list, height=weight_list.max() * 0.005, distance=int(0.01 / 0.005))
     peaks_found = list(zip(energy_list[peaks_idx], weight_list[peaks_idx]))
 
-    tvb_region = [(e, h) for e, h in peaks_found if e > -1.5]
-    tvb_main = max(tvb_region, key=lambda x: x[1]) if tvb_region else (-1.16, 10.0)
+    tvb_region = [(e, h) for e, h in peaks_found if e > boundary_ev]
+    tvb_main = max(tvb_region, key=lambda x: x[1]) if tvb_region else (boundary_ev + 0.34, 10.0)
 
-    lvb_region = [(e, h) for e, h in peaks_found if e < -1.5]
-    lvb_main = max(lvb_region, key=lambda x: x[1]) if lvb_region else (-1.82, 10.0)
+    lvb_region = [(e, h) for e, h in peaks_found if e < boundary_ev]
+    lvb_main = max(lvb_region, key=lambda x: x[1]) if lvb_region else (boundary_ev - 0.32, 10.0)
 
     eigen_by_energy = sorted(zip(full_energy_values, full_weight_values), key=lambda x: x[0], reverse=True)
 
-    side_candidates = [e for e in eigen_by_energy if e[0] < tvb_main[0] - 0.01 and e[0] > -1.5]
+    side_candidates = [e for e in eigen_by_energy if e[0] < tvb_main[0] - 0.01 and e[0] > boundary_ev]
     tvb_side = max(side_candidates, key=lambda x: x[1]) if side_candidates else (tvb_main[0] - 0.05, tvb_main[1] * 0.3)
 
     lvb_side_candidates = [e for e in eigen_by_energy if e[0] < lvb_main[0] - 0.01]
