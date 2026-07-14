@@ -37,6 +37,10 @@ python plot_edc_profile.py        data/edc_gamma_4Dsm8c_Vg_8.5meV_phiG_176deg.np
 # EDC vs V and moire bands
 python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz
 python plot_moire_bands.py data/moire_bands_k301_n2_Vg0_10.5.npz
+
+# LDOS
+python plot_ldos.py data/ldos_S11_n2_k10_10.5meV_170deg.npz
+python plot_ldos.py data/ldos_S11_n2_k10_10.5meV_170deg.npz --output-dir ./figures
 ```
 
 ## Distance metrics in heatmaps
@@ -116,3 +120,12 @@ python plot_moire_bands.py <data.npz> [--output-dir ./figures]
 ```
 
 1x2 panels: TVB bands along k in [-0.4, 0.4] A^-1 for two V_G values. Thin gray lines + weight-proportional blue circles.
+
+### LDOS in real space
+
+```bash
+python plot_ldos.py <data.npz> [--output-dir ./figures]
+# -> figures/ldos.png
+```
+
+pcolormesh of LDOS(r, E) along the a1+a2 moire diagonal. Energy on x-axis, position on y-axis (inverted) with stacking site labels (W/W, Se/W, W/S, W/W). Hot colormap, "low"/"high" colorbar, title with all Hamiltonian parameters.
