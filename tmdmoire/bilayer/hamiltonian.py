@@ -211,7 +211,7 @@ class MoireHamiltonian:
                     except ValueError:
                         continue
                     g = M_LIST.index(i)
-                    Vup = moire_ham if g % 2 == 0 else moire_ham.conj()
+                    Vup = moire_ham if g % 2 else moire_ham.conj()
                     Ham[s * 22:(s + 1) * 22, nn * 22:(nn + 1) * 22] += Vup
                     Ham[n_cells * 22 + s * 22:n_cells * 22 + (s + 1) * 22, n_cells * 22 + nn * 22:n_cells * 22 + (nn + 1) * 22] += Vup
         return Ham
