@@ -49,6 +49,14 @@ def parse_args():
     p.add_argument("--phiG", type=float, default=170.0)
     p.add_argument("--Vk", type=float, default=None)
     p.add_argument("--phiK", type=float, default=None)
+    p.add_argument("--w1p", type=float, default=None,
+                   help="Override interlayer w1p from interlayer_G.json")
+    p.add_argument("--w1d", type=float, default=None,
+                   help="Override interlayer w1d from interlayer_G.json")
+    p.add_argument("--w2p", type=float, default=None,
+                   help="Override interlayer w2p from interlayer_G.json")
+    p.add_argument("--w2d", type=float, default=None,
+                   help="Override interlayer w2d from interlayer_G.json")
     p.add_argument("--out", type=str, default=None,
                    help="Output filename (default: auto-generated)")
     return p.parse_args()
@@ -74,10 +82,10 @@ def main():
         ik = json.load(f)
 
     interlayer = {
-        "w1p": ig["w1p"],
-        "w1d": ig["w1d"],
-        "w2p": ig["w2p"],
-        "w2d": ig["w2d"],
+        "w1p": args.w1p if args.w1p is not None else ig["w1p"],
+        "w1d": args.w1d if args.w1d is not None else ig["w1d"],
+        "w2p": args.w2p if args.w2p is not None else ig["w2p"],
+        "w2d": args.w2d if args.w2d is not None else ig["w2d"],
     }
     Vg = args.Vg if args.Vg is not None else ig["Vg"]
     Vk = args.Vk if args.Vk is not None else ik["Vk"]

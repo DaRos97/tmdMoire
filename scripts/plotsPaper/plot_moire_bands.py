@@ -57,8 +57,12 @@ def main():
     w2p = float(d["interlayer_w2p"])
     w2d = float(d["interlayer_w2d"])
 
-    y_min = -1.5
-    y_max = -1.0
+    all_e = np.concatenate([evals_0.ravel(), evals_1.ravel()])
+    e_min = np.nanmin(all_e)
+    e_max = np.nanmax(all_e)
+    pad = 0.1 * (e_max - e_min) if (e_max - e_min) > 0 else 0.1
+    y_min = e_min - pad
+    y_max = e_max + pad
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

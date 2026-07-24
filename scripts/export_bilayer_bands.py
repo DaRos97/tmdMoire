@@ -12,6 +12,7 @@ Output format: tab-separated columns
 Usage
 -----
     python scripts/export_bilayer_bands.py
+    python scripts/export_bilayer_bands.py --sample S3
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,50 +25,21 @@ from tmdmoire import TMDMaterial, MoireHamiltonian, MoireGeometry, get_repo_root
 from tmdmoire.constants import ENERGY_OFFSETS
 from tmdmoire.utils.kpoints import get_k_list
 
-master_folder = get_repo_root()
 
-# ── Output directory ─────────────────────────────────────────────────────────
-out_dir = os.path.join(master_folder, "Data", "interlayer_fit")
-os.makedirs(out_dir, exist_ok=True)
+def parse_args():
+    sample = "S11"
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--sample" and i + 1 < len(args):
+            sample = args[i + 1]
+            i += 2
+        else:
+            i += 1
+    return sample
 
-# ── Load monolayer parameters ────────────────────────────────────────────────
-monolayer_fns = {
-    "WSe2": master_folder + "/Inputs/bilayer_fitting/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy",
-    "WS2": master_folder + "/Inputs/bilayer_fitting/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
-}
 
-wse2 = TMDMaterial("WSe2")
-wse2.load_fitted(monolayer_fns["WSe2"])
-ws2 = TMDMaterial("WS2")
-ws2.load_fitted(monolayer_fns["WS2"])
-
-# ── Load interlayer coupling parameters ──────────────────────────────────────
-interlayer_arr = np.load(master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy")
-interlayer_params = {"w1p": interlayer_arr[0], "w1d": interlayer_arr[1],
-                     "w2p": interlayer_arr[2], "w2d": interlayer_arr[3]}
-pars_V = (0.0, 0.0, 0.0, 0.0)
-
-print(f"Interlayer params: w1p={interlayer_params['w1p']:+.4f}, "
-      f"w1d={interlayer_params['w1d']:+.4f}, "
-      f"w2p={interlayer_params['w2p']:+.4f}, "
-      f"w2d={interlayer_params['w2d']:+.4f} eV")
-
-# ── Build Hamiltonian helper ─────────────────────────────────────────────────
-geometry = MoireGeometry(0.0)
-ham = MoireHamiltonian(wse2, ws2, geometry)
-
-def compute_bands(k_list):
-    """Return (n_kpts, 44) eigenvalues with S11 energy offset applied."""
-    mono_hams_wse2 = [wse2.build_hamiltonian(k) for k in k_list]
-    mono_hams_ws2 = [ws2.build_hamiltonian(k) for k in k_list]
-    evals, _ = ham.diagonalize(k_list, n_shells=0,
-                               interlayer_params=interlayer_params,
-                               pars_V=pars_V,
-                               mono_hams_wse2=mono_hams_wse2,
-                               mono_hams_ws2=mono_hams_ws2)
-    return evals + ENERGY_OFFSETS["S11"]
-
-def load_arpes_kpgk():
+def load_arpes_kpgk(master_folder):
     """Load ARPES data for Kp-G-K path (3 bands)."""
     raw = []
     for ib in range(1, 4):
@@ -144,7 +116,8 @@ def load_arpes_kpgk():
         e_list[ib] = energies
     return np.array(k_list), e_list
 
-def plot_bands(norm_k, evals_top8, arpes_data=None, path_label="Kp-G-K", save_fn=None):
+
+def plot_bands(norm_k, evals_top8, interlayer_params, arpes_data=None, path_label="Kp-G-K", save_fn=None):
     """Plot top 8 valence bands with optional ARPES overlay."""
     fig, ax = plt.subplots(figsize=(12, 7), constrained_layout=True)
 
@@ -185,32 +158,80 @@ def plot_bands(norm_k, evals_top8, arpes_data=None, path_label="Kp-G-K", save_fn
     print(f"Saved plot: {save_fn}")
     plt.close(fig)
 
-# ── Kp-G-K path (201 k-points) ───────────────────────────────────────────────
-k_list_kpgk, norm_kpgk = get_k_list("Kp-G-K", 201, tmd="WSe2", return_norm=True)
-evals_kpgk = compute_bands(k_list_kpgk)
-band_indices = list(range(27, 19, -1))
-out_kpgk = np.column_stack([norm_kpgk] + [evals_kpgk[:, i] for i in band_indices])
 
-fn_kpgk = os.path.join(out_dir, "bilayer_bands_KpGK.txt")
-header_kpgk = "k_Angstrom\tBand27_eV\tBand26_eV\tBand25_eV\tBand24_eV\tBand23_eV\tBand22_eV\tBand21_eV\tBand20_eV"
-np.savetxt(fn_kpgk, out_kpgk, fmt="%.8f", delimiter="\t", header=header_kpgk, comments="")
-print(f"Saved Kp-G-K data: {fn_kpgk}  ({out_kpgk.shape[0]} k-points)")
+def main():
+    sample = parse_args()
+    master_folder = get_repo_root()
 
-arpes_k, arpes_e = load_arpes_kpgk()
-plot_bands(norm_kpgk, out_kpgk[:, 1:], arpes_data=(arpes_k, arpes_e),
-           path_label="Kp-G-K",
-           save_fn=os.path.join(out_dir, "bilayer_bands_KpGK.png"))
+    out_dir = os.path.join(master_folder, "Data", "interlayer_fit")
+    os.makedirs(out_dir, exist_ok=True)
 
-# ── Kp-M-K path (101 k-points) ───────────────────────────────────────────────
-k_list_kpmk, norm_kpmk = get_k_list("Kp-M-K", 101, tmd="WSe2", return_norm=True)
-evals_kpmk = compute_bands(k_list_kpmk)
-out_kpmk = np.column_stack([norm_kpmk] + [evals_kpmk[:, i] for i in band_indices])
+    monolayer_fns = {
+        "WSe2": master_folder + "/Inputs/bilayer_fitting/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy",
+        "WS2": master_folder + "/Inputs/bilayer_fitting/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy",
+    }
 
-fn_kpmk = os.path.join(out_dir, "bilayer_bands_KpMK.txt")
-header_kpmk = "k_Angstrom\tBand27_eV\tBand26_eV\tBand25_eV\tBand24_eV\tBand23_eV\tBand22_eV\tBand21_eV\tBand20_eV"
-np.savetxt(fn_kpmk, out_kpmk, fmt="%.8f", delimiter="\t", header=header_kpmk, comments="")
-print(f"Saved Kp-M-K data: {fn_kpmk}  ({out_kpmk.shape[0]} k-points)")
+    wse2 = TMDMaterial("WSe2")
+    wse2.load_fitted(monolayer_fns["WSe2"])
+    ws2 = TMDMaterial("WS2")
+    ws2.load_fitted(monolayer_fns["WS2"])
 
-plot_bands(norm_kpmk, out_kpmk[:, 1:], arpes_data=None,
-           path_label="Kp-M-K",
-           save_fn=os.path.join(out_dir, "bilayer_bands_KpMK.png"))
+    interlayer_arr = np.load(master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy")
+    interlayer_params = {"w1p": interlayer_arr[0], "w1d": interlayer_arr[1],
+                         "w2p": interlayer_arr[2], "w2d": interlayer_arr[3]}
+    pars_V = (0.0, 0.0, 0.0, 0.0)
+
+    print(f"Interlayer params: w1p={interlayer_params['w1p']:+.4f}, "
+          f"w1d={interlayer_params['w1d']:+.4f}, "
+          f"w2p={interlayer_params['w2p']:+.4f}, "
+          f"w2d={interlayer_params['w2d']:+.4f} eV")
+
+    geometry = MoireGeometry(0.0)
+    ham = MoireHamiltonian(wse2, ws2, geometry)
+
+    energy_offset = ENERGY_OFFSETS[sample]
+
+    def compute_bands(k_list):
+        mono_hams_wse2 = [wse2.build_hamiltonian(k) for k in k_list]
+        mono_hams_ws2 = [ws2.build_hamiltonian(k) for k in k_list]
+        evals, _ = ham.diagonalize(k_list, n_shells=0,
+                                   interlayer_params=interlayer_params,
+                                   pars_V=pars_V,
+                                   mono_hams_wse2=mono_hams_wse2,
+                                   mono_hams_ws2=mono_hams_ws2)
+        return evals + energy_offset
+
+    band_indices = list(range(27, 19, -1))
+
+    # ── Kp-G-K path (201 k-points) ────────────────────────────────────────────
+    k_list_kpgk, norm_kpgk = get_k_list("Kp-G-K", 201, tmd="WSe2", return_norm=True)
+    evals_kpgk = compute_bands(k_list_kpgk)
+    out_kpgk = np.column_stack([norm_kpgk] + [evals_kpgk[:, i] for i in band_indices])
+
+    fn_kpgk = os.path.join(out_dir, f"bilayer_bands_{sample}_KpGK.txt")
+    header_kpgk = "k_Angstrom\tBand27_eV\tBand26_eV\tBand25_eV\tBand24_eV\tBand23_eV\tBand22_eV\tBand21_eV\tBand20_eV"
+    np.savetxt(fn_kpgk, out_kpgk, fmt="%.8f", delimiter="\t", header=header_kpgk, comments="")
+    print(f"Saved Kp-G-K data: {fn_kpgk}  ({out_kpgk.shape[0]} k-points)")
+
+    arpes_k, arpes_e = load_arpes_kpgk(master_folder)
+    plot_bands(norm_kpgk, out_kpgk[:, 1:], interlayer_params, arpes_data=(arpes_k, arpes_e),
+               path_label="Kp-G-K",
+               save_fn=os.path.join(out_dir, f"bilayer_bands_{sample}_KpGK.png"))
+
+    # ── Kp-M-K path (101 k-points) ────────────────────────────────────────────
+    k_list_kpmk, norm_kpmk = get_k_list("Kp-M-K", 101, tmd="WSe2", return_norm=True)
+    evals_kpmk = compute_bands(k_list_kpmk)
+    out_kpmk = np.column_stack([norm_kpmk] + [evals_kpmk[:, i] for i in band_indices])
+
+    fn_kpmk = os.path.join(out_dir, f"bilayer_bands_{sample}_KpMK.txt")
+    header_kpmk = "k_Angstrom\tBand27_eV\tBand26_eV\tBand25_eV\tBand24_eV\tBand23_eV\tBand22_eV\tBand21_eV\tBand20_eV"
+    np.savetxt(fn_kpmk, out_kpmk, fmt="%.8f", delimiter="\t", header=header_kpmk, comments="")
+    print(f"Saved Kp-M-K data: {fn_kpmk}  ({out_kpmk.shape[0]} k-points)")
+
+    plot_bands(norm_kpmk, out_kpmk[:, 1:], interlayer_params, arpes_data=None,
+               path_label="Kp-M-K",
+               save_fn=os.path.join(out_dir, f"bilayer_bands_{sample}_KpMK.png"))
+
+
+if __name__ == "__main__":
+    main()

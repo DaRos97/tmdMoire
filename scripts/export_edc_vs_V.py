@@ -7,6 +7,7 @@ all metadata. Output goes to scripts/plotsPaper/data/.
 Usage:
     source ../PyEnv/bin/activate
     python scripts/export_edc_vs_V.py
+    python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
 """
 import sys
 from pathlib import Path
@@ -20,26 +21,63 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tmdmoire.material import TMDMaterial
 from tmdmoire.bilayer.geometry import MoireGeometry
 from tmdmoire.bilayer.hamiltonian import MoireHamiltonian
-from tmdmoire.constants import TWIST_ANGLES, ENERGY_OFFSETS, EDC_G_POSITIONS
+from tmdmoire.constants import (
+    TWIST_ANGLES, ENERGY_OFFSETS, EDC_G_POSITIONS, EDC_G_SEED_BOUNDARY,
+)
 
 INPUT_DIR = Path("Inputs") / "plot_bilayer"
 OUTPUT_DIR = Path("scripts") / "plotsPaper" / "data"
 
 N_SHELLS = 1
-SAMPLE = "S11"
-
-VG_MIN_MEV = 1
-VG_MAX_MEV = 20
-N_VG = 20
-
 SPREAD_E = 0.03
-
 EDC_SHIFT_MEV = 0.0
 
-INTERLAYER = {"w1p": -1.220, "w1d": 0.460, "w2p": -0.1694, "w2d": 0.0215}
 
-PHI_G_DEG = 175.0
-PHI_G = PHI_G_DEG * np.pi / 180.0
+def parse_args():
+    sample = "S11"
+    w1p = -1.220
+    w1d = 0.460
+    w2p = -0.1694
+    w2d = 0.0215
+    phiG_deg = 175.0
+    vg_min_meV = 1
+    vg_max_meV = 20
+    n_vg = 20
+
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--sample" and i + 1 < len(args):
+            sample = args[i + 1]
+            i += 2
+        elif args[i] == "--w1p" and i + 1 < len(args):
+            w1p = float(args[i + 1])
+            i += 2
+        elif args[i] == "--w1d" and i + 1 < len(args):
+            w1d = float(args[i + 1])
+            i += 2
+        elif args[i] == "--w2p" and i + 1 < len(args):
+            w2p = float(args[i + 1])
+            i += 2
+        elif args[i] == "--w2d" and i + 1 < len(args):
+            w2d = float(args[i + 1])
+            i += 2
+        elif args[i] == "--phiG" and i + 1 < len(args):
+            phiG_deg = float(args[i + 1])
+            i += 2
+        elif args[i] == "--vg-min" and i + 1 < len(args):
+            vg_min_meV = float(args[i + 1])
+            i += 2
+        elif args[i] == "--vg-max" and i + 1 < len(args):
+            vg_max_meV = float(args[i + 1])
+            i += 2
+        elif args[i] == "--n-vg" and i + 1 < len(args):
+            n_vg = int(args[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    return sample, w1p, w1d, w2p, w2d, phiG_deg, vg_min_meV, vg_max_meV, n_vg
 
 
 def _lorentzian(x, amplitude, center, gamma):
@@ -55,16 +93,16 @@ def _four_lorentzian(x, a1, c1, g1, a2, c2, g2, a3, c3, g3, a4, c4, g4):
     )
 
 
-def compute_edc_distance(vg_ev, moire_ham):
+def compute_edc_distance(vg_ev, moire_ham, interlayer, phiG_rad, sample, boundary_ev):
     n_cells = MoireGeometry.n_cells(N_SHELLS)
     k_list = np.array([np.zeros(2)])
 
-    pars_V = (vg_ev, 0.0, PHI_G, 0.0)
+    pars_V = (vg_ev, 0.0, phiG_rad, 0.0)
 
     evals_raw, evecs_raw = moire_ham.diagonalize(
-        k_list, N_SHELLS, INTERLAYER, pars_V
+        k_list, N_SHELLS, interlayer, pars_V
     )
-    evals_raw = evals_raw[0] + ENERGY_OFFSETS.get(SAMPLE, 0.0)
+    evals_raw = evals_raw[0] + ENERGY_OFFSETS.get(sample, 0.0)
     evecs_raw = evecs_raw[0]
 
     ab = np.absolute(evecs_raw) ** 2
@@ -94,15 +132,15 @@ def compute_edc_distance(vg_ev, moire_ham):
     peaks_idx, _ = find_peaks(weight_list, height=weight_list.max() * 0.005, distance=int(0.01 / 0.005))
     peaks_found = list(zip(energy_list[peaks_idx], weight_list[peaks_idx]))
 
-    tvb_region = [(e, h) for e, h in peaks_found if e > -1.5]
-    tvb_main = max(tvb_region, key=lambda x: x[1]) if tvb_region else (-1.16, 10.0)
+    tvb_region = [(e, h) for e, h in peaks_found if e > boundary_ev]
+    tvb_main = max(tvb_region, key=lambda x: x[1]) if tvb_region else (boundary_ev + 0.1, 10.0)
 
-    lvb_region = [(e, h) for e, h in peaks_found if e < -1.5]
-    lvb_main = max(lvb_region, key=lambda x: x[1]) if lvb_region else (-1.82, 10.0)
+    lvb_region = [(e, h) for e, h in peaks_found if e < boundary_ev]
+    lvb_main = max(lvb_region, key=lambda x: x[1]) if lvb_region else (boundary_ev - 0.1, 10.0)
 
     eigen_by_energy = sorted(zip(full_energy_values, full_weight_values), key=lambda x: x[0], reverse=True)
 
-    side_candidates = [e for e in eigen_by_energy if e[0] < tvb_main[0] - 0.01 and e[0] > -1.5]
+    side_candidates = [e for e in eigen_by_energy if e[0] < tvb_main[0] - 0.01 and e[0] > boundary_ev]
     tvb_side = max(side_candidates, key=lambda x: x[1]) if side_candidates else (tvb_main[0] - 0.05, tvb_main[1] * 0.3)
 
     lvb_side_candidates = [e for e in eigen_by_energy if e[0] < lvb_main[0] - 0.01]
@@ -134,6 +172,12 @@ def compute_edc_distance(vg_ev, moire_ham):
 
 
 def main():
+    sample, w1p, w1d, w2p, w2d, phiG_deg, vg_min_meV, vg_max_meV, n_vg = parse_args()
+
+    interlayer = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+    phiG_rad = phiG_deg * np.pi / 180.0
+    boundary_ev = EDC_G_SEED_BOUNDARY.get(sample, -1.5)
+
     print("Loading monolayer parameters from Inputs/plot_bilayer/")
     tb_wse2 = np.load(INPUT_DIR / "tb_WSe2.npy")
     tb_ws2 = np.load(INPUT_DIR / "tb_WS2.npy")
@@ -141,36 +185,36 @@ def main():
     wse2 = TMDMaterial("WSe2", params=tb_wse2)
     ws2 = TMDMaterial("WS2", params=tb_ws2)
 
-    theta = TWIST_ANGLES[SAMPLE]
+    theta = TWIST_ANGLES[sample]
     geometry = MoireGeometry(theta)
     moire_ham = MoireHamiltonian(wse2, ws2, geometry)
 
-    vg_vals_meV = np.linspace(VG_MIN_MEV, VG_MAX_MEV, N_VG)
+    vg_vals_meV = np.linspace(vg_min_meV, vg_max_meV, n_vg)
     vg_vals_ev = vg_vals_meV / 1000.0
 
-    distances = np.zeros(N_VG)
+    distances = np.zeros(n_vg)
 
     for i, vg_meV in enumerate(vg_vals_meV):
         print(f"V_G = {vg_meV:.1f} meV ...", flush=True)
-        distances[i] = compute_edc_distance(vg_vals_ev[i], moire_ham)
+        distances[i] = compute_edc_distance(vg_vals_ev[i], moire_ham, interlayer, phiG_rad, sample, boundary_ev)
 
-    exp_positions = EDC_G_POSITIONS[SAMPLE]
+    exp_positions = EDC_G_POSITIONS[sample]
     arpes_distance = abs(exp_positions[0] - exp_positions[1]) * 1000.0
 
     print(f"\nARPES TVB–side band distance: {arpes_distance:.2f} meV")
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_fn = OUTPUT_DIR / f"edc_vs_V_n{N_VG}_Vg{VG_MIN_MEV}-{VG_MAX_MEV}.npz"
+    out_fn = OUTPUT_DIR / f"edc_vs_V_{sample}_n{n_vg}_Vg{vg_min_meV:.0f}-{vg_max_meV:.0f}.npz"
     np.savez(
         out_fn,
         Vg_vals_meV=vg_vals_meV,
         distances_meV=distances,
         arpes_distance_meV=arpes_distance,
-        interlayer_w1p=INTERLAYER["w1p"],
-        interlayer_w1d=INTERLAYER["w1d"],
-        interlayer_w2p=INTERLAYER["w2p"],
-        interlayer_w2d=INTERLAYER["w2d"],
-        phiG_deg=PHI_G_DEG,
+        interlayer_w1p=w1p,
+        interlayer_w1d=w1d,
+        interlayer_w2p=w2p,
+        interlayer_w2d=w2d,
+        phiG_deg=phiG_deg,
         n_shells=N_SHELLS,
     )
     print(f"Exported: {out_fn}")

@@ -9,6 +9,7 @@ plot_edc_gamma_standalone.py (numpy + matplotlib only, no tmdmoire).
 
 Usage:
     python scripts/export_edc_gamma_data.py --id 001
+    python scripts/export_edc_gamma_data.py --id 001 --sample S3
     python scripts/export_edc_gamma_data.py --id 001 --vg 0.012 --phig 176
     python scripts/export_edc_gamma_data.py --id 001 --vg 0.012 --phig 176 --output my_data.npz
     python scripts/export_edc_gamma_data.py --id 001 --cutoff 0.026 --ratio-cutoff 0.1
@@ -33,6 +34,7 @@ master_folder = get_repo_root()
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
 run_id = "default"
+sample = "S11"
 output = None
 vg_selected = None
 phig_selected = None
@@ -45,6 +47,9 @@ i = 0
 while i < len(args):
     if args[i] == "--id" and i + 1 < len(args):
         run_id = args[i + 1]
+        i += 2
+    elif args[i] == "--sample" and i + 1 < len(args):
+        sample = args[i + 1]
         i += 2
     elif args[i] == "--output" and i + 1 < len(args):
         output = Path(args[i + 1])
@@ -111,7 +116,7 @@ if w2p_fixed is None or w2d_fixed is None:
 
 # ─── Compute distance ────────────────────────────────────────────────────────
 
-exp = EDC_G_POSITIONS["S11"]
+exp = EDC_G_POSITIONS[sample]
 exp_sep_TVB_side = np.abs(exp[0] - exp[1])
 exp_sep_TVB_LVB = np.abs(exp[0] - exp[2])
 
@@ -305,7 +310,6 @@ if have_selection:
 
     print("Recomputing EDC intensity profile...")
 
-    sample = "S11"
     seed_boundary = EDC_G_SEED_BOUNDARY.get(sample, -1.5)
     n_shells = 2
     theta = TWIST_ANGLES[sample]
@@ -442,9 +446,9 @@ if have_selection:
 if output is None:
     out_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "plotsPaper" / "data"
     out_dir.mkdir(parents=True, exist_ok=True)
-    suffix = ""
+    suffix = f"_{sample}"
     if have_selection:
-        suffix = f"_Vg_{_vg*1000:.1f}meV_phiG_{_phig_deg:.0f}deg"
+        suffix += f"_Vg_{_vg*1000:.1f}meV_phiG_{_phig_deg:.0f}deg"
     output = out_dir / f"edc_gamma_{run_id}{suffix}.npz"
 
 np.savez_compressed(output, **export)
