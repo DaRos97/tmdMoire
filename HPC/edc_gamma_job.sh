@@ -15,7 +15,8 @@
 RUN_ID=${1:-default}
 N_TASKS=${2:-128}
 
-NODES='compute-2-11|compute-2-12|compute-2-13|compute-3-01|compute-3-02|compute-3-03|compute-3-04|compute-4-01|compute-4-02|compute-4-03|compute-4-04|compute-4-05|compute-4-06|compute-4-07|compute-4-08'
+#NODES='compute-2-11|compute-2-12|compute-2-13|compute-3-01|compute-3-02|compute-3-03|compute-3-04|compute-4-01|compute-4-02|compute-4-03|compute-4-04|compute-4-05|compute-4-06|compute-4-07|compute-4-08'
+NODES='compute-3-01|compute-3-02|compute-3-03|compute-3-04|compute-4-01|compute-4-02|compute-4-03|compute-4-04|compute-4-05|compute-4-06|compute-4-07|compute-4-08'
 
 if [ "$N_TASKS" -gt 128 ]; then
     # First 128 tasks on rademaker queue
