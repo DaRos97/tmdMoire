@@ -152,48 +152,48 @@ def do_score(material_name: str, top_n: int, k4_threshold: float,
              export: bool = False) -> None:
     """Load and score existing results."""
     scorer = GridScorer(material_name, data_dir=run_dir)
-    print(scorer.summary(k4_threshold=k4_threshold, top_n=top_n))
+    print(scorer.summary(top_n=top_n))
 
     if plot:
-        ranked = scorer.score(k4_threshold=k4_threshold, top_n=top_n)
+        ranked = scorer.score(top_n=top_n)
         if not ranked.empty:
             print(f"\nGenerating plots for top {len(ranked)} results...")
             from tmdmoire.plotting.monolayer import plot_top_results
             plot_top_results(ranked, material_name, master_folder, run_dir)
 
     if export:
-        ranked = scorer.score(k4_threshold=k4_threshold, top_n=1)
+        ranked = scorer.score(top_n=2)
         if ranked.empty:
-            print("\nNo results pass the K4 filter — cannot export.")
+            print("\nNo results after filtering — cannot export.")
             return
-        row = ranked.iloc[0]
+        chi2_row = ranked[ranked["rank_type"] == "chi2"].iloc[0]
         out_dir = Path(master_folder) / "Inputs" / "bilayer_fitting"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        params = row["params"]
+        params = chi2_row["params"]
         np.save(out_dir / f"tb_{material_name}.npy", params)
 
         import datetime
         metadata = {
             "material": material_name,
-            "idx": int(row["idx"]),
-            "rank": int(row["rank"]),
-            "chi2": float(row["chi2"]),
-            "band_dist": float(row["band_dist"]),
-            "band_K6": float(row["band_K6"]),
-            "K1_val": float(row["K1_val"]),
-            "K2_val": float(row["K2_val"]),
-            "K3_val": float(row["K3_val"]),
-            "K4_val": float(row["K4_val"]),
-            "K5_val": float(row["K5_val"]),
-            "K1_w": float(row["K1_w"]),
-            "K2_w": float(row["K2_w"]),
-            "K3_w": float(row["K3_w"]),
-            "K4_w": float(row["K4_w"]),
-            "K5_w": float(row["K5_w"]),
-            "K6_w": float(row["K6_w"]),
-            "nfev": int(row["nfev"]),
-            "k4_threshold": k4_threshold,
+            "idx": int(chi2_row["idx"]),
+            "rank_type": "chi2",
+            "chi2": float(chi2_row["chi2"]),
+            "band_dist": float(chi2_row["band_dist"]),
+            "band_K6": float(chi2_row["band_K6"]),
+            "band_plus_K2": float(chi2_row["band_plus_K2"]),
+            "K1_val": float(chi2_row["K1_val"]),
+            "K2_val": float(chi2_row["K2_val"]),
+            "K3_val": float(chi2_row["K3_val"]),
+            "K4_val": float(chi2_row["K4_val"]),
+            "K5_val": float(chi2_row["K5_val"]),
+            "K1_w": float(chi2_row["K1_w"]),
+            "K2_w": float(chi2_row["K2_w"]),
+            "K3_w": float(chi2_row["K3_w"]),
+            "K4_w": float(chi2_row["K4_w"]),
+            "K5_w": float(chi2_row["K5_w"]),
+            "K6_w": float(chi2_row["K6_w"]),
+            "nfev": int(chi2_row["nfev"]),
             "run_id": run_dir,
             "timestamp": datetime.datetime.now().isoformat(),
         }

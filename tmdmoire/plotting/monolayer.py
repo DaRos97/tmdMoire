@@ -365,7 +365,7 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
     data = MonolayerData(material_name, master_folder, pts=pts)
 
     for _, row in df.iterrows():
-        rank = int(row["rank"])
+        rank_type = str(row.get("rank_type", row.get("rank", "?")))
         idx = int(row["idx"])
         params = row["params"]
         tb_en = row["tb_en"]
@@ -380,9 +380,9 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
             row["band_K6"], row["K1_val"], row["K2_val"],
             row["K3_val"], row["K4_val"], row["K5_val"],
         ]
-        legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, rank, idx)
+        legend_info = (material_name, Ks, bound_type, Bs, chi2_elements, rank_type, idx)
 
-        prefix = f"rank{rank:03d}_idx{idx}"
+        prefix = f"{rank_type}_idx{idx}"
 
         plot_bands(tb_en, data, legend_info,
                    save_path=fig_dir / f"{prefix}_bands.png")
@@ -393,6 +393,6 @@ def plot_top_results(scored_df, material_name, master_folder, run_dir, top_n=Non
         plot_orbital_content(params, material_name, legend_info,
                              save_path=fig_dir / f"{prefix}_orbitals.png")
 
-        print(f"  Plots saved for rank {rank} (idx {idx})")
+        print(f"  Plots saved for {rank_type} (idx {idx})")
 
     print(f"All figures saved to {fig_dir}/")

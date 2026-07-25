@@ -4,10 +4,10 @@ This script fits 43 tight-binding parameters for a single TMD monolayer
 (WSe2 or WS2) to reproduce ARPES-measured band dispersions along the
 high-symmetry paths K'-Gamma-K and K-M-K'.
 
-The fitting uses dual annealing (global search) followed by Nelder-Mead
-(local refinement) with a weighted chi-squared objective that combines
-band dispersion matching with physical constraints (orbital character,
-parameter distance from DFT, band gap, etc.).
+The fitting uses Nelder-Mead minimization starting from DFT parameters
+with a weighted chi-squared objective that combines band dispersion
+matching with physical constraints (orbital character, parameter
+distance from DFT, band gap, etc.).
 
 Usage
 -----
@@ -108,8 +108,8 @@ if args.verbose:
     for i in range(6):
         print(f" K_{i+1}: {args_minimization['Ks'][i]:.6f}")
     opt = args_minimization.get("optimizer", {})
-    print(f" Optimizer: da_maxiter={opt.get('da_maxiter', 100)}, "
-          f"nm_maxiter={opt.get('nm_maxiter', 50)}, "
+    print(f" Optimizer: Nelder-Mead, "
+          f"nm_maxiter={opt.get('nm_maxiter', 500)}, "
           f"nm_fatol={opt.get('nm_fatol', 1e-3)}")
     print(f" Using {pts} points of interpolated data.")
     print("-" * 15)
@@ -118,12 +118,8 @@ material = TMDMaterial(tmd_name)
 data = MonolayerData(tmd_name, master_folder, pts=pts)
 fitter = ParameterFitter(material, data, args_minimization, idx=argc)
 
-debug_dir = None
-if args.debug_figures:
-    debug_dir = os.path.join(run_dir, "debug", f"fit_idx{argc}")
-
 seed = args_minimization.get("seed", 42)
-result = fitter.run(seed=seed, debug_dir=debug_dir)
+result = fitter.run(seed=seed, output_dir=run_dir)
 result["idx"] = argc
 result["seed"] = seed
 

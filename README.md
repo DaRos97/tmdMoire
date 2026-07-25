@@ -68,7 +68,7 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Three-st
 
 ### Overview
 
-The monolayer stage fits a 22×22 tight-binding Hamiltonian (11 orbitals × 2 spins) to reproduce ARPES-measured band dispersions along high-symmetry paths K′–Γ–K and K–M–K′. The fit optimizes 43 parameters against experimental data using dual annealing (global search) followed by Nelder-Mead (local refinement), with multiple physical constraints.
+The monolayer stage fits a 22×22 tight-binding Hamiltonian (11 orbitals × 2 spins) to reproduce ARPES-measured band dispersions along high-symmetry paths K′–Γ–K and K–M–K′. The fit optimizes 43 parameters against experimental data using **Nelder-Mead minimization** starting from DFT-derived initial values, with multiple physical constraints.
 
 ### Experimental data processing
 
@@ -143,22 +143,26 @@ Indices 11–21 are the spin-down counterparts.
 The minimization optimizes a weighted sum:
 
 ```
-χ² = χ²_band + K₁·C₁ + K₂·C₂ + K₃·C₃ + K₄·C₄ + K₅·C₅
+χ² = χ²_band_weighted + K₁·C₁ + K₂·C₂ + K₃·C₃ + K₄·C₄ + K₅·C₅
 ```
 
-where `χ²_band` is the band distance term and `C₁`–`C₅` are the five physical constraints. All constraint terms are normalized to O(0–1) so that the weights `K₁`–`K₅` directly encode physical importance.
+where `χ²_band_weighted` is the K₆-weighted band distance and `C₁`–`C₅` are the five physical constraint terms. The weights `K₁`–`K₆` are scanned over a grid of 1,600 combinations to find the best trade-off between band accuracy and physical constraints.
 
 #### Band distance
 
 **What it does**: Measures how well the TB band energies match the experimental ARPES data across all 6 bands and all k-points.
 
-**Implementation**: For each band `b` and k-point `i`, compute the squared residual `(E_TB - E_ARPES)²`. Sum over all valid (non-NaN) data points across all bands, then divide by the total number of valid points. Four special k-points (Γ, top of band 1, minimum of band 2, and M) receive an additional weight multiplier `K₆`:
+**Implementation**: For each band `b`, compute the squared residual `(E_TB - E_ARPES)²` over all valid (non-NaN) k-points, divide by that band's valid-point count, then sum across bands. This **per-band normalization** gives equal weight to each band regardless of how many data points it has. Four special k-points (Γ, top of band 1, minimum of band 2, and M) receive an additional weight multiplier `K₆`:
 
 ```python
-χ²_band = Σ_b Σ_i [w_i · (E_TB[b,i] - E_ARPES[b,i])²] / N_total_valid
+χ²_band = Σ_b [ Σ_i w_i · (E_TB[b,i] − E_ARPES[b,i])²  /  N_valid[b] ]
 ```
 
-where `w_i = K₆` at the four special points and `w_i = 1` elsewhere.
+where `w_i = K₆` at the four special points and `w_i = 1` elsewhere. `N_valid[b]` is the number of valid ARPES data points for band `b`.
+
+Two variants of the band distance are stored:
+- **`band_K6`** (K₆-weighted, used in the objective function)
+- **`band_dist`** (unweighted, i.e. `w_i = 1` everywhere — used for cross-comparison between results with different K₆)
 
 #### K₁ — parameter distance from DFT
 
@@ -174,56 +178,58 @@ Typical range: 0 (at DFT) to ~2 (large deviations).
 
 #### K₂ — orbital band content at M
 
-**What it does**: Minimizes the weight of interlayer-coupling orbitals (d_z², p_z^e) in the top valence bands at the M point. These are the only orbitals that participate in interlayer hopping in the bilayer model. Since ARPES shows no noticeable change in the band structure at M between monolayer and bilayer, the interlayer-coupling orbital character at M should remain small — the fit penalizes any mixing of d_z² and p_z^e into the valence bands at M.
+**What it does**: Minimizes the weight of interlayer-coupling orbitals (p_z^o, d_z², p_z^e) in the top valence bands at the M point. These are the orbitals that participate in interlayer hopping in the bilayer model. Since ARPES shows no noticeable change in the band structure at M between monolayer and bilayer, the interlayer-coupling orbital character at M should remain small — the fit penalizes any mixing of these orbitals into the valence bands at M.
 
-**Implementation**: Sum the squared eigenvector components `|c|²` for the 4 interlayer-coupling orbitals (d_z² and p_z^e, both spin blocks; IND_ILC) across the top valence bands (4 for WSe₂, 2 for WS₂) at the M point, then normalize by the number of terms:
+**Implementation**: Sum of squared eigenvector components `|c|²` for the 6 interlayer-coupling orbitals (p_z^o, d_z², p_z^e, both spin blocks; `IND_ILC = [2, 5, 8, 13, 16, 19]`), summed across the top valence bands at M:
 
 ```python
-C₂ = Σ_{orb ∈ ILC} Σ_{band ∈ TVB} |⟨orb|ψ_band(M)⟩|² / (|ILC| × |TVB|)
+C₂ = Σ_{orb ∈ ILC} Σ_{band ∈ TVB} |⟨orb|ψ_band(M)⟩|²
 ```
 
-The p_z^o orbital is excluded because it does not enter the bilayer interlayer coupling Hamiltonian. Typical range: 0.01–0.2 (DFT values are small, ~0.05 for WSe₂, ~0.11 for WS₂).
+For WS₂ the result is multiplied by 2 to give the term the same order of magnitude as for WSe₂ (since WS₂ has 2 top valence bands vs 4 for WSe₂). There is no normalization by the number of orbitals or bands — this is a raw sum.
 
 #### K₃ — orbital occupation at Γ and K
 
 **What it does**: Enforces the DFT-derived orbital occupations of the top valence bands at the high-symmetry points Γ and K. These occupations are well-defined from symmetry and serve as strong physical anchors.
 
-**Implementation**: Eight absolute differences between target DFT occupations and the computed occupations:
+**Implementation**: Sum of eight absolute differences between target DFT occupations and computed occupations:
 
 - **At Γ** (4 terms): p_z^e and d_z² content in each of the two degenerate TVB states
-- **At K** (4 terms): p₋₁^e and d₋₂ content in each of the two TVB states (p₋₁^e = (p_x^e - i·p_y^e)/√2, d₋₂ = (d_x²-y² - i·d_xy)/√2)
-
-The sum is divided by 8 to give a mean occupation error:
+- **At K** (4 terms): p₋₁^e and d₋₂ content in each of the two TVB states (p₋₁^e = (p_x^e − i·p_y^e)/√2, d₋₂ = (d_x²−y² − i·d_xy)/√2)
 
 ```python
-C₃ = [ Σ |occ_DFT - occ_TB| ] / 8
+C₃ = Σ |occ_DFT − occ_TB|
 ```
 
-Typical range: 0 (perfect match) to ~0.5 (poor match).
+The raw sum of 8 absolute differences (not mean, no division by 8).
+
+| Material | Γ p_z^e | Γ d_z² | K p₋₁^e (TVB1) | K p₋₁^e (TVB2) | K d₋₂ (TVB1) | K d₋₂ (TVB2) |
+|---|---|---|---|---|---|---|
+| WSe₂ | 0.2740 | 0.6606 | 0.1856 | 0.2116 | 0.8144 | 0.7763 |
+| WS₂ | 0.3205 | 0.6571 | 0.1960 | 0.2366 | 0.8040 | 0.7575 |
 
 #### K₄ — conduction band minimum at K
 
 **What it does**: Forces the conduction band minimum (CBM) to sit at the K point, as required by the physics of TMD monolayers.
 
-**Implementation**: Squared relative distance between the k-point where the CBM occurs and the K point magnitude:
+**Implementation**: Binary penalty: 0 if the k-point of the CBM is within 10⁻³ of |K|, 1 otherwise.
 
 ```python
-C₄ = [(|k_CBM| - |K|) / |K|]²
+C₄ = 0   if | |k_CBM| − |K| | < 1×10⁻³
+C₄ = 1   otherwise
 ```
-
-Value is 0 when the CBM is exactly at K, ~0.34 when at M, and ~1 when at Γ. This provides a smooth gradient that the optimizer can follow.
 
 #### K₅ — band gap at K
 
-**What it does**: Keeps the band gap at K close to the DFT-predicted value. The absolute gap size is less certain than the band dispersion shape, so this acts as a soft constraint.
+**What it does**: Keeps the band gap at K close to the DFT-predicted value.
 
-**Implementation**: Relative difference between the current gap and the DFT gap at K:
+**Implementation**: Absolute difference between the current gap and the DFT gap at K:
 
 ```python
-C₅ = |gap_DFT - gap_TB| / gap_DFT
+C₅ = |gap_DFT − gap_TB|
 ```
 
-Typical range: 0 (matches DFT) to ~0.5 (50% deviation).
+The DFT gap is precomputed once from the DFT-derived parameters and stored as `_gap_DFT`.
 
 #### K₆ — high-symmetry point weight
 
@@ -254,26 +260,118 @@ python scripts/run_monolayer_grid.py WSe2
 # Run a subset (for chunking on HPC)
 python scripts/run_monolayer_grid.py WSe2 --start 0 --end 100
 
-# Score existing results
+# Score and rank existing results (v3.0-style ranking)
 python scripts/run_monolayer_grid.py WSe2 --score
 
-# Show top 20 results
+# Show top results
 python scripts/run_monolayer_grid.py WSe2 --score --top 20
 
-# Adjust the K4 hard filter threshold (default: 0.05)
-python scripts/run_monolayer_grid.py WSe2 --score --k4-threshold 0.1
+# Export best params to Inputs/bilayer_fitting/
+python scripts/run_monolayer_grid.py WSe2 --score --export
 ```
 
-The default grid has 3×4×4×4×4×2 = **1,536 combinations**. Each fit uses dual annealing (maxiter=100) followed by Nelder-Mead refinement (fatol=1e-3, maxiter=50).
+The default grid has 2×10×10×2×2×2 = **1,600 combinations**. Each fit uses Nelder-Mead minimization (maxiter=1,000,000, fatol=1×10⁻⁴) starting from DFT parameters.
+
+#### Scoring and Ranking
+
+Results are scored with a v3.0-style procedure:
+
+1. **K-value range mask**: filters results to keep only physically relevant weight ranges (K₂ between −2⁻⁸ and 10, K₃ > −0.012, etc.)
+2. **Bounds-saturation filter** (WSe₂ only): excludes results where any parameter group saturated its bounds (i.e. parameters hit ±B within 1% tolerance)
+3. **Primary ranking**: sort by `band_K6` (K₆-weighted band distance, which is the `χ²_band` term from the objective function) — index 1 (2nd best) for WSe₂, index 0 (best) for WS₂
+4. **Secondary ranking**: sort by `band_K6 + K₂_val` (band distance + M orbital content) with the same `ind_chosen` convention
+
+Both rankings are presented side by side. The export step saves the best result from the primary (`band_K6`) ranking.
+
+#### Visualizing results (`sort_monolayer_results.py`)
+
+The script `scripts/sort_monolayer_results.py` loads merged HDF5 files (from v3.0) or individual `.npz` results, plots 2D heatmaps of min(chi2) and min(chi2+K₂_M) versus K₂ and K₃, and offers interactive inspection and export:
+
+```bash
+# From v3.0 merged HDF5
+python scripts/sort_monolayer_results.py --tmd WSe2 --input Data/WSe2_run1/merged_WSe2_absolute.h5
+python scripts/sort_monolayer_results.py --tmd WS2 --input Data/WS2_run1/merged_WS2_absolute.h5
+
+# From .npz directory (auto-detected)
+python scripts/sort_monolayer_results.py --tmd WSe2 --input-dir Data/WSe2_default
+
+# Custom cutoff for heatmap (default: 0.3)
+python scripts/sort_monolayer_results.py --tmd WSe2 --input data.h5 --cutoff 0.1
+```
+
+After the heatmaps close, an interactive prompt lets you inspect individual results (bands, parameters, orbital content) and optionally save the best parameters as `Data/result_{TMD}.npy`.
+
+### Results
+
+Pre-computed results from the v3.0 grid search are available in `Data/WSe2_run1/` and `Data/WS2_run1/` as merged HDF5 files. Both runs used the same physical bounds **Bs = (8, 4, 5, 2, 0)** (±8 eV on-site, ±4 eV t₁, ±5 eV t₅, ±2 eV t₆, SOC fixed). The weights K₄=1, K₅=0.01, and K₆=5 were held fixed in both runs.
+
+#### Selection convention
+
+Following the v3.0 procedure, results are ranked by the band-distance component (K₆-weighted band distance, `elements[:, 0]` in the HDF5). To avoid artifacts from parameter-bound saturation, the **2nd best** result (`ind_chosen = 1`) is selected for **WSe₂**, while the **1st best** (`ind_chosen = 0`) is selected for **WS₂**. The values reported below are the results that `sort_monolayer_results.py` selects and displays.
+
+#### WSe₂ (`Data/WSe2_run1/`)
+
+| Aspect | Value |
+|---|---|
+| Total runs (after filtering) | 263 |
+| K₁ swept | {1×10⁻⁶, 1×10⁻⁵, 1×10⁻⁴} |
+| K₂ swept | 66 values in [0.01, 1] |
+| K₃ swept | {0.005, 0.010, 0.015, 0.020, 0.025} |
+| K₄, K₅, K₆ fixed | K₄=1, K₅=0.01, K₆=5 |
+
+Top 3 results ranked by band distance (`χ²_band`):
+
+| Rank | K₁ | K₂ | K₃ | χ²_band | Selected |
+|---|---|---|---|---|---|
+| 0 | 1×10⁻⁵ | 0.205 | 0.010 | 0.004035 | |
+| **1** | **1×10⁻⁴** | **0.13** | **0.005** | **0.004206** | **←** |
+| 2 | 1×10⁻⁴ | 0.43 | 0.010 | 0.004253 | |
+
+**Selected result** (rank 1, `ind_chosen = 1`):
+
+| Constraint | Weight K | Component value C | K·C |
+|---|---|---|---|
+| Band distance | — | 0.004206 | — |
+| K₁ (DFT distance) | 1×10⁻⁴ | 3.988 | 3.99×10⁻⁴ |
+| K₂ (M orbital content) | 0.13 | 0.00260 | 3.38×10⁻⁴ |
+| K₃ (Γ/K occupation) | 0.005 | 0.0160 | 8.0×10⁻⁵ |
+| K₄ (CBM at K) | 1 | 0 (at K) | 0 |
+| K₅ (band gap) | 0.01 | ~0 (matches DFT) | ~0 |
+
+Rank 0 has slightly better band distance (0.004035) but was rejected because for WSe₂ the `ind_chosen = 1` convention avoids results where parameters may have saturated their bounds.
+
+#### WS₂ (`Data/WS2_run1/`)
+
+| Aspect | Value |
+|---|---|
+| Total runs (after filtering) | 100 |
+| K₁ swept | {0, 1×10⁻⁶, 1×10⁻⁵, 1×10⁻⁴} |
+| K₂ swept | {0.0625, 0.125, 0.1875, 0.25} |
+| K₃ swept | {0.00781, 0.01105, 0.01563, 0.02344, 0.03125} |
+| K₄, K₅, K₆ fixed | K₄=1, K₅=0.01, K₆=5 |
+
+Top 3 results ranked by band distance:
+
+| Rank | K₁ | K₂ | K₃ | χ²_band | Selected |
+|---|---|---|---|---|---|
+| **0** | **0** | **0.125** | **0.01105** | **0.000995** | **←** |
+| 1 | 1×10⁻⁶ | 0.0625 | 0.00781 | 0.001901 | |
+| 2 | 0 | 0.0625 | 0.00781 | 0.001932 | |
+
+**Selected result** (rank 0, `ind_chosen = 0`):
+
+| Constraint | Weight K | Component value C | K·C |
+|---|---|---|---|
+| Band distance | — | 0.000995 | — |
+| K₁ (DFT distance) | 0 | 5.326 | 0 |
+| K₂ (M orbital content) | 0.125 | 5.6×10⁻⁵ | 7.0×10⁻⁶ |
+| K₃ (Γ/K occupation) | 0.01105 | 0.0557 | 6.15×10⁻⁴ |
+| K₄ (CBM at K) | 1 | 0 (at K) | 0 |
+| K₅ (band gap) | 0.01 | ~0 (matches DFT) | ~0 |
 
 ### Initial point control
 
-The `use_dft_x0` option in `fit_config.json` controls whether the DFT-derived parameters are used as the initial point (`x0`) for the optimizer:
-
-- **`true`** (default): One individual in the DE population (or the starting point for dual annealing) is seeded with the DFT parameters. This biases the search toward the DFT basin.
-- **`false`**: The entire population is randomly initialized within the bounds. This maximizes exploration and avoids any gravitational pull toward the DFT parameters, at the cost of potentially slower convergence.
-
-Set `use_dft_x0: false` when you suspect the best fit lies far from the DFT starting point, or when running with `K1 = 0` (no DFT penalty).
+The optimizer always starts from the DFT-derived parameters as the initial point (`x0`). This is the standard v3.0 approach: Nelder-Mead is a local optimizer, so starting from the physically motivated DFT values ensures convergence to a physically meaningful minimum.
 
 ### HPC workflow
 
@@ -309,8 +407,8 @@ Each run is stored in its own subdirectory under `Data/<TMD>_<id>/`. When you st
 Data/
   WSe2_001/
     fit_config.json          ← snapshot of config used for this run
-    fit_WSe2_idx0.npz
-    fit_WSe2_idx1.npz
+    fit_idx0.npz
+    fit_idx1.npz
     ...
   WS2_002/
     fit_config.json          ← different config (e.g. finer grid)
@@ -337,28 +435,33 @@ python scripts/fit_monolayer.py WSe2 42 --id 002
 ### Programmatic usage
 
 ```python
-from tmdmoire import TMDMaterial, ARPESData, ParameterFitter
+from tmdmoire.material import TMDMaterial
+from tmdmoire.monolayer.data import MonolayerData
+from tmdmoire.monolayer.fitter import ParameterFitter
+from tmdmoire.utils.paths import get_repo_root
 
 # Create material with DFT initial parameters
 material = TMDMaterial("WSe2")
 
 # Load experimental ARPES data (symmetrized data is cached automatically)
-arpes = ARPESData("WSe2", master_folder="/path/to/repo/", pts=91)
+data = MonolayerData("WSe2", master_folder=get_repo_root(), pts=91)
 
 # Configure the fitter
 config = {
-    "pts": 91,
-    "Ks": (1e-5, 0.5, 1.0, 1.0, 0.5, 5.0),  # K1-K6 weights
+    "Ks": (0.0, 0.125, 0.01, 1.0, 0.1, 5),   # K1-K6 weights
     "boundType": "absolute",
-    "Bs": (5, 2, 4, 1, 0),  # bounds for eps, t1, t5, t6, SOC
+    "Bs": (8, 4, 5, 2, 0),  # bounds for eps, t1, t5, t6, SOC (±eV)
+    "optimizer": {"nm_maxiter": 1000000, "nm_fatol": 1e-4},
 }
 
-fitter = ParameterFitter(material, arpes, config)
-result = fitter.run(maxiter=3000, seed=42)
+fitter = ParameterFitter(material, data, config)
+result = fitter.run(seed=42, output_dir="Data")
 
 print(f"Final chi²: {result['fun']}")
 print(f"Optimized parameters: {result['x']}")
 ```
+
+The fitter starts from DFT parameters and minimizes via Nelder-Mead. Intermediate best results are saved to `temp_best_{idx}.npz` during the run.
 
 ### Output
 
