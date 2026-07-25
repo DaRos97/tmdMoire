@@ -28,8 +28,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.ticker as ticker
 from matplotlib.lines import Line2D
 from tqdm import tqdm
+
+import h5py
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -274,6 +277,60 @@ def main():
         bands_dft = ham.eigenvalues(k_pts_bands, *args_h_dft).T
         np.savez(bands_fn, fit=bands_fit, dft=bands_dft)
 
+    # ─── Chi2 heatmap data loading ────────────────────────────────────────────
+
+    def _build_grid(measure, Ks):
+        """Build 2D grid: min(measure) over all dimensions except K2 and K3."""
+        x_vals = np.unique(Ks[:, 1])
+        y_vals = np.unique(Ks[:, 2])
+        grid = np.full((len(y_vals), len(x_vals)), np.nan)
+        x_idx = {v: i for i, v in enumerate(x_vals)}
+        y_idx = {v: i for i, v in enumerate(y_vals)}
+        for i in range(len(measure)):
+            xi = x_idx[Ks[i, 1]]
+            yi = y_idx[Ks[i, 2]]
+            if np.isnan(grid[yi, xi]) or measure[i] < grid[yi, xi]:
+                grid[yi, xi] = measure[i]
+        return x_vals, y_vals, grid
+
+
+    def _load_chi2_heatmap_data(tmd, master_folder):
+        """Load chi2 data from v3.0 merged HDF5 and build the heatmap grid."""
+        h5_path = Path(master_folder) / "Data" / f"{tmd}_run1" / f"merged_{tmd}_absolute.h5"
+        if not h5_path.is_file():
+            return None
+
+        with h5py.File(h5_path, "r") as h5:
+            elements = h5["elements"][:]
+            Ks = h5["Ks"][:]
+            Bs = h5["Bs"][:]
+
+        OFFSET_K1 = -1e-7
+        K2_MIN = -(2 ** (-8))
+        K2_MAX = 10
+        OFFSET_K3 = -0.012
+        OFFSET_K6 = -1
+
+        mask = (
+            (Ks[:, 0] > OFFSET_K1)
+            & (Ks[:, 1] > K2_MIN)
+            & (Ks[:, 1] < K2_MAX)
+            & (Ks[:, 2] > OFFSET_K3)
+            & (Ks[:, 5] > OFFSET_K6)
+        )
+        elements = elements[mask]
+        Ks = Ks[mask]
+        Bs = Bs[mask]
+
+        chi2 = elements[:, 0]
+        measure = chi2
+        x_vals, y_vals, grid = _build_grid(measure, Ks)
+        idx_best = np.argsort(measure)[0]
+        best_Ks = Ks[idx_best]
+        best_Bs = Bs[idx_best]
+        return x_vals, y_vals, grid, best_Ks, best_Bs, measure[idx_best]
+
+
     # ── Plotting ─────────────────────────────────────────────────────────
     s_norm = 10
     s_small = 8
@@ -357,9 +414,9 @@ def main():
             leg2.append(Line2D([0], [0], marker="o", markeredgecolor="none",
                                markerfacecolor=color[orb], markersize=6,
                                label=labels[orb], lw=0))
-    legend1 = ax.legend(handles=leg1, loc=(0.23, 0.33), fontsize=s_small,
+    legend1 = ax.legend(handles=leg1, loc=(0.23, 0.15), fontsize=s_small,
                         handletextpad=0.35, handlelength=0.5, labelspacing=0.1)
-    legend2 = ax.legend(handles=leg2, loc=(0.6, 0.33), fontsize=s_small,
+    legend2 = ax.legend(handles=leg2, loc=(0.6, 0.15), fontsize=s_small,
                         handletextpad=0.35, handlelength=0.5, labelspacing=0.1)
     ax.add_artist(legend1)
     ax.add_artist(legend2)
@@ -382,7 +439,41 @@ def main():
     ax.text(xr_text, y_text, "Fit", transform=ax.transAxes,
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
 
-    # ── Panel 3: Band comparison ─────────────────────────────────────────
+    # ── Panel 3: chi2 heatmap ─────────────────────────────────────────────
+    ax_heat_frame = fig.add_subplot(gs[0, 1])
+    ax_heat_frame.set_xticks([])
+    ax_heat_frame.set_yticks([])
+    for spine in ax_heat_frame.spines.values():
+        spine.set_visible(False)
+
+    heat_data = _load_chi2_heatmap_data(tmd, master_folder)
+    if heat_data is not None:
+        x_vals, y_vals, grid, best_Ks, best_Bs, min_val = heat_data
+        grid[grid > 0.3] = np.nan
+
+        cell = ax_heat_frame.get_position()
+        shrink = 0.92
+        w, h = cell.width * shrink, cell.height * shrink
+        x0 = cell.x0 + (cell.width - w) / 2 + 0.05
+        y0 = cell.y0 + (cell.height - h) / 2 + 0.06
+        ax_heat = fig.add_axes([x0, y0, w, h])
+
+        img = ax_heat.pcolormesh(x_vals, y_vals, grid, shading="nearest",
+                                 cmap="viridis_r")
+        cb = fig.colorbar(img, ax=ax_heat, fraction=0.12, pad=0.04)
+        cb.set_label(r"$\chi^2$", fontsize=s_small)
+        cb.ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+        cb.ax.ticklabel_format(style="sci", scilimits=(0, 0), axis="y")
+        cb.ax.tick_params(labelsize=5)
+        cb.ax.yaxis.get_offset_text().set_fontsize(5)
+        ax_heat.set_xlabel(r"$K_2$", fontsize=s_small)
+        ax_heat.set_ylabel(r"$K_3$", fontsize=s_small)
+        ax_heat.tick_params(labelsize=5)
+    else:
+        ax_heat_frame.text(0.5, 0.5, "no data", transform=ax_heat_frame.transAxes,
+                           ha="center", va="center", fontsize=s_small)
+
+    # ── Panel 4: Band comparison ─────────────────────────────────────────
     ax = fig.add_subplot(gs[1, 1])
     lw = 0.7
     nbands = arpes_bands.shape[1] - 3
@@ -405,7 +496,7 @@ def main():
             label="DFT" if b == 0 else "", zorder=1, alpha=0.7
         )
     leg = ax.legend(
-        loc=(0.6, 0.0), fontsize=s_small, labelspacing=0.1,
+        loc="upper left", fontsize=s_small, labelspacing=0.1,
         facecolor="white", framealpha=1, edgecolor="black"
     )
     leg.get_frame().set_alpha(1)
@@ -429,8 +520,10 @@ def main():
 
     fig.savefig(out_dir / f"fig_monolayer_{tmd}.svg")
     fig.savefig(out_dir / f"fig_monolayer_{tmd}.png", dpi=600)
-    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.svg'}")
-    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.png'}")
+    fig.savefig(out_dir / f"fig_monolayer_{tmd}.pdf")
+    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.svg'}", flush=True)
+    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.png'}", flush=True)
+    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.pdf'}", flush=True)
 
 
 if __name__ == "__main__":
