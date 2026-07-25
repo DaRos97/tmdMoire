@@ -414,9 +414,10 @@ def main():
             leg2.append(Line2D([0], [0], marker="o", markeredgecolor="none",
                                markerfacecolor=color[orb], markersize=6,
                                label=labels[orb], lw=0))
-    legend1 = ax.legend(handles=leg1, loc=(0.23, 0.15), fontsize=s_small,
+    orb_legend_y = 0.33 if tmd == "WSe2" else 0.15
+    legend1 = ax.legend(handles=leg1, loc=(0.23, orb_legend_y), fontsize=s_small,
                         handletextpad=0.35, handlelength=0.5, labelspacing=0.1)
-    legend2 = ax.legend(handles=leg2, loc=(0.6, 0.15), fontsize=s_small,
+    legend2 = ax.legend(handles=leg2, loc=(0.6, orb_legend_y), fontsize=s_small,
                         handletextpad=0.35, handlelength=0.5, labelspacing=0.1)
     ax.add_artist(legend1)
     ax.add_artist(legend2)
@@ -439,39 +440,45 @@ def main():
     ax.text(xr_text, y_text, "Fit", transform=ax.transAxes,
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
 
-    # ── Panel 3: chi2 heatmap ─────────────────────────────────────────────
+    # ── Panel 3: chi2 heatmap (WS2 only) ───────────────────────────────────
     ax_heat_frame = fig.add_subplot(gs[0, 1])
     ax_heat_frame.set_xticks([])
     ax_heat_frame.set_yticks([])
     for spine in ax_heat_frame.spines.values():
         spine.set_visible(False)
 
-    heat_data = _load_chi2_heatmap_data(tmd, master_folder)
-    if heat_data is not None:
-        x_vals, y_vals, grid, best_Ks, best_Bs, min_val = heat_data
-        grid[grid > 0.3] = np.nan
+    if tmd == "WS2":
+        heat_data = _load_chi2_heatmap_data(tmd, master_folder)
+        if heat_data is not None:
+            x_vals, y_vals, grid, best_Ks, best_Bs, min_val = heat_data
+            grid[grid > 0.3] = np.nan
 
-        cell = ax_heat_frame.get_position()
-        shrink = 0.92
-        w, h = cell.width * shrink, cell.height * shrink
-        x0 = cell.x0 + (cell.width - w) / 2 + 0.05
-        y0 = cell.y0 + (cell.height - h) / 2 + 0.06
-        ax_heat = fig.add_axes([x0, y0, w, h])
+            cell = ax_heat_frame.get_position()
+            shrink = 0.92
+            w, h = cell.width * shrink, cell.height * shrink
+            x0 = cell.x0 + (cell.width - w) / 2 + 0.05
+            y0 = cell.y0 + (cell.height - h) / 2 + 0.06
+            ax_heat = fig.add_axes([x0, y0, w, h])
 
-        img = ax_heat.pcolormesh(x_vals, y_vals, grid, shading="nearest",
-                                 cmap="viridis_r")
-        cb = fig.colorbar(img, ax=ax_heat, fraction=0.12, pad=0.04)
-        cb.set_label(r"$\chi^2$", fontsize=s_small)
-        cb.ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
-        cb.ax.ticklabel_format(style="sci", scilimits=(0, 0), axis="y")
-        cb.ax.tick_params(labelsize=5)
-        cb.ax.yaxis.get_offset_text().set_fontsize(5)
-        ax_heat.set_xlabel(r"$K_2$", fontsize=s_small)
-        ax_heat.set_ylabel(r"$K_3$", fontsize=s_small)
-        ax_heat.tick_params(labelsize=5)
-    else:
-        ax_heat_frame.text(0.5, 0.5, "no data", transform=ax_heat_frame.transAxes,
-                           ha="center", va="center", fontsize=s_small)
+            img = ax_heat.pcolormesh(x_vals, y_vals, grid, shading="nearest",
+                                     cmap="viridis_r")
+            cb = fig.colorbar(img, ax=ax_heat, fraction=0.12, pad=0.04)
+            cb.set_label(r"$\chi^2$", fontsize=s_small)
+            cb.ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+            cb.ax.ticklabel_format(style="sci", scilimits=(0, 0), axis="y")
+            cb.ax.tick_params(labelsize=5)
+            cb.ax.yaxis.get_offset_text().set_fontsize(5)
+            ax_heat.set_xlabel(r"$K_2$", fontsize=s_small)
+            ax_heat.set_ylabel(r"$K_3$", fontsize=s_small)
+            ax_heat.tick_params(labelsize=5)
+
+    elif tmd == "WSe2":
+        inset_path = Path(master_folder) / "Figures" / "hoppings.png"
+        if inset_path.is_file():
+            inset_img = plt.imread(str(inset_path))
+            ax_heat_frame.imshow(inset_img, aspect="equal")
+            ax_heat_frame.set_xticks([])
+            ax_heat_frame.set_yticks([])
 
     # ── Panel 4: Band comparison ─────────────────────────────────────────
     ax = fig.add_subplot(gs[1, 1])
@@ -520,7 +527,7 @@ def main():
 
     fig.savefig(out_dir / f"fig_monolayer_{tmd}.svg")
     fig.savefig(out_dir / f"fig_monolayer_{tmd}.png", dpi=600)
-    fig.savefig(out_dir / f"fig_monolayer_{tmd}.pdf")
+    fig.savefig(out_dir / f"fig_monolayer_{tmd}.pdf", dpi=600)
     print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.svg'}", flush=True)
     print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.png'}", flush=True)
     print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.pdf'}", flush=True)
