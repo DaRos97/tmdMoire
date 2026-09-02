@@ -52,6 +52,9 @@ parser.add_argument("--gamma-weight", type=float, default=5.0,
                     help="Weight multiplier for Gamma point (default: 5.0).")
 parser.add_argument("--gamma-sigma", type=float, default=0.15,
                     help="Width of Gamma region in Å⁻¹ (default: 0.15).")
+parser.add_argument("--coupling-type", type=str, default="parallel",
+                    choices=["parallel", "anti_parallel"],
+                    help="Interlayer coupling type: parallel (w1p/w1d/w2p/w2d) or anti_parallel (w3p/w3d).")
 args = parser.parse_args()
 
 monolayer_fns = {
@@ -62,7 +65,12 @@ monolayer_fns = {
 if args.verbose:
     print("------------BILAYER INTERLAYER COUPLING FIT------------")
     print(f" k-points: {args.n_kpts}")
-    print(f" Bounds: all params [-5, 5]")
+    if args.coupling_type == "parallel":
+        print(f" Bounds: all params [-5, 5]")
+        print(f" Coupling: parallel (w1p, w1d, w2p, w2d)")
+    else:
+        print(f" Bounds: all params [-5, 5]")
+        print(f" Coupling: anti_parallel (w3p, w3d)")
     print(f" Starts: {args.n_starts}, seed: {args.seed}")
     print(f" Gamma weight: {args.gamma_weight}, sigma: {args.gamma_sigma} Å⁻¹")
     print("-" * 50)
@@ -73,10 +81,14 @@ ws2 = TMDMaterial("WS2")
 ws2.load_fitted(monolayer_fns["WS2"])
 
 fitter = BilayerFitter(wse2, ws2, master_folder, n_kpts=args.n_kpts,
-                       gamma_weight=args.gamma_weight, gamma_sigma=args.gamma_sigma)
+                       gamma_weight=args.gamma_weight, gamma_sigma=args.gamma_sigma,
+                       coupling_type=args.coupling_type)
 
 # Pre-fit diagnostic plot
-evals_nc, _ = fitter._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+if args.coupling_type == "parallel":
+    evals_nc, _ = fitter._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+else:
+    evals_nc, _ = fitter._build_hamiltonian(0.0, 0.0)
 evals_nc = evals_nc + ENERGY_OFFSETS["S11"]
 plot_bilayer_fit(fitter.bilayer_data, fitter.k_list, evals_nc, evals_nc)
 
@@ -92,12 +104,12 @@ print(f"\nBest chi2: {result['fun']:.6f}")
 print(f"Evaluations: {result['nfev']}")
 print(f"Success: {result['success']}")
 print(f"\nFitted parameters:")
-for i, name in enumerate(["w1p", "w1d", "w2p", "w2d"]):
+for i, name in enumerate(fitter.param_names):
     print(f"  {name} = {result['x'][i]:+.4f} eV")
 print(f"\nSaved to: {fn}")
 
 # Post-fit plot with parameter legend
-param_dict = {name: result["x"][i] for i, name in enumerate(["w1p", "w1d", "w2p", "w2d"])}
+param_dict = {name: result["x"][i] for i, name in enumerate(fitter.param_names)}
 plot_bilayer_fit(fitter.bilayer_data, result["k_list"],
                  result["evals"], result["evals_no_coupling"],
                  interlayer_params=param_dict)

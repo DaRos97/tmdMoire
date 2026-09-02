@@ -30,19 +30,27 @@ class BilayerFitter:
         Path to repository root (for loading BilayerData).
     n_kpts : int
         Number of equidistant k-points between Γ and K.
+    coupling_type : str
+        Type of interlayer coupling: "parallel" (w1p, w1d, w2p, w2d)
+        or "anti_parallel" (w3).
     """
 
-    BOUNDS = [
+    BOUNDS_PARALLEL = [
         (-5.0, 5.0),     # w1p
         (-5.0, 5.0),     # w1d
         (-5.0, 5.0),     # w2p
         (-5.0, 5.0),     # w2d
     ]
 
+    BOUNDS_ANTI_PARALLEL = [
+        (-5.0, 5.0),     # w3p
+        (-5.0, 5.0),     # w3d
+    ]
+
     def __init__(self, wse2: TMDMaterial, ws2: TMDMaterial,
                  master_folder: str, n_kpts: int = 51,
                  gamma_weight: float = 5.0, gamma_sigma: float = 0.15,
-                 sample: str = "S11"):
+                 sample: str = "S11", coupling_type: str = "parallel"):
         self.wse2 = wse2
         self.ws2 = ws2
         self.n_kpts = n_kpts
@@ -55,6 +63,16 @@ class BilayerFitter:
         self._debug_no_coupling_evals = None
         self.gamma_weight = gamma_weight
         self.gamma_sigma = gamma_sigma
+        self.coupling_type = coupling_type
+
+        if coupling_type == "parallel":
+            self.BOUNDS = self.BOUNDS_PARALLEL
+            self.param_names = ["w1p", "w1d", "w2p", "w2d"]
+        elif coupling_type == "anti_parallel":
+            self.BOUNDS = self.BOUNDS_ANTI_PARALLEL
+            self.param_names = ["w3p", "w3d"]
+        else:
+            raise ValueError(f"Unknown coupling_type: {coupling_type}")
 
         a = wse2.lattice_constant
         self.K_vec = np.array([4 * np.pi / 3 / a, 0])
@@ -86,8 +104,8 @@ class BilayerFitter:
             clipped[i] = np.clip(params[i], lo, hi)
         return clipped
 
-    def _build_hamiltonian(self, w1p, w1d, w2p, w2d):
-        interlayer_params = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
+    def _build_hamiltonian(self, *params):
+        interlayer_params = {name: val for name, val in zip(self.param_names, params)}
         geometry = MoireGeometry(0.0)
         ham = MoireHamiltonian(self.wse2, self.ws2, geometry)
         pars_V = (0.0, 0.0, 0.0, 0.0)
@@ -95,13 +113,14 @@ class BilayerFitter:
                                interlayer_params=interlayer_params,
                                pars_V=pars_V,
                                mono_hams_wse2=self.mono_hams_wse2,
-                               mono_hams_ws2=self.mono_hams_ws2)
+                               mono_hams_ws2=self.mono_hams_ws2,
+                               coupling_type=self.coupling_type)
 
     def chi2(self, params):
         penalty = self._check_bounds(params)
-        w1p, w1d, w2p, w2d = self._clip_params(params)
+        clipped = self._clip_params(params)
 
-        evals, _ = self._build_hamiltonian(w1p, w1d, w2p, w2d)
+        evals, _ = self._build_hamiltonian(*clipped)
         evals_shifted = evals + self.energy_offset
 
         band_indices = [27, 26, 25]
@@ -127,11 +146,11 @@ class BilayerFitter:
     def _debug_plot(self, params, chi2_val=None):
         if self._debug_dir is None:
             return
-        w1p, w1d, w2p, w2d = self._clip_params(params)
+        clipped = self._clip_params(params)
         if chi2_val is None:
             chi2_val = self.chi2(params)
 
-        evals, _ = self._build_hamiltonian(w1p, w1d, w2p, w2d)
+        evals, _ = self._build_hamiltonian(*clipped)
         evals = evals + self.energy_offset
 
         fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
@@ -164,7 +183,8 @@ class BilayerFitter:
         ax.axhline(0, color="gray", lw=0.5, ls="--")
         ax.set_xlabel(r"$|k|$ (Å⁻¹)", fontsize=12)
         ax.set_ylabel("Energy (eV)", fontsize=12)
-        ax.set_title(f"Iter {self._debug_iter}: w1p={w1p:+.4f} w1d={w1d:+.4f}  χ²={chi2_val:.6f}",
+        param_str = " ".join(f"{n}={v:+.4f}" for n, v in zip(self.param_names, clipped))
+        ax.set_title(f"Iter {self._debug_iter}: {param_str}  χ²={chi2_val:.6f}",
                      fontsize=13, fontweight="bold")
         ax.legend(fontsize=10, loc="lower right")
 
@@ -195,7 +215,10 @@ class BilayerFitter:
         self._debug_max = debug_max_iters
         if self._debug_dir:
             self._debug_dir.mkdir(parents=True, exist_ok=True)
-            evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+            if self.coupling_type == "parallel":
+                evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+            else:
+                evals_nc, _ = self._build_hamiltonian(0.0, 0.0)
             self._debug_no_coupling_evals = evals_nc + self.energy_offset
 
         callback = self._make_callback(debug_every=debug_every) if self._debug_dir else None
@@ -223,7 +246,10 @@ class BilayerFitter:
 
         evals, _ = self._build_hamiltonian(*best_params)
         evals = evals + self.energy_offset
-        evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+        if self.coupling_type == "parallel":
+            evals_nc, _ = self._build_hamiltonian(0.0, 0.0, 0.0, 0.0)
+        else:
+            evals_nc, _ = self._build_hamiltonian(0.0, 0.0)
         evals_nc = evals_nc + self.energy_offset
 
         return {
@@ -242,19 +268,20 @@ class BilayerFitter:
         out_dir.mkdir(parents=True, exist_ok=True)
         import json, datetime
 
-        params = ["w1p", "w1d", "w2p", "w2d"]
         full_params = result["x"]
-        np.save(out_dir / "interlayer_params.npy", full_params)
+        suffix = "_AP" if self.coupling_type == "anti_parallel" else ""
+        np.save(out_dir / f"interlayer_params{suffix}.npy", full_params)
 
         metadata = {
+            "coupling_type": self.coupling_type,
             "n_kpts": self.n_kpts,
-            **{p: float(full_params[i]) for i, p in enumerate(params)},
+            **{p: float(full_params[i]) for i, p in enumerate(self.param_names)},
             "chi2": float(result["fun"]),
             "nfev": int(result["nfev"]),
             "success": bool(result["success"]),
             "n_starts": len(result["all_results"]),
             "timestamp": datetime.datetime.now().isoformat(),
         }
-        with open(out_dir / "interlayer_params_metadata.json", "w") as f:
+        with open(out_dir / f"interlayer_params_metadata{suffix}.json", "w") as f:
             json.dump(metadata, f, indent=2)
-        return str(out_dir / "interlayer_params.npy")
+        return str(out_dir / f"interlayer_params{suffix}.npy")

@@ -67,6 +67,20 @@ class MoireHamiltonian:
             Ham_int[orbd + i_so, orbd + i_so] = interlayer_params["w1d"] + interlayer_params["w2d"] * nn_term
         return Ham_int
 
+    def _build_interlayer_coupling_AP(self, interlayer_params, k_):
+        """Construct the 22×22 anti-parallel interlayer coupling matrix. t_AP(k)=w3*sum_{j=1}^3 e^{ik*delta_j}"""
+        Ham_int = np.zeros((22, 22), dtype=complex)
+        orbd = 5
+        orbp = 8
+        delta_vectors = self.wse2.lattice_constant * np.array([
+            A_1, A_2, -(A_1 + A_2)
+        ])
+        delta_term = np.sum(np.exp(1j * np.array([np.dot(dv, k_) for dv in delta_vectors])))
+        for i_so in [0, 11]:
+            Ham_int[orbp + i_so, orbp + i_so] = interlayer_params["w3p"] * delta_term
+            Ham_int[orbd + i_so, orbd + i_so] = interlayer_params["w3d"] * delta_term
+        return Ham_int
+
     def _build_monolayer_ham(self, k_point, args):
         """Build a single 22×22 monolayer Hamiltonian (internal, non-vectorized)."""
         hopping, epsilon, HSO, a_mono, offset = args
@@ -139,7 +153,8 @@ class MoireHamiltonian:
         return H
 
     def build_supercell(self, k_point, n_shells, interlayer_params, pars_V,
-                        k_idx=None, mono_hams_wse2=None, mono_hams_ws2=None):
+                        k_idx=None, mono_hams_wse2=None, mono_hams_ws2=None,
+                        coupling_type="parallel"):
         """Construct the full (44·N)×(44·N) supercell Hamiltonian.
 
         Parameters
@@ -196,7 +211,12 @@ class MoireHamiltonian:
                 Ham[n * 22:(n + 1) * 22, n * 22:(n + 1) * 22] = self._build_monolayer_ham(Kn, args_wse2)
                 Ham[(n_cells + n) * 22:(n_cells + n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = self._build_monolayer_ham(Kn, args_ws2)
             # Interlayer coupling w1
-            interlayer_ham = self._build_interlayer_coupling(interlayer_params,Kn)
+            if coupling_type == "parallel":
+                interlayer_ham = self._build_interlayer_coupling(interlayer_params, Kn)
+            elif coupling_type == "anti_parallel":
+                interlayer_ham = self._build_interlayer_coupling_AP(interlayer_params, Kn)
+            else:
+                raise ValueError(f"Unknown coupling_type: {coupling_type}")
             Ham[n * 22:(n + 1) * 22, (n_cells + n) * 22:(n_cells + n + 1) * 22] = interlayer_ham
 
         Ham[n_cells * 22:, :n_cells * 22] = np.copy(Ham[:n_cells * 22, n_cells * 22:].T.conj())
@@ -217,7 +237,7 @@ class MoireHamiltonian:
         return Ham
 
     def diagonalize(self, k_points, n_shells, interlayer_params, pars_V,
-                    mono_hams_wse2=None, mono_hams_ws2=None):
+                    mono_hams_wse2=None, mono_hams_ws2=None, coupling_type="parallel"):
         """Diagonalize the supercell Hamiltonian at each k-point."""
         k_pts = k_points.shape[0]
         n_cells = MoireGeometry.n_cells(n_shells)
@@ -227,6 +247,7 @@ class MoireHamiltonian:
             H_tot = self.build_supercell(k_points[i], n_shells, interlayer_params, pars_V,
                                          k_idx=i,
                                          mono_hams_wse2=mono_hams_wse2,
-                                         mono_hams_ws2=mono_hams_ws2)
+                                         mono_hams_ws2=mono_hams_ws2,
+                                         coupling_type=coupling_type)
             evals[i], evecs[i] = la.eigh(H_tot, check_finite=False, overwrite_a=True)
         return evals, evecs
