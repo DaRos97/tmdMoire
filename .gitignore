@@ -3,6 +3,9 @@ Experiments/
 Data/
 Figures/
 oldCode/
+theoryPaper/
+theory/python_checks/figures/
+theory/python_checks/data/
 
 __pycache__/
 */__pycache__/

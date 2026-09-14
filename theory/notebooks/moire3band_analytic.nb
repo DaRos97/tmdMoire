@@ -1,0 +1,179 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 15.0' *)
+
+(*CacheID: 234*)
+
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[         0,          0]
+NotebookOptionsPosition[        0,          0]
+NotebookOutlinePosition[        0,          0]
+CellTagsIndexPosition[         0,          0]
+*)
+
+Notebook[{
+
+Cell["Analytic diagonalization of the 1D moire three-band model", "Title"],
+
+Cell["1D moire model: a single parabolic (valence) band \[Epsilon]_n(k) = \
+-\[HBar]^2 (k + n G)^2/(2 m), n = -1, 0, +1, coupled by the first harmonic of \
+the moire potential, 2 V Cos(G x + \[Phi]). In the plane-wave basis {|k-G>, \
+|k>, |k+G>} this gives the tridiagonal Hamiltonian below, with off-diagonal \
+elements V Exp[I \[Phi]] (upper) and V Exp[-I \[Phi]] (lower). The corner \
+elements vanish because only the first harmonic is kept. G = 2 \[Pi]/a.", \
+"Text"],
+
+Cell["Hamiltonian", "Section"],
+
+Cell["ClearAll[\"Global`*\"];\n\neps[k_, n_] := -hbar^2 (k + n G)^2/(2 m)\n\n\
+Ham[k_] := {{eps[k, -1], V Exp[I phi], 0},\n            {V Exp[-I phi], \
+eps[k, 0], V Exp[I phi]},\n            {0, V Exp[-I phi], eps[k, 1]}}", \
+"Input"],
+
+Cell["Ham[k] // MatrixForm", "Input"],
+
+Cell["Characteristic polynomial", "Section"],
+
+Cell["cp = FullSimplify[Det[Ham[k] - lam IdentityMatrix[3]],\n   Assumptions \
+-> {hbar > 0, m > 0, G > 0, V > 0}];\n\npoly = Expand[-cp]", "Input"],
+
+Cell["{c0, c1, c2} = CoefficientList[poly, lam][[1 ;; 3]]", "Input"],
+
+Cell["Monic cubic \[Lambda]^3 + c_2 \[Lambda]^2 + c_1 \[Lambda] + c_0 = 0. \
+The coupling enters only at second order in V (second-order \
+perturbation-theory structure); for V -> 0 the three roots reduce to the \
+uncoupled parabolas -\[HBar]^2 (k + n G)^2/(2 m).", "Text"],
+
+Cell["The phase is a gauge degree of freedom", "Section"],
+
+Cell["U = DiagonalMatrix[{1, Exp[-I phi], Exp[-2 I phi]}];\n\n\
+FullSimplify[ConjugateTranspose[U].Ham[k].U,\n   Assumptions -> \
+Element[phi, Reals]] // MatrixForm", "Input"],
+
+Cell["A diagonal unitary gauge transformation removes the phase \[Phi] from \
+the off-diagonal elements: the spectrum depends only on the amplitude V. The \
+phase merely translates the moire pattern in real space. We set \[Phi] = 0 in \
+the analytic diagonalization below and check this numerically at the end.", \
+"Text"],
+
+Cell["Analytic eigenvalues (Cardano)", "Section"],
+
+Cell["Dimensionless form: energies in units of E_G = \[HBar]^2 G^2/(2 m), \
+momentum x = k/G, coupling v = V/E_G.", "Text"],
+
+Cell["EG = hbar^2 G^2/(2 m);\n\nHamD = {{-(x - 1)^2, v, 0}, {v, -x^2, v}, {0, \
+v, -(x + 1)^2}};\n\npolyD = Expand[Det[HamD - lam IdentityMatrix[3]]*(-1)]", \
+"Input"],
+
+Cell["eigsD = lam /. Solve[polyD == 0, lam, Cubics -> True];\n\n\
+Length[eigsD]", "Input"],
+
+Cell["Short[eigsD[[1]], 12]", "Input"],
+
+Cell["eigsD[[j]] are the exact Cardano (cube-root) expressions for the three \
+eigenvalues. As k varies the branches may reorder, so the correspondence \
+between a given expression and a sorted band can swap; this has no physical \
+content.", "Text"],
+
+Cell["Numeric check that each Cardano expression is a root of the cubic:", \
+"Text"],
+
+Cell["residual[x0_, v0_] :=\n   Max @ Abs @ N @ ((polyD /. {x -> x0, v -> v0, \
+lam -> #}) & /@ (eigsD /. {x -> x0, v -> v0}));\n\nMax @ Table[\n   \
+residual[x0, v0], {x0, -2.5, 2.5, 0.5}, {v0, {0.01, 0.05, 0.1, 0.3}}]", \
+"Input"],
+
+Cell["Special points: k = 0 and the mini-BZ edge", "Section"],
+
+Cell["FullSimplify[Eigenvalues[HamD /. x -> 0], Assumptions -> v > 0]", \
+"Input"],
+
+Cell["Collect[Expand[(polyD /. x -> 1/2) /. lam -> u - 1/4], u]", "Input"],
+
+Cell["At k = 0 the antisymmetric combination {|-G> - |+G>} decouples: \
+eigenvalues -E_G and (-1 \[PlusMinus] Sqrt[1 + 8 v^2])/2 E_G exactly. The top \
+of the moire band is pushed above the monolayer band edge by ~2 V^2/E_G. At \
+the mini-BZ edge k = \[PlusMinus] G/2 the characteristic polynomial reduces \
+to u^3 + 2 u^2 - 2 v^2 (u + 1) = 0 with u = \[Lambda]/E_G + 1/4, giving \
+\[Lambda] = -E_G/4 \[PlusMinus] V + V^2/(4 E_G) + O(V^3/E_G^2): the direct \
+gap is 2 V to leading order.", "Text"],
+
+Cell["Numerical evaluation and plots", "Section"],
+
+Cell["Parameters: \[HBar] = m = a = 1, G = 2\[Pi], V = 2 (v \[TildeTilde] \
+0.1), \[Phi] = 0.7. The bands are computed from the analytic Cardano \
+expressions, sampled and sorted at each k; the numeric diagonalization is \
+used only for the cross-check below.", "Text"],
+
+Cell["pars = {hbar -> 1, m -> 1, G -> 2 Pi, V -> 2, phi -> 0.7};", "Input"],
+
+Cell["eigsNum[kk_] := Sort @ Eigenvalues @ N[Ham[kk] /. pars];\n\neigsAna[kk_] \
+:= Sort @ Chop @ Re @ N[(EG (eigsD /. {x -> kk/G, v -> V/EG})) /. pars];", \
+"Input"],
+
+Cell["kkVals = Subdivide[-5 Pi, 5 Pi, 500];\n\nbandsNum = Transpose @ \
+Table[eigsNum[kk], {kk, kkVals}];\nbandsAna = Transpose @ Table[eigsAna[kk], \
+{kk, kkVals}];\n\nkticks = Table[{n Pi, If[n == 0, \"0\", Row[{n, \
+\"\\[Pi]\"]}]} , {n, -4, 4}];\n\nstyle = {{Thick, RGBColor[0.9, 0.3, 0.1]}, \
+{Thick, RGBColor[0., 0.45, 0.74]}, {Thick, RGBColor[0.15, 0.55, 0.15]}};", \
+"Input"],
+
+Cell["bandPlot = ListLinePlot[\n   Table[Transpose[{kkVals, \
+bandsAna[[j]]}], {j, 3}],\n   PlotStyle -> style,\n   PlotLegends -> \
+LineLegend[{\"E1 (lowest)\", \"E2\", \"E3 (top)\"}],\n   Frame -> True,\n   \
+FrameLabel -> {\"k\", \"E(k)\"},\n   FrameTicks -> {{Automatic, None}, \
+{kticks, None}},\n   GridLines -> {{-5 Pi, -3 Pi, -Pi, Pi, 3 Pi, 5 Pi}, \
+None},\n   GridLinesStyle -> Directive[GrayLevel[0.6], Dashed],\n   \
+ImageSize -> 720,\n   PlotRange -> All\n]", "Input"],
+
+Cell["Extended-zone plot of the three eigenvalues for k from -5\[Pi] to \
+5\[Pi]. Gaps open at the parabola crossings k = \[PlusMinus]\[Pi], \
+\[PlusMinus]3\[Pi], \[PlusMinus]5\[Pi].", "Text"],
+
+Cell["zoomPlot = ListLinePlot[\n   Table[Transpose[{kkVals, \
+bandsAna[[j]]}], {j, 3}],\n   PlotStyle -> style,\n   Frame -> True,\n   \
+FrameLabel -> {\"k\", \"E(k)\"},\n   FrameTicks -> {{Automatic, None}, \
+{kticks, None}},\n   GridLines -> {{-5 Pi, -3 Pi, -Pi, Pi, 3 Pi, 5 Pi}, \
+None},\n   GridLinesStyle -> Directive[GrayLevel[0.6], Dashed],\n   \
+ImageSize -> 720,\n   PlotRange -> {{-5 Pi, 5 Pi}, {-25, 3}}\n]", "Input"],
+
+Cell["Zoom near the top of the band: the gap at the mini-BZ edge is 2 V = 4.", \
+"Text"],
+
+Cell["devData = Table[\n    {kk, Max @ Abs[eigsAna[kk] - eigsNum[kk]] + \
+$MachineEpsilon},\n    {kk, Subdivide[-5 Pi, 5 Pi, 60]}];\n\ndevPlot = \
+ListLogPlot[devData,\n   Frame -> True,\n   FrameLabel -> {\"k\", \"|analytic \
+- numeric|\"},\n   ImageSize -> 500,\n   PlotRange -> All\n]", "Input"],
+
+Cell["Deviation between the analytic Cardano eigenvalues and the numeric \
+diagonalization: machine precision.", "Text"],
+
+Cell["bandsPhi0 = Transpose @ Table[\n    Sort @ Eigenvalues @ N[Ham[kk] /. \
+pars /. phi -> 0], {kk, kkVals}];\n\nMax @ Abs[bandsNum - bandsPhi0]", \
+"Input"],
+
+Cell["Eigenvalues at \[Phi] = 0.7 vs \[Phi] = 0 agree to machine precision, \
+confirming that \[Phi] drops out of the spectrum.", "Text"],
+
+Cell["figDir = FileNameJoin[{NotebookDirectory[], \"..\", \"..\", \"Figures\", \
+\"theory\"}];\nIf[! DirectoryQ[figDir],\n   CreateDirectory[figDir, \
+CreateIntermediateDirectories -> True]];\n\nExport[FileNameJoin[{figDir, \
+\"moire3band_extended_zone.png\"}], bandPlot];\nExport[FileNameJoin[{figDir, \
+\"moire3band_zoom_top.png\"}], zoomPlot];\nExport[FileNameJoin[{figDir, \
+\"moire3band_analytic_vs_numeric.png\"}], devPlot];", "Input"],
+
+Cell["Change V and \[Phi] in pars to explore other regimes; v = V/E_G with \
+E_G = 2 \[Pi]^2 \[TildeTilde] 19.74 for the default units.", "Text"]
+},
+WindowSize -> {1200, 900},
+WindowMargins -> {{Automatic, 100}, {Automatic, 50}},
+FrontEndVersion -> "15.0 for Linux x86 (64-bit)",
+StyleDefinitions -> "Default.nb"
+]
+(* End of Notebook *)

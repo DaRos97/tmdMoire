@@ -1,0 +1,2563 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 15.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[    121041,       2555]
+NotebookOptionsPosition[    117032,       2485]
+NotebookOutlinePosition[    117432,       2501]
+CellTagsIndexPosition[    117389,       2498]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["1D Analytical derivations", "Title",
+ CellChangeTimes->{{3.997756753807611*^9, 
+  3.9977567734870777`*^9}},ExpressionUUID->"193d6222-013d-4c22-b8d3-\
+123bb789d8ac"],
+
+Cell["Units of measure and plot bands", "Subtitle",
+ CellChangeTimes->{{3.997838176169931*^9, 3.997838183684416*^9}, {
+  3.997838215149397*^9, 
+  3.9978382176885557`*^9}},ExpressionUUID->"3b5c0dd2-169a-4f12-9c61-\
+beb179df3242"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"ClearAll", "[", "\"\<Global`*\>\"", "]"}], ";"}], "\n", 
+  RowBox[{"(*", " ", 
+   RowBox[{"Physical", " ", "constants"}], " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"hbar", " ", "=", " ", 
+    RowBox[{"6.582119569", "*", 
+     RowBox[{"10", "^", 
+      RowBox[{"-", "13"}]}]}]}], ";"}], "  ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"meV", " ", "s"}], " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"m0", " ", "=", " ", 
+    RowBox[{"9.1093837", "*", 
+     RowBox[{"10", "^", 
+      RowBox[{"-", "31"}]}]}]}], ";"}], "      ", 
+  RowBox[{"(*", " ", "kg", " ", "*)"}], "\n", 
+  RowBox[{"(*", " ", "Parameters", " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"G", " ", "=", " ", "0.1257"}], ";"}], "                 ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"A", "^", 
+    RowBox[{"-", "1"}]}], " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"m", " ", "=", " ", 
+    RowBox[{"3.5", " ", "m0"}]}], ";"}], "\n", 
+  RowBox[{"(*", " ", 
+   RowBox[{"Convert", " ", 
+    RowBox[{
+     RowBox[{"hbar", "^", "2"}], "/", 
+     RowBox[{"(", 
+      RowBox[{"2", "m"}], ")"}]}], " ", "to", " ", "meV", " ", 
+    RowBox[{"A", "^", "2"}]}], " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"hbarSI", " ", "=", " ", 
+    RowBox[{"1.054571817", "*", 
+     RowBox[{"10", "^", 
+      RowBox[{"-", "34"}]}]}]}], ";"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"J", " ", "s"}], " ", "*)"}]}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"eV", " ", "=", " ", 
+    RowBox[{"1.602176634", "*", 
+     RowBox[{"10", "^", 
+      RowBox[{"-", "19"}]}]}]}], ";"}], "      ", 
+  RowBox[{"(*", " ", "J", " ", "*)"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{"alpha", " ", "=", " ", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"hbarSI", "^", "2"}], "/", 
+      RowBox[{"(", 
+       RowBox[{"2", " ", "m"}], ")"}]}], " ", "/", " ", 
+     RowBox[{"(", 
+      RowBox[{"eV", "*", 
+       RowBox[{"10", "^", 
+        RowBox[{"-", "3"}]}]}], ")"}]}], " ", "*", " ", 
+    RowBox[{"10", "^", "20"}]}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"eps", "[", 
+    RowBox[{"k_", ",", "n_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{"-", "alpha"}], " ", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{"k", "+", 
+       RowBox[{"n", " ", "G"}]}], ")"}], "^", "2"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"H", "[", 
+    RowBox[{"k_", ",", "v_"}], "]"}], ":=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"eps", "[", 
+        RowBox[{"k", ",", 
+         RowBox[{"-", "1"}]}], "]"}], ",", "v", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"v", ",", 
+       RowBox[{"eps", "[", 
+        RowBox[{"k", ",", "0"}], "]"}], ",", "v"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "v", ",", 
+       RowBox[{"eps", "[", 
+        RowBox[{"k", ",", "1"}], "]"}]}], "}"}]}], "}"}]}], ";"}], "\n", 
+ RowBox[{"Manipulate", "[", "\n", "\t", 
+  RowBox[{
+   RowBox[{"Plot", "[", "\n", "\t  ", 
+    RowBox[{
+     RowBox[{"Evaluate", "[", 
+      RowBox[{"Eigenvalues", "[", 
+       RowBox[{"H", "[", 
+        RowBox[{"k", ",", "v"}], "]"}], "]"}], "]"}], ",", "\n", "\t  ", 
+     RowBox[{"{", 
+      RowBox[{"k", ",", " ", 
+       RowBox[{
+        RowBox[{"-", "3"}], " ", "G"}], ",", " ", 
+       RowBox[{"3", " ", "G"}]}], "}"}], ",", "\n", "\t  ", 
+     RowBox[{"PlotRange", " ", "->", " ", 
+      RowBox[{"{", 
+       RowBox[{"5", ",", 
+        RowBox[{"-", "100"}]}], "}"}]}], ",", "\n", "\t  ", 
+     RowBox[{"AxesLabel", " ", "->", " ", 
+      RowBox[{"{", 
+       RowBox[{"\"\<k (A^-1)\>\"", ",", " ", "\"\<Energy (meV)\>\""}], 
+       "}"}]}]}], "\n", "\t", "]"}], ",", "\n", "\t", 
+   RowBox[{"{", 
+    RowBox[{"v", ",", " ", "0", ",", " ", "3"}], "}"}]}], "\n", 
+  "]"}]}], "Input",
+ CellChangeTimes->{{3.9977567997246857`*^9, 3.997756825232189*^9}, {
+  3.997756899116157*^9, 3.9977569139640093`*^9}, {3.9977573895527067`*^9, 
+  3.997757434463024*^9}, {3.997757773536133*^9, 3.997757787736102*^9}, {
+  3.997757969127385*^9, 3.9977579798258553`*^9}, {3.9977580468214493`*^9, 
+  3.9977581050492277`*^9}, {3.997758193593238*^9, 3.997758213788807*^9}, {
+  3.997758245247183*^9, 3.997758299082181*^9}, {3.997838187680463*^9, 
+  3.997838211447125*^9}},
+ CellLabel->"In[90]:=",ExpressionUUID->"2a21c899-81c1-47e1-a74b-18220a4aeff6"],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`v$$ = 0, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{
+      Hold[$CellContext`v$$], 0, 3, ControlType -> Manipulator}}, 
+    Typeset`size$$ = {360., {104.99324663662452`, 110.61824663662452`}}, 
+    Typeset`update$$ = 0, Typeset`initDone$$, Typeset`skipInitDone$$ = True, 
+    Typeset`keyframeActionsQ$$ = False, Typeset`keyframeList$$ = {}}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, "Variables" :> {$CellContext`v$$ = 0}, 
+      "ControllerVariables" :> {}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$, Typeset`keyframeActionsQ$$, 
+        Typeset`keyframeList$$}, "Body" :> Plot[
+        Evaluate[
+         Eigenvalues[
+          $CellContext`H[$CellContext`k, $CellContext`v$$]]], \
+{$CellContext`k, (-3) $CellContext`G, 3 $CellContext`G}, 
+        PlotRange -> {5, -100}, AxesLabel -> {"k (A^-1)", "Energy (meV)"}], 
+      "Specifications" :> {{$CellContext`v$$, 0, 3}}, "Options" :> {}, 
+      "DefaultOptions" :> {}],
+     ImageSizeCache->{405.1, {147.50887163662452`, 153.13387163662452`}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UndoTrackedVariables:>{Typeset`show$$, Typeset`bookmarkMode$$},
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellChangeTimes->{
+  3.997756880200499*^9, {3.997756918139493*^9, 3.9977569249699802`*^9}, 
+   3.9977570379284487`*^9, 3.997757400933886*^9, 3.997757847011622*^9, {
+   3.997757900393105*^9, 3.9977579471028976`*^9}, 3.9977579817539597`*^9, {
+   3.9977580603523912`*^9, 3.9977581058062477`*^9}, 3.997758301057177*^9, 
+   3.9977592273905582`*^9, 3.997759277086618*^9, 3.997838231315875*^9, 
+   3.997840245546722*^9},
+ CellLabel->
+  "Out[100]=",ExpressionUUID->"1d782bd3-bb72-478c-89ce-93e03fcad368"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Analytic derivation of the gap", "Subtitle",
+ CellChangeTimes->{{3.997838283237213*^9, 
+  3.997838295273616*^9}},ExpressionUUID->"33f83c40-c822-46fc-bc96-\
+915179d73c20"],
+
+Cell["\<\
+We expand the first two eigenvalues in a series expansion and then subtract \
+them to get the gap.
+A=hbar^2 G^2 / 8m\
+\>", "Text",
+ CellChangeTimes->{{3.997840251112565*^9, 
+  3.997840342068062*^9}},ExpressionUUID->"2a68f73c-9c45-4c73-a446-\
+4dc7a82ee043"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"Clear", "[", 
+    RowBox[{
+    "A", ",", "V", ",", "\[Lambda]", ",", "c1", ",", "c2", ",", "c3", ",", 
+     "c4", ",", "c5"}], "]"}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"H", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"-", "A"}], ",", "V", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"V", ",", 
+       RowBox[{"-", "A"}], ",", "V"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "V", ",", 
+       RowBox[{
+        RowBox[{"-", "9"}], " ", "A"}]}], "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"p", "=", 
+    RowBox[{"CharacteristicPolynomial", "[", 
+     RowBox[{"H", ",", "\[Lambda]"}], "]"}]}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"\[Lambda]series", "=", 
+    RowBox[{
+     RowBox[{"-", "A"}], "+", 
+     RowBox[{"c1", " ", "V"}], "+", 
+     RowBox[{"c2", " ", 
+      RowBox[{"V", "^", "2"}]}], "+", 
+     RowBox[{"c3", " ", 
+      RowBox[{"V", "^", "3"}]}], "+", 
+     RowBox[{"c4", " ", 
+      RowBox[{"V", "^", "4"}]}], "+", 
+     RowBox[{"c5", " ", 
+      RowBox[{"V", "^", "5"}]}]}]}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"eq", "=", 
+    RowBox[{
+     RowBox[{"Normal", "@", 
+      RowBox[{"Series", "[", 
+       RowBox[{
+        RowBox[{"p", "/.", " ", 
+         RowBox[{"\[Lambda]", "->", "\[Lambda]series"}]}], ",", 
+        RowBox[{"{", 
+         RowBox[{"V", ",", "0", ",", "6"}], "}"}]}], "]"}]}], "//", 
+     "Expand"}]}], ";"}], "\[IndentingNewLine]"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"coefficients", "=", 
+    RowBox[{"Table", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"Coefficient", "[", 
+        RowBox[{"eq", ",", "V", ",", "n"}], "]"}], "==", "0"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"n", ",", "1", ",", "6"}], "}"}]}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\n", 
+ RowBox[{
+  RowBox[{"sols", "=", 
+   RowBox[{"Solve", "[", 
+    RowBox[{"coefficients", ",", 
+     RowBox[{"{", 
+      RowBox[{"c1", ",", "c2", ",", "c3", ",", "c4", ",", "c5"}], "}"}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Lambda]Branches", "=", 
+   RowBox[{"\[Lambda]series", "/.", "sols"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"gap", "=", 
+  RowBox[{"Expand", "[", 
+   RowBox[{
+    RowBox[{"\[Lambda]Branches", "[", 
+     RowBox[{"[", "1", "]"}], "]"}], "-", 
+    RowBox[{"\[Lambda]Branches", "[", 
+     RowBox[{"[", "2", "]"}], "]"}]}], "]"}]}]}], "Input",
+ CellChangeTimes->{{3.997838550960676*^9, 3.997838603364952*^9}, {
+  3.9978386360331287`*^9, 3.997838683575986*^9}, {3.997838739194244*^9, 
+  3.997838789095545*^9}, {3.997839624635254*^9, 3.997839696311303*^9}, {
+  3.997839978572761*^9, 3.997840222392714*^9}},
+ CellLabel->"In[81]:=",ExpressionUUID->"f9487e14-06bc-4ae5-bd31-486827479402"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"-", "2"}], " ", "V"}], "+", 
+  FractionBox[
+   RowBox[{"3", " ", 
+    SuperscriptBox["V", "3"]}], 
+   RowBox[{"256", " ", 
+    SuperscriptBox["A", "2"]}]], "-", 
+  FractionBox[
+   RowBox[{"55", " ", 
+    SuperscriptBox["V", "5"]}], 
+   RowBox[{"262144", " ", 
+    SuperscriptBox["A", "4"]}]]}]], "Output",
+ CellChangeTimes->{{3.997838591498558*^9, 3.9978386043830023`*^9}, 
+   3.997838686925061*^9, 3.997838909955159*^9, 3.997839677486794*^9, 
+   3.9978400803220177`*^9, {3.997840162553941*^9, 3.9978402229962177`*^9}},
+ CellLabel->"Out[89]=",ExpressionUUID->"2d1fff06-9a62-4a90-8979-9a90e3e57ab3"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Analytic derivation of the SBC", "Subtitle",
+ CellChangeTimes->{{3.997840773512529*^9, 
+  3.997840779577983*^9}},ExpressionUUID->"44cd7671-5ae4-471e-92fb-\
+bee51192ea4e"],
+
+Cell["We do the same analysis but at k = 0", "Text",
+ CellChangeTimes->{{3.997840785124802*^9, 
+  3.9978408026557903`*^9}},ExpressionUUID->"d3748330-99f1-48bb-b870-\
+d77f0f5feb49"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"Clear", "[", 
+    RowBox[{
+    "A", ",", "V", ",", "\[Lambda]", ",", "c1", ",", "c2", ",", "c3", ",", 
+     "c4", ",", "c5", ",", "d1", ",", "d2", ",", "d3", ",", "d4", ",", "d5"}],
+     "]"}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"H", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"-", "B"}], ",", "V", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"V", ",", "0", ",", "V"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "V", ",", 
+       RowBox[{"-", "B"}]}], "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"p", "=", 
+    RowBox[{"CharacteristicPolynomial", "[", 
+     RowBox[{"H", ",", "\[Lambda]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+  "\n", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+    "Top", " ", "band", " ", "has", " ", "0", " ", "offset", " ", "at", " ", 
+     "V"}], "=", "0"}], " ", "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Lambda]series1", "=", 
+   RowBox[{
+    RowBox[{"c1", " ", "V"}], "+", 
+    RowBox[{"c2", " ", 
+     RowBox[{"V", "^", "2"}]}], "+", 
+    RowBox[{"c3", " ", 
+     RowBox[{"V", "^", "3"}]}], "+", 
+    RowBox[{"c4", " ", 
+     RowBox[{"V", "^", "4"}]}], "+", 
+    RowBox[{"c5", " ", 
+     RowBox[{"V", "^", "5"}]}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"eq1", "=", 
+   RowBox[{
+    RowBox[{"Normal", "@", 
+     RowBox[{"Series", "[", 
+      RowBox[{
+       RowBox[{"p", "/.", " ", 
+        RowBox[{"\[Lambda]", "->", "\[Lambda]series1"}]}], ",", 
+       RowBox[{"{", 
+        RowBox[{"V", ",", "0", ",", "6"}], "}"}]}], "]"}]}], "//", 
+    "Expand"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"coefficients1", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"Coefficient", "[", 
+       RowBox[{"eq1", ",", "V", ",", "n"}], "]"}], "==", "0"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"n", ",", "1", ",", "5"}], "}"}]}], "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"sols1", "=", 
+   RowBox[{"Solve", "[", 
+    RowBox[{"coefficients1", ",", 
+     RowBox[{"{", 
+      RowBox[{"c1", ",", "c2", ",", "c3", ",", "c4", ",", "c5"}], "}"}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Lambda]Branches1", "=", 
+   RowBox[{"\[Lambda]series1", "/.", "sols1"}]}], "\[IndentingNewLine]", 
+  "\[IndentingNewLine]", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Lower", " ", "bands", " ", "have"}], " ", "-", 
+     RowBox[{"B", " ", "offset", " ", "at", " ", "V"}]}], "=", "0"}], " ", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Lambda]series2", "=", 
+   RowBox[{
+    RowBox[{"-", "B"}], "+", 
+    RowBox[{"d1", " ", "V"}], "+", 
+    RowBox[{"d2", " ", 
+     RowBox[{"V", "^", "2"}]}], "+", 
+    RowBox[{"d3", " ", 
+     RowBox[{"V", "^", "3"}]}], "+", 
+    RowBox[{"d4", " ", 
+     RowBox[{"V", "^", "4"}]}], "+", 
+    RowBox[{"d5", " ", 
+     RowBox[{"V", "^", "5"}]}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"eq2", "=", 
+   RowBox[{
+    RowBox[{"Normal", "@", 
+     RowBox[{"Series", "[", 
+      RowBox[{
+       RowBox[{"p", "/.", " ", 
+        RowBox[{"\[Lambda]", "->", "\[Lambda]series2"}]}], ",", 
+       RowBox[{"{", 
+        RowBox[{"V", ",", "0", ",", "7"}], "}"}]}], "]"}]}], "//", 
+    "Expand"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"coefficients2", "=", 
+  RowBox[{"Table", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Coefficient", "[", 
+      RowBox[{"eq2", ",", "V", ",", "n"}], "]"}], "==", "0"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"n", ",", "1", ",", "7"}], "}"}]}], "]"}]}], "\n", 
+ RowBox[{
+  RowBox[{"sols2", "=", 
+   RowBox[{"Solve", "[", 
+    RowBox[{"coefficients2", ",", 
+     RowBox[{"{", 
+      RowBox[{"d1", ",", "d2", ",", "d3", ",", "d4", ",", "d5"}], "}"}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"\[Lambda]Branches2", "=", 
+  RowBox[{"\[Lambda]series2", "/.", "sols2"}]}]}], "Input",
+ CellChangeTimes->{{3.9978408169182043`*^9, 3.997841170127945*^9}, {
+   3.99784121055112*^9, 3.997841233124422*^9}, 3.997841314019568*^9, {
+   3.997841429799119*^9, 3.997841546028018*^9}, {3.997841767953727*^9, 
+   3.99784192259835*^9}, {3.997841986035103*^9, 3.99784205550848*^9}, {
+   3.997842973307507*^9, 3.99784299741245*^9}},
+ CellLabel->
+  "In[456]:=",ExpressionUUID->"666c66e2-0517-4893-90f4-6da4f1dd5fd1"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   FractionBox[
+    RowBox[{"2", " ", 
+     SuperscriptBox["V", "2"]}], "B"], "-", 
+   FractionBox[
+    RowBox[{"4", " ", 
+     SuperscriptBox["V", "4"]}], 
+    SuperscriptBox["B", "3"]]}], "}"}]], "Output",
+ CellChangeTimes->{{3.9978410888358517`*^9, 3.997841170554891*^9}, 
+   3.997841210970045*^9, 3.99784125950473*^9, 3.997841314482849*^9, 
+   3.9978414310371113`*^9, {3.997841522650565*^9, 3.9978415464490137`*^9}, {
+   3.997841768999721*^9, 3.9978417870031347`*^9}, {3.9978418299848137`*^9, 
+   3.997841842143388*^9}, 3.9978419512889137`*^9, {3.9978419867623377`*^9, 
+   3.997842069855214*^9}, {3.9978429746007023`*^9, 3.997842997864884*^9}},
+ CellLabel->
+  "Out[463]=",ExpressionUUID->"2707145c-de61-4348-9231-717bc9921b44"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"True", ",", 
+   RowBox[{
+    RowBox[{"B", " ", 
+     SuperscriptBox["d1", "2"]}], "\[Equal]", "0"}], ",", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"2", " ", "d1"}], "-", 
+     SuperscriptBox["d1", "3"], "+", 
+     RowBox[{"2", " ", "B", " ", "d1", " ", "d2"}]}], "\[Equal]", "0"}], ",", 
+   
+   RowBox[{
+    RowBox[{
+     RowBox[{"2", " ", "d2"}], "-", 
+     RowBox[{"3", " ", 
+      SuperscriptBox["d1", "2"], " ", "d2"}], "+", 
+     RowBox[{"B", " ", 
+      SuperscriptBox["d2", "2"]}], "+", 
+     RowBox[{"2", " ", "B", " ", "d1", " ", "d3"}]}], "\[Equal]", "0"}], ",", 
+   
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "3"}], " ", "d1", " ", 
+      SuperscriptBox["d2", "2"]}], "+", 
+     RowBox[{"2", " ", "d3"}], "-", 
+     RowBox[{"3", " ", 
+      SuperscriptBox["d1", "2"], " ", "d3"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d2", " ", "d3"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d1", " ", "d4"}]}], "\[Equal]", "0"}], ",", 
+   
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", 
+      SuperscriptBox["d2", "3"]}], "-", 
+     RowBox[{"6", " ", "d1", " ", "d2", " ", "d3"}], "+", 
+     RowBox[{"B", " ", 
+      SuperscriptBox["d3", "2"]}], "+", 
+     RowBox[{"2", " ", "d4"}], "-", 
+     RowBox[{"3", " ", 
+      SuperscriptBox["d1", "2"], " ", "d4"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d2", " ", "d4"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d1", " ", "d5"}]}], "\[Equal]", "0"}], ",", 
+   
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "3"}], " ", 
+      SuperscriptBox["d2", "2"], " ", "d3"}], "-", 
+     RowBox[{"3", " ", "d1", " ", 
+      SuperscriptBox["d3", "2"]}], "-", 
+     RowBox[{"6", " ", "d1", " ", "d2", " ", "d4"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d3", " ", "d4"}], "+", 
+     RowBox[{"2", " ", "d5"}], "-", 
+     RowBox[{"3", " ", 
+      SuperscriptBox["d1", "2"], " ", "d5"}], "+", 
+     RowBox[{"2", " ", "B", " ", "d2", " ", "d5"}]}], "\[Equal]", "0"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{{3.9978410888358517`*^9, 3.997841170554891*^9}, 
+   3.997841210970045*^9, 3.99784125950473*^9, 3.997841314482849*^9, 
+   3.9978414310371113`*^9, {3.997841522650565*^9, 3.9978415464490137`*^9}, {
+   3.997841768999721*^9, 3.9978417870031347`*^9}, {3.9978418299848137`*^9, 
+   3.997841842143388*^9}, 3.9978419512889137`*^9, {3.9978419867623377`*^9, 
+   3.997842069855214*^9}, {3.9978429746007023`*^9, 3.997842997867384*^9}},
+ CellLabel->
+  "Out[466]=",ExpressionUUID->"955bde38-3011-4551-8926-04423a94611d"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", "B"}], ",", 
+   RowBox[{
+    RowBox[{"-", "B"}], "-", 
+    FractionBox[
+     RowBox[{"2", " ", 
+      SuperscriptBox["V", "2"]}], "B"], "+", 
+    FractionBox[
+     RowBox[{"4", " ", 
+      SuperscriptBox["V", "4"]}], 
+     SuperscriptBox["B", "3"]]}]}], "}"}]], "Output",
+ CellChangeTimes->{{3.9978410888358517`*^9, 3.997841170554891*^9}, 
+   3.997841210970045*^9, 3.99784125950473*^9, 3.997841314482849*^9, 
+   3.9978414310371113`*^9, {3.997841522650565*^9, 3.9978415464490137`*^9}, {
+   3.997841768999721*^9, 3.9978417870031347`*^9}, {3.9978418299848137`*^9, 
+   3.997841842143388*^9}, 3.9978419512889137`*^9, {3.9978419867623377`*^9, 
+   3.997842069855214*^9}, {3.9978429746007023`*^9, 3.9978429978696213`*^9}},
+ CellLabel->
+  "Out[468]=",ExpressionUUID->"6068a955-77ca-4d0c-8a5a-6e9cae983eff"]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Determination of highest weight for SBC", "Subtitle",
+ CellChangeTimes->{{3.997845998800437*^9, 
+  3.9978460070222054`*^9}},ExpressionUUID->"52a8fdf5-d712-47db-9023-\
+d031818196eb"],
+
+Cell["\<\
+In order to know to which branch to compute the distance we need to know \
+where the weight is going\
+\>", "Text",
+ CellChangeTimes->{{3.997849045165317*^9, 
+  3.997849072898884*^9}},ExpressionUUID->"419378f8-3a02-45fc-8006-\
+4254fb7c2c80"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"Clear", "[", 
+  RowBox[{"B", ",", "V"}], "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"H", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"-", "B"}], ",", "V", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"V", ",", "0", ",", "V"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "V", ",", 
+       RowBox[{"-", "B"}]}], "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"evals", ",", " ", "evecs"}], "}"}], "=", 
+   RowBox[{"Eigensystem", "[", "H", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"vecsN", "=", 
+   RowBox[{"Map", "[", 
+    RowBox[{"Normalize", ",", "evecs"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"order", "=", 
+   RowBox[{"Ordering", "[", "evals", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"evals", "=", 
+   RowBox[{"evals", "[", 
+    RowBox[{"[", "order", "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"vecsN", "=", 
+    RowBox[{"vecsN", "[", 
+     RowBox[{"[", "order", "]"}], "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"P", "[", "i_", "]"}], ":=", 
+    RowBox[{"FullSimplify", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"vecsN", "[", 
+        RowBox[{"[", 
+         RowBox[{"i", ",", "2"}], "]"}], "]"}], "^", "2"}], ",", 
+      RowBox[{"Assumptions", "->", 
+       RowBox[{
+        RowBox[{"B", ">", "0"}], "&&", 
+        RowBox[{"V", "\[Element]", "Reals"}]}]}]}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{"Pseries", "=", 
+  RowBox[{"Table", "[", 
+   RowBox[{
+    RowBox[{"FullSimplify", "[", 
+     RowBox[{
+      RowBox[{"Normal", "@", 
+       RowBox[{"Series", "[", 
+        RowBox[{
+         RowBox[{"P", "[", "i", "]"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"V", ",", "0", ",", "6"}], "}"}]}], "]"}]}], ",", 
+      RowBox[{"Assumptions", "->", 
+       RowBox[{"B", ">", "0"}]}]}], "]"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"i", ",", "3"}], "}"}]}], "]"}]}]}], "Input",
+ CellChangeTimes->{{3.997846043305238*^9, 3.997846274522893*^9}, {
+  3.997846684334317*^9, 3.997846692260991*^9}, {3.997846729565775*^9, 
+  3.997846810958579*^9}, {3.997846864424653*^9, 3.997846929745655*^9}, {
+  3.997846986962419*^9, 3.99784699305785*^9}, {3.997847052992893*^9, 
+  3.997847090331086*^9}, {3.997847314738283*^9, 3.9978473433261766`*^9}, {
+  3.997847604309263*^9, 3.997847637573534*^9}, {3.9978476856735764`*^9, 
+  3.997847733702654*^9}, {3.997847834722446*^9, 3.99784786813588*^9}, {
+  3.997847934558346*^9, 3.9978479370482283`*^9}, {3.997848044116497*^9, 
+  3.997848151083108*^9}},
+ CellLabel->
+  "In[675]:=",ExpressionUUID->"300f5f33-6793-4540-98a5-0f8edfa2b447"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"0", ",", 
+   FractionBox[
+    RowBox[{"2", " ", 
+     SuperscriptBox["V", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       SuperscriptBox["B", "4"], "-", 
+       RowBox[{"6", " ", 
+        SuperscriptBox["B", "2"], " ", 
+        SuperscriptBox["V", "2"]}], "+", 
+       RowBox[{"40", " ", 
+        SuperscriptBox["V", "4"]}]}], ")"}]}], 
+    SuperscriptBox["B", "6"]], ",", 
+   RowBox[{"1", "-", 
+    FractionBox[
+     RowBox[{"2", " ", 
+      SuperscriptBox["V", "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        SuperscriptBox["B", "4"], "-", 
+        RowBox[{"6", " ", 
+         SuperscriptBox["B", "2"], " ", 
+         SuperscriptBox["V", "2"]}], "+", 
+        RowBox[{"40", " ", 
+         SuperscriptBox["V", "4"]}]}], ")"}]}], 
+     SuperscriptBox["B", "6"]]}]}], "}"}]], "Output",
+ CellChangeTimes->{{3.9978462531851807`*^9, 3.997846275619567*^9}, 
+   3.9978466848864822`*^9, 3.997846736130948*^9, 3.9978468127758493`*^9, {
+   3.9978469196443233`*^9, 3.997846930221509*^9}, 3.9978469958104887`*^9, {
+   3.9978470668944263`*^9, 3.9978470924500227`*^9}, {3.9978473177437983`*^9, 
+   3.997847345371003*^9}, {3.997847609154121*^9, 3.997847638345048*^9}, 
+   3.9978476905018997`*^9, 3.99784773098281*^9, 3.997847838324567*^9, 
+   3.997847869318873*^9, 3.997847938994706*^9, 3.997848116623858*^9, 
+   3.997848152840983*^9},
+ CellLabel->
+  "Out[683]=",ExpressionUUID->"295cf0f6-0d98-4ef7-a383-b12eeeb4038e"]
+}, Open  ]],
+
+Cell["\<\
+The weight goes to the lower branch so the total SBC is twice the \
+displacement of the main band. Confirmed also by the plot\
+\>", "Text",
+ CellChangeTimes->{{3.997849076393173*^9, 3.997849121093382*^9}, {
+  3.997851556899764*^9, 
+  3.997851566312408*^9}},ExpressionUUID->"f0b0d6d6-e173-49b1-a37a-\
+d8399a78419b"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Weight ratio at same k=-1.5G", "Subtitle",
+ CellChangeTimes->{{3.997851012203108*^9, 
+  3.9978510341833344`*^9}},ExpressionUUID->"e016136d-c0ca-4171-9a4d-\
+5bef0a19bb71"],
+
+Cell["\<\
+We follow the same procedure as the section above, but we need to be careful \
+to select the right band.
+Since there is no closed form for the eigenvalue solution in this case we use \
+Rayleigh-Schroedinger perturbation theory.\
+\>", "Text",
+ CellChangeTimes->{{3.9978512992062693`*^9, 3.9978513318559923`*^9}, 
+   3.997851547916415*^9, {3.997852914219323*^9, 
+   3.997852959189042*^9}},ExpressionUUID->"0bb88278-03b4-45a3-9b3a-\
+676a5ced14dd"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"ClearAll", "[", "\"\<Global`*\>\"", "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"H", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"-", "A"}], ",", "V", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"V", ",", 
+       RowBox[{
+        RowBox[{"-", "9"}], "A"}], ",", "V"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "V", ",", 
+       RowBox[{
+        RowBox[{"-", "25"}], " ", "A"}]}], "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"H0", "=", 
+   RowBox[{"DiagonalMatrix", "[", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"-", "A"}], ",", 
+      RowBox[{
+       RowBox[{"-", "9"}], "A"}], ",", 
+      RowBox[{
+       RowBox[{"-", "25"}], "A"}]}], "}"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"M", " ", "=", " ", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"0", ",", "1", ",", "0"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"1", ",", "0", ",", "1"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "1", ",", "0"}], "}"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"c", "[", 
+    RowBox[{"n_", ",", "m_"}], "]"}], ":=", 
+   RowBox[{"V", " ", 
+    RowBox[{
+     RowBox[{"M", "[", 
+      RowBox[{"[", 
+       RowBox[{"n", ",", "m"}], "]"}], "]"}], "/", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"H0", "[", 
+        RowBox[{"[", 
+         RowBox[{"n", ",", "n"}], "]"}], "]"}], "-", 
+       RowBox[{"H0", "[", 
+        RowBox[{"[", 
+         RowBox[{"m", ",", "m"}], "]"}], "]"}]}], ")"}]}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"W", "[", 
+   RowBox[{"n_", ",", "k_"}], "]"}], ":=", 
+  RowBox[{
+   RowBox[{"Piecewise", "[", 
+    RowBox[{"{", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"1", "-", 
+         RowBox[{
+          RowBox[{"V", "^", "2"}], "*", 
+          RowBox[{"Sum", "[", 
+           RowBox[{
+            RowBox[{"If", "[", 
+             RowBox[{
+              RowBox[{"m", "!=", "n"}], ",", "\[IndentingNewLine]", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"M", "[", 
+                 RowBox[{"[", 
+                  RowBox[{"n", ",", "m"}], "]"}], "]"}], "^", "2"}], "/", 
+               RowBox[{
+                RowBox[{"(", 
+                 RowBox[{
+                  RowBox[{"H0", "[", 
+                   RowBox[{"[", 
+                    RowBox[{"n", ",", "n"}], "]"}], "]"}], "-", 
+                  RowBox[{"H0", "[", 
+                   RowBox[{"[", 
+                    RowBox[{"m", ",", "m"}], "]"}], "]"}]}], ")"}], "^", 
+                "2"}]}], ",", "0"}], "]"}], ",", 
+            RowBox[{"{", 
+             RowBox[{"m", ",", "3"}], "}"}]}], "]"}]}]}], ",", 
+        "\[IndentingNewLine]", 
+        RowBox[{"k", "==", "n"}]}], "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"V", "^", "2"}], "*", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"M", "[", 
+            RowBox[{"[", 
+             RowBox[{"n", ",", "k"}], "]"}], "]"}], "^", "2"}], "/", 
+          RowBox[{
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"H0", "[", 
+              RowBox[{"[", 
+               RowBox[{"n", ",", "n"}], "]"}], "]"}], "-", 
+             RowBox[{"H0", "[", 
+              RowBox[{"[", 
+               RowBox[{"k", ",", "k"}], "]"}], "]"}]}], ")"}], "^", "2"}]}]}],
+         ",", 
+        RowBox[{"k", "!=", "n"}]}], "}"}]}], "\[IndentingNewLine]", "}"}], 
+    "]"}], "+", 
+   RowBox[{
+    RowBox[{"O", "[", "V", "]"}], "^", "7"}]}]}], "\[IndentingNewLine]", 
+ RowBox[{"Expand", "[", 
+  RowBox[{"Simplify", "[", 
+   RowBox[{
+    RowBox[{"W", "[", 
+     RowBox[{"1", ",", "2"}], "]"}], "/", 
+    RowBox[{"W", "[", 
+     RowBox[{"2", ",", "2"}], "]"}]}], "]"}], "]"}]}], "Input",
+ CellChangeTimes->{{3.997851275047213*^9, 3.99785128743703*^9}, {
+   3.997851342957099*^9, 3.997851359634535*^9}, {3.997851434693163*^9, 
+   3.9978515129180183`*^9}, {3.9978515898063*^9, 3.9978515917389*^9}, {
+   3.99785169401377*^9, 3.997851694313418*^9}, {3.997851765362337*^9, 
+   3.997851779951872*^9}, {3.997852520721932*^9, 3.997852556819729*^9}, {
+   3.997852830066297*^9, 3.997852830660956*^9}, {3.997852967307715*^9, 
+   3.997853205667283*^9}, {3.997853237841167*^9, 3.997853238367725*^9}, {
+   3.997853274045476*^9, 3.997853285568448*^9}, {3.9978533745726013`*^9, 
+   3.9978535036735067`*^9}, {3.997853560198779*^9, 3.997853781791663*^9}, 
+   3.997853890560396*^9, {3.9978544573102922`*^9, 3.997854489694125*^9}, {
+   3.99785453135289*^9, 3.997854765838573*^9}, 3.9978548399122868`*^9, {
+   3.997854886805531*^9, 3.9978549633266287`*^9}},
+ CellLabel->
+  "In[901]:=",ExpressionUUID->"aa42d58b-c3ed-47dc-9537-bd0ecf8186dc"],
+
+Cell[BoxData[
+ InterpretationBox[
+  RowBox[{
+   FractionBox[
+    SuperscriptBox["V", "2"], 
+    RowBox[{"64", " ", 
+     SuperscriptBox["A", "2"]}]], "+", 
+   FractionBox[
+    RowBox[{"5", " ", 
+     SuperscriptBox["V", "4"]}], 
+    RowBox[{"16384", " ", 
+     SuperscriptBox["A", "4"]}]], "+", 
+   FractionBox[
+    RowBox[{"25", " ", 
+     SuperscriptBox["V", "6"]}], 
+    RowBox[{"4194304", " ", 
+     SuperscriptBox["A", "6"]}]], "+", 
+   InterpretationBox[
+    SuperscriptBox[
+     RowBox[{"O", "[", "V", "]"}], "7"],
+    SeriesData[$CellContext`V, 0, {}, 2, 7, 1],
+    Editable->False]}],
+  SeriesData[$CellContext`V, 0, {
+   Rational[1, 64] $CellContext`A^(-2), 0, 
+    Rational[5, 16384] $CellContext`A^(-4), 0, 
+    Rational[25, 4194304] $CellContext`A^(-6)}, 2, 7, 1],
+  Editable->False]], "Output",
+ CellChangeTimes->{
+  3.997854767044396*^9, 3.997854844293515*^9, 3.997854889484643*^9, {
+   3.997854954150096*^9, 3.997854963696888*^9}},
+ CellLabel->
+  "Out[907]=",ExpressionUUID->"159f5375-db22-4c52-99c0-7b6141371b25"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Part", "pkspec1", 
+   "\:f3b5The expression 3.188284295000001`*^-30 cannot be used as a part \
+specification.\:f3b5", 2, 872, 91, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ GeneratedCell->False,
+ CellAutoOverwrite->False,
+ CellChangeTimes->{3.9978537841961327`*^9, 
+  3.997853863110791*^9},ExpressionUUID->"0a86b408-676e-4d5f-aef1-\
+b5a58f163f8f"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "General", "stop", 
+   "\"Further output of \\!\\(\\*StyleBox[RowBox[{\\\"Part\\\", \\\"::\\\", \
+\\\"pkspec1\\\"}], \\\"MessageName\\\"]\\) will be suppressed during this \
+calculation.\"", 2, 872, 92, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.9978537842015257`*^9},
+ CellLabel->
+  "During evaluation of \
+In[867]:=",ExpressionUUID->"ccde60fe-f677-4134-9046-55baeba11b20"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Part", "partw", 
+   "\"Part \\!\\(\\*RowBox[{\\\"3\\\"}]\\) of \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{FractionBox[RowBox[{\\\"3.188284295000001`*^-30\\\", \\\" \\\", \\\"V\
+\\\", \\\" \\\", RowBox[{RowBox[{\\\"{\\\", RowBox[{RowBox[{\\\"{\\\", \
+RowBox[{\\\"0\\\", \\\",\\\", \\\"1\\\", \\\",\\\", \\\"0\\\"}], \\\"}\\\"}], \
+\\\",\\\", RowBox[{\\\"{\\\", RowBox[{\\\"1\\\", \\\",\\\", \\\"0\\\", \
+\\\",\\\", \\\"1\\\"}], \\\"}\\\"}], \\\",\\\", RowBox[{\\\"{\\\", RowBox[{\\\
+\"0\\\", \\\",\\\", \\\"1\\\", \\\",\\\", \\\"0\\\"}], \\\"}\\\"}]}], \\\"}\\\
+\"}], \\\"\[LeftDoubleBracket]\\\", RowBox[{\\\"2\\\", \\\",\\\", \
+\\\"3.188284295000001`*^-30\\\"}], \\\"\[RightDoubleBracket]\\\"}]}], \
+RowBox[{RowBox[{RowBox[{\\\"-\\\", \\\"9\\\"}], \\\" \\\", \\\"A\\\"}], \\\"-\
+\\\", RowBox[{RowBox[{\\\"{\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"3\\\", \
+\\\"\[RightSkeleton]\\\"}], \\\"}\\\"}], \\\"\[LeftDoubleBracket]\\\", \
+RowBox[{\\\"3.188284295000001`*^-30\\\", \\\",\\\", \
+\\\"3.188284295000001`*^-30\\\"}], \\\"\[RightDoubleBracket]\\\"}]}]], \
+\\\",\\\", FractionBox[RowBox[{\\\"3\\\", \\\" \\\", \\\"V\\\", \\\" \\\", \
+RowBox[{RowBox[{\\\"{\\\", RowBox[{RowBox[{\\\"{\\\", RowBox[{\\\"0\\\", \
+\\\",\\\", \\\"1\\\", \\\",\\\", \\\"0\\\"}], \\\"}\\\"}], \\\",\\\", \
+RowBox[{\\\"{\\\", RowBox[{\\\"1\\\", \\\",\\\", \\\"0\\\", \\\",\\\", \
+\\\"1\\\"}], \\\"}\\\"}], \\\",\\\", RowBox[{\\\"{\\\", RowBox[{\\\"0\\\", \\\
+\",\\\", \\\"1\\\", \\\",\\\", \\\"0\\\"}], \\\"}\\\"}]}], \\\"}\\\"}], \\\"\
+\[LeftDoubleBracket]\\\", RowBox[{\\\"2\\\", \\\",\\\", \
+\\\"3.188284295000001`*^-30\\\"}], \\\"\[RightDoubleBracket]\\\"}]}], \
+RowBox[{RowBox[{RowBox[{\\\"-\\\", \\\"9\\\"}], \\\" \\\", \\\"A\\\"}], \\\"-\
+\\\", RowBox[{RowBox[{\\\"{\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"3\\\", \
+\\\"\[RightSkeleton]\\\"}], \\\"}\\\"}], \\\"\[LeftDoubleBracket]\\\", \
+RowBox[{\\\"3.188284295000001`*^-30\\\", \\\",\\\", \
+\\\"3.188284295000001`*^-30\\\"}], \\\"\[RightDoubleBracket]\\\"}]}]]}], \
+\\\"}\\\"}]\\) does not exist.\"", 2, 872, 93, 26621648292425923833, "Local"},
+  
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.997853784208027*^9},
+ CellLabel->
+  "During evaluation of \
+In[867]:=",ExpressionUUID->"c9d8af9e-b11b-4154-b606-6533c71c5d19"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Part", "partw", 
+   "\"Part \\!\\(\\*RowBox[{\\\"3\\\"}]\\) of \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"#1\\\", \\\",\\\", \\\"#2\\\"}], \\\"}\\\"}]\\) does not \
+exist.\"", 2, 872, 94, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.997853784220285*^9},
+ CellLabel->
+  "During evaluation of \
+In[867]:=",ExpressionUUID->"8e95db05-db4b-4332-97e7-f3229cebf9bc"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Part", "partw", 
+   "\"Part \\!\\(\\*RowBox[{\\\"3\\\"}]\\) of \\!\\(\\*RowBox[{\\\"{\\\", \
+RowBox[{\\\"0\\\", \\\",\\\", \\\"0\\\"}], \\\"}\\\"}]\\) does not exist.\"", 
+   2, 872, 95, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.997853784259344*^9},
+ CellLabel->
+  "During evaluation of \
+In[867]:=",ExpressionUUID->"c1559ce2-e4fa-474e-af3b-6dde9a60854f"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "General", "stop", 
+   "\"Further output of \\!\\(\\*StyleBox[RowBox[{\\\"Part\\\", \\\"::\\\", \
+\\\"partw\\\"}], \\\"MessageName\\\"]\\) will be suppressed during this \
+calculation.\"", 2, 872, 96, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{3.9978537842626543`*^9},
+ CellLabel->
+  "During evaluation of \
+In[867]:=",ExpressionUUID->"44504245-2a53-4354-a552-9db9d27eeb88"],
+
+Cell[BoxData[
+ TemplateBox[<|"shortenedBoxes" -> TagBox[
+     RowBox[{"{", 
+       RowBox[{
+         InterpretationBox[
+          RowBox[{
+            FractionBox[
+             RowBox[{"9", " ", 
+               SuperscriptBox[
+                RowBox[{
+                  RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"1", ",", "0", ",", "1"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}]}], "}"}], 
+                  "\[LeftDoubleBracket]", 
+                  RowBox[{"1", ",", "3.188284295000001`*^-30"}], 
+                  "\[RightDoubleBracket]"}], "2"], " ", 
+               SuperscriptBox["V", "2"]}], 
+             SuperscriptBox[
+              RowBox[{"(", 
+                RowBox[{"A", "+", 
+                  RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"-", "A"}], ",", "0", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "9"}], " ", "A"}], ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "25"}], " ", "A"}]}], "}"}]}], "}"}], 
+                    "\[LeftDoubleBracket]", 
+                    
+                    RowBox[{
+                    "3.188284295000001`*^-30", ",", 
+                    "3.188284295000001`*^-30"}], "\[RightDoubleBracket]"}]}], 
+                ")"}], "2"]], "+", 
+            InterpretationBox[
+             SuperscriptBox[
+              RowBox[{"O", "[", "V", "]"}], "8"], 
+             SeriesData[$CellContext`V, 0, {}, 2, 8, 1], Editable -> False]}], 
+          
+          SeriesData[$CellContext`V, 0, {
+           9 Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 1, 
+               3.188284295000001*^-30]^2 ($CellContext`A + 
+              Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                 0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                3.188284295000001*^-30])^(-2)}, 2, 8, 1], Editable -> False], 
+         ",", 
+         InterpretationBox[
+          RowBox[{
+            RowBox[{"(", 
+              RowBox[{"1", "-", 
+                SuperscriptBox[
+                 RowBox[{
+                   RowBox[{"{", 
+                    RowBox[{"0", ",", "0"}], "}"}], "\[LeftDoubleBracket]", 
+                   "3", "\[RightDoubleBracket]"}], "2"]}], ")"}], "-", 
+            RowBox[{"2", " ", 
+              RowBox[{"(", 
+                RowBox[{
+                  RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "0"}], "}"}], "\[LeftDoubleBracket]", 
+                    "3", "\[RightDoubleBracket]"}], " ", 
+                  RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"-", 
+                    FractionBox[
+                    RowBox[{"3", " ", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"1", ",", "0", ",", "1"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}]}], "}"}], 
+                    "\[LeftDoubleBracket]", 
+                    RowBox[{"2", ",", "3.188284295000001`*^-30"}], 
+                    "\[RightDoubleBracket]"}], " ", 
+                    RowBox[{
+                    SuperscriptBox["Part", 
+                    TagBox[
+                    RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1"}], "}"}], ",", "0"}], ")"}], 
+                    Derivative], MultilineFunction -> None], "[", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "0"}], "}"}], ",", "3"}], "]"}]}], 
+                    RowBox[{
+                    RowBox[{"9", " ", "A"}], "+", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"-", "A"}], ",", "0", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "9"}], " ", "A"}], ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "25"}], " ", "A"}]}], "}"}]}], "}"}], 
+                    "\[LeftDoubleBracket]", 
+                    
+                    RowBox[{"3.188284295000001`*^-30", ",", 
+                    "3.188284295000001`*^-30"}], 
+                    "\[RightDoubleBracket]"}]}]]}], "-", 
+                    FractionBox[
+                    TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], 
+                    RowBox[{
+                    RowBox[{"1.`", " ", "A"}], 
+                    TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], 
+                    RowBox[{"0.1111111111111111`", 
+                    TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], 
+                    TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"]}]}]]}], 
+                    ")"}]}], ")"}], " ", "V"}], "+", 
+            RowBox[{
+              RowBox[{"(", 
+                TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], ")"}], " ", 
+              SuperscriptBox["V", "2"]}], "+", 
+            TemplateBox[{"3"}, "OutputSizeLimit`Skeleton"], "+", 
+            TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], "+", 
+            RowBox[{
+              RowBox[{"(", 
+                TemplateBox[{"1"}, "OutputSizeLimit`Skeleton"], ")"}], " ", 
+              SuperscriptBox["V", "7"]}], "+", 
+            InterpretationBox[
+             SuperscriptBox[
+              RowBox[{"O", "[", "V", "]"}], "8"], 
+             SeriesData[$CellContext`V, 0, {}, 0, 8, 1], Editable -> False]}], 
+          
+          SeriesData[$CellContext`V, 0, {
+           1 - Part[{0, 0}, 3]^2, (-2) 
+            Part[{0, 0}, 3] ((-3) 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3]), (-0.1111111111111111) 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^2 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) - ((-3) 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3])^2 - 2 
+            Part[{0, 0}, 3] (
+             Rational[9, 2] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+             1.062761431666667*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+             6.274788114656575*^-62 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 0}, 0][Part][{0, 0}, 3]), (-2) ((-3) 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30] (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+               Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+              3.5425381055555564`*^-31 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+              Derivative[{1, 0}, 0][Part][{0, 0}, 3]) (
+              Rational[9, 2] 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+               Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+              1.062761431666667*^-30 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+               Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+              6.274788114656575*^-62 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) 
+               Derivative[{2, 0}, 0][Part][{0, 0}, 3]) - 2 
+            Part[{0, 0}, 3] (
+             Rational[-9, 2] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{0, 3}, 0][Part][{0, 0}, 3] - 
+             1.5941421475000004`*^-30 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{1, 2}, 0][Part][{0, 0}, 3] - 
+             1.8824364343969726`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{2, 1}, 0][Part][{0, 0}, 3] - 7.409558666819341*^-93 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+             Derivative[{3, 0}, 0][
+              Part][{0, 0}, 3]), -(
+               Rational[9, 2] 
+                Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                   3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) 
+                Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+               1.062761431666667*^-30 
+                Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                   3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                  0.1111111111111111 
+                   Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) (
+                  9 $CellContext`A + 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) 
+                Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+               6.274788114656575*^-62 
+                Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                   3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                  0.1111111111111111 
+                   Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) 
+                Derivative[{2, 0}, 0][Part][{0, 0}, 3])^2 - 
+            2 ((-3) Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[-9, 2] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{0, 3}, 0][Part][{0, 0}, 3] - 
+             1.5941421475000004`*^-30 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{1, 2}, 0][Part][{0, 0}, 3] - 
+             1.8824364343969726`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{2, 1}, 0][Part][{0, 0}, 3] - 7.409558666819341*^-93 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^3 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+             Derivative[{3, 0}, 0][Part][{0, 0}, 3]) - 2 
+            Part[{0, 0}, 3] (
+             Rational[27, 8] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) 
+              Derivative[{0, 4}, 0][Part][{0, 0}, 3] + 
+             1.5941421475000004`*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{1, 3}, 0][Part][{0, 0}, 3] + 
+             2.8236546515954587`*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 2}, 0][Part][{0, 0}, 3] + 
+             2.2228676000458024`*^-92 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{3, 1}, 0][Part][{0, 0}, 3] + 
+             6.562160980639236*^-124 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) 
+              Derivative[{4, 0}, 0][Part][{0, 0}, 3]), (-2) (
+              Rational[9, 2] 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+               Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+              1.062761431666667*^-30 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+               Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+              6.274788114656575*^-62 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) 
+               Derivative[{2, 0}, 0][Part][{0, 0}, 3]) (
+              Rational[-9, 2] 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^3 (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) 
+               Derivative[{0, 3}, 0][Part][{0, 0}, 3] - 
+              1.5941421475000004`*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{1, 2}, 0][Part][{0, 0}, 3] - 
+              1.8824364343969726`*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{2, 1}, 0][Part][{0, 0}, 3] - 7.409558666819341*^-93 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) 
+              Derivative[{3, 0}, 0][Part][{0, 0}, 3]) - 
+            2 ((-3) Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[27, 8] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) 
+              Derivative[{0, 4}, 0][Part][{0, 0}, 3] + 
+             1.5941421475000004`*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{1, 3}, 0][Part][{0, 0}, 3] + 
+             2.8236546515954587`*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 2}, 0][Part][{0, 0}, 3] + 
+             2.2228676000458024`*^-92 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{3, 1}, 0][Part][{0, 0}, 3] + 
+             6.562160980639236*^-124 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) 
+              Derivative[{4, 0}, 0][Part][{0, 0}, 3]) - 2 
+            Part[{0, 0}, 3] (
+             Rational[-81, 40] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^5 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+              Derivative[{0, 5}, 0][Part][{0, 0}, 3] - 
+             1.1956066106250002`*^-30 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-4) 
+             Derivative[{1, 4}, 0][Part][{0, 0}, 3] - 
+             2.8236546515954587`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-3) 
+             Derivative[{2, 3}, 0][Part][{0, 0}, 3] - 3.334301400068704*^-92 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{3, 2}, 0][Part][{0, 0}, 3] - 1.968648294191771*^-123 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{4, 1}, 0][Part][{0, 0}, 3] - 4.649341065740862*^-155 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+             Derivative[{5, 0}, 0][
+              Part][{0, 0}, 3]), -(
+               Rational[-9, 2] 
+                Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                   3.188284295000001*^-30]^3 (9 $CellContext`A + 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-3) 
+                Derivative[{0, 3}, 0][Part][{0, 0}, 3] - 
+               1.5941421475000004`*^-30 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+               Derivative[{1, 2}, 0][Part][{0, 0}, 3] - 
+               1.8824364343969726`*^-61 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+               Derivative[{2, 1}, 0][Part][{0, 0}, 3] - 
+               7.409558666819341*^-93 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-3) 
+               Derivative[{3, 0}, 0][Part][{0, 0}, 3])^2 - 
+            2 (Rational[9, 2] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+             1.062761431666667*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+             6.274788114656575*^-62 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[27, 8] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) 
+              Derivative[{0, 4}, 0][Part][{0, 0}, 3] + 
+             1.5941421475000004`*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{1, 3}, 0][Part][{0, 0}, 3] + 
+             2.8236546515954587`*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 2}, 0][Part][{0, 0}, 3] + 
+             2.2228676000458024`*^-92 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{3, 1}, 0][Part][{0, 0}, 3] + 
+             6.562160980639236*^-124 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) 
+              Derivative[{4, 0}, 0][Part][{0, 0}, 3]) - 
+            2 ((-3) Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[-81, 40] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^5 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+              Derivative[{0, 5}, 0][Part][{0, 0}, 3] - 
+             1.1956066106250002`*^-30 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-4) 
+             Derivative[{1, 4}, 0][Part][{0, 0}, 3] - 
+             2.8236546515954587`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-3) 
+             Derivative[{2, 3}, 0][Part][{0, 0}, 3] - 3.334301400068704*^-92 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{3, 2}, 0][Part][{0, 0}, 3] - 1.968648294191771*^-123 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{4, 1}, 0][Part][{0, 0}, 3] - 4.649341065740862*^-155 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+             Derivative[{5, 0}, 0][Part][{0, 0}, 3]) - 2 
+            Part[{0, 0}, 3] (
+             Rational[81, 80] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-6) 
+              Derivative[{0, 6}, 0][Part][{0, 0}, 3] + 
+             7.1736396637500015`*^-31 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+              Derivative[{1, 5}, 0][Part][{0, 0}, 3] + 
+             2.117740988696594*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) 
+              Derivative[{2, 4}, 0][Part][{0, 0}, 3] + 
+             3.334301400068704*^-92 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{3, 3}, 0][Part][{0, 0}, 3] + 
+             2.952972441287656*^-123 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{4, 2}, 0][Part][{0, 0}, 3] + 
+             1.3948023197222587`*^-154 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-5) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{5, 1}, 0][Part][{0, 0}, 3] + 
+             2.745077981851881*^-186 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-6) 
+              Derivative[{6, 0}, 0][Part][{0, 0}, 3]), (-2) (
+              Rational[-9, 2] 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^3 (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) 
+               Derivative[{0, 3}, 0][Part][{0, 0}, 3] - 
+              1.5941421475000004`*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{1, 2}, 0][Part][{0, 0}, 3] - 
+              1.8824364343969726`*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{2, 1}, 0][Part][{0, 0}, 3] - 7.409558666819341*^-93 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^3 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) 
+              Derivative[{3, 0}, 0][Part][{0, 0}, 3]) (
+              Rational[27, 8] 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^4 (9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) 
+               Derivative[{0, 4}, 0][Part][{0, 0}, 3] + 
+              1.5941421475000004`*^-30 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-1) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) 
+               Derivative[{1, 3}, 0][Part][{0, 0}, 3] + 
+              2.8236546515954587`*^-61 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-2) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+               Derivative[{2, 2}, 0][Part][{0, 0}, 3] + 
+              2.2228676000458024`*^-92 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-3) (
+                 9 $CellContext`A + 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) 
+               Derivative[{3, 1}, 0][Part][{0, 0}, 3] + 
+              6.562160980639236*^-124 
+               Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                  3.188284295000001*^-30]^4 (1. $CellContext`A + 
+                 0.1111111111111111 
+                  Part[{{-$CellContext`A, 0, 0}, {
+                    0, (-9) $CellContext`A, 0}, {0, 0, (-25) $CellContext`A}},
+                     3.188284295000001*^-30, 3.188284295000001*^-30])^(-4) 
+               Derivative[{4, 0}, 0][Part][{0, 0}, 3]) - 
+            2 (Rational[9, 2] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{0, 2}, 0][Part][{0, 0}, 3] + 
+             1.062761431666667*^-30 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{1, 1}, 0][Part][{0, 0}, 3] + 
+             6.274788114656575*^-62 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^2 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) 
+              Derivative[{2, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[-81, 40] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^5 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+              Derivative[{0, 5}, 0][Part][{0, 0}, 3] - 
+             1.1956066106250002`*^-30 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-4) 
+             Derivative[{1, 4}, 0][Part][{0, 0}, 3] - 
+             2.8236546515954587`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-3) 
+             Derivative[{2, 3}, 0][Part][{0, 0}, 3] - 3.334301400068704*^-92 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{3, 2}, 0][Part][{0, 0}, 3] - 1.968648294191771*^-123 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{4, 1}, 0][Part][{0, 0}, 3] - 4.649341065740862*^-155 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^5 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+             Derivative[{5, 0}, 0][Part][{0, 0}, 3]) - 
+            2 ((-3) Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30] (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{0, 1}, 0][Part][{0, 0}, 3] - 
+             3.5425381055555564`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+               3.188284295000001*^-30] (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+             Derivative[{1, 0}, 0][Part][{0, 0}, 3]) (
+             Rational[81, 80] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-6) 
+              Derivative[{0, 6}, 0][Part][{0, 0}, 3] + 
+             7.1736396637500015`*^-31 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) 
+              Derivative[{1, 5}, 0][Part][{0, 0}, 3] + 
+             2.117740988696594*^-61 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) 
+              Derivative[{2, 4}, 0][Part][{0, 0}, 3] + 
+             3.334301400068704*^-92 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) 
+              Derivative[{3, 3}, 0][Part][{0, 0}, 3] + 
+             2.952972441287656*^-123 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) 
+              Derivative[{4, 2}, 0][Part][{0, 0}, 3] + 
+             1.3948023197222587`*^-154 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-5) (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) 
+              Derivative[{5, 1}, 0][Part][{0, 0}, 3] + 
+             2.745077981851881*^-186 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^6 (1. $CellContext`A + 
+                0.1111111111111111 
+                 Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                    0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                   3.188284295000001*^-30])^(-6) 
+              Derivative[{6, 0}, 0][Part][{0, 0}, 3]) - 2 
+            Part[{0, 0}, 3] (
+             Rational[-243, 560] 
+              Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                 3.188284295000001*^-30]^7 (9 $CellContext`A + 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-7) 
+              Derivative[{0, 7}, 0][Part][{0, 0}, 3] - 
+             3.5868198318750007`*^-31 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-1) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-6) 
+             Derivative[{1, 6}, 0][Part][{0, 0}, 3] - 
+             1.2706445932179564`*^-61 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-2) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-5) 
+             Derivative[{2, 5}, 0][Part][{0, 0}, 3] - 
+             2.5007260500515276`*^-92 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-3) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-4) 
+             Derivative[{3, 4}, 0][Part][{0, 0}, 3] - 2.952972441287656*^-123 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-4) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-3) 
+             Derivative[{4, 3}, 0][Part][{0, 0}, 3] - 2.092203479583388*^-154 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-5) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-2) 
+             Derivative[{5, 2}, 0][Part][{0, 0}, 3] - 8.235233945555642*^-186 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-6) (9 $CellContext`A + 
+               Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                  0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                 3.188284295000001*^-30])^(-1) 
+             Derivative[{6, 1}, 0][Part][{0, 0}, 3] - 
+             1.3892204790616902`*^-217 
+             Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 2, 
+                3.188284295000001*^-30]^7 (1. $CellContext`A + 
+               0.1111111111111111 
+                Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                   0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                  3.188284295000001*^-30])^(-7) 
+             Derivative[{7, 0}, 0][Part][{0, 0}, 3])}, 0, 8, 1], Editable -> 
+          False], ",", 
+         InterpretationBox[
+          RowBox[{
+            FractionBox[
+             RowBox[{"9", " ", 
+               SuperscriptBox[
+                RowBox[{
+                  RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"1", ",", "0", ",", "1"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "1", ",", "0"}], "}"}]}], "}"}], 
+                  "\[LeftDoubleBracket]", 
+                  RowBox[{"3", ",", "3.188284295000001`*^-30"}], 
+                  "\[RightDoubleBracket]"}], "2"], " ", 
+               SuperscriptBox["V", "2"]}], 
+             SuperscriptBox[
+              RowBox[{"(", 
+                RowBox[{
+                  RowBox[{"25", " ", "A"}], "+", 
+                  RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"-", "A"}], ",", "0", ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "9"}], " ", "A"}], ",", "0"}], "}"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"0", ",", "0", ",", 
+                    RowBox[{
+                    RowBox[{"-", "25"}], " ", "A"}]}], "}"}]}], "}"}], 
+                    "\[LeftDoubleBracket]", 
+                    
+                    RowBox[{
+                    "3.188284295000001`*^-30", ",", 
+                    "3.188284295000001`*^-30"}], "\[RightDoubleBracket]"}]}], 
+                ")"}], "2"]], "+", 
+            InterpretationBox[
+             SuperscriptBox[
+              RowBox[{"O", "[", "V", "]"}], "8"], 
+             SeriesData[$CellContext`V, 0, {}, 2, 8, 1], Editable -> False]}], 
+          
+          SeriesData[$CellContext`V, 0, {
+           9 Part[{{0, 1, 0}, {1, 0, 1}, {0, 1, 0}}, 3, 
+               3.188284295000001*^-30]^2 (25 $CellContext`A + 
+              Part[{{-$CellContext`A, 0, 0}, {0, (-9) $CellContext`A, 0}, {
+                 0, 0, (-25) $CellContext`A}}, 3.188284295000001*^-30, 
+                3.188284295000001*^-30])^(-2)}, 2, 8, 1], Editable -> 
+          False]}], "}"}], Short[#, 8]& ], "line" -> 872, "sessionID" -> 
+   26621648292425923833, "byteCount" -> 277040, "size" -> 8, "stored" -> 
+   False, "expr" -> Missing["NotStored"], "wrap" -> OutputSizeLimit`Defer, 
+   "version" -> 1|>,
+  "OutputSizeLimitTemplate"]], "Output",
+ CellChangeTimes->{3.9978537844049664`*^9},
+ CellLabel->
+  "Out[872]=",ExpressionUUID->"6baaf4dc-0977-4a33-9317-7744a91c30c2"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"phi", "[", "1", "]"}], "=", 
+   RowBox[{"{", 
+    RowBox[{"1", ",", "0", ",", "0"}], "}"}]}], ";", 
+  RowBox[{
+   RowBox[{"phi", "[", "2", "]"}], "=", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", "1", ",", "0"}], "}"}]}], ";", 
+  RowBox[{
+   RowBox[{"phi", "[", "3", "]"}], "=", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", "0", ",", "1"}], "}"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"E0", "[", "1", "]"}], "=", 
+   RowBox[{"-", "A"}]}], ";", 
+  RowBox[{
+   RowBox[{"E0", "[", "2", "]"}], "=", 
+   RowBox[{
+    RowBox[{"-", "9"}], "A"}]}], ";", 
+  RowBox[{
+   RowBox[{"E0", "[", "3", "]"}], "=", 
+   RowBox[{
+    RowBox[{"-", "25"}], "A"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"psi1Order", "[", "n_", "]"}], ":=", 
+    RowBox[{"Sum", "[", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"m", "==", "n"}], ",", "0", ",", 
+        RowBox[{"V", 
+         RowBox[{
+          RowBox[{"(", 
+           RowBox[{
+            RowBox[{"phi", "[", "n", "]"}], ".", "Vmat", ".", 
+            RowBox[{"phi", "[", "m", "]"}]}], ")"}], "/", 
+          RowBox[{"(", 
+           RowBox[{
+            RowBox[{"E0", "[", "n", "]"}], "-", 
+            RowBox[{"E0", "[", "m", "]"}]}], ")"}]}], 
+         RowBox[{"phi", "[", "m", "]"}]}]}], "]"}], ",", 
+      "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{"m", ",", "3"}], "}"}]}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"evals", ",", " ", "evecs"}], "}"}], "=", 
+   RowBox[{"Eigensystem", "[", "H", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"vecsN", "=", 
+   RowBox[{"Map", "[", 
+    RowBox[{"Normalize", ",", "evecs"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"order", "=", 
+   RowBox[{"Ordering", "[", "evals", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"evals", "=", 
+   RowBox[{"evals", "[", 
+    RowBox[{"[", "order", "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"vecsN", "=", 
+    RowBox[{"vecsN", "[", 
+     RowBox[{"[", "order", "]"}], "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"W", "[", "i_", "]"}], ":=", 
+   RowBox[{"RootReduce", "[", 
+    RowBox[{"FullSimplify", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"vecsN", "[", 
+        RowBox[{"[", 
+         RowBox[{"i", ",", "2"}], "]"}], "]"}], "^", "2"}], ",", 
+      RowBox[{"Assumptions", "->", 
+       RowBox[{
+        RowBox[{"A", ">", "0"}], "&&", 
+        RowBox[{"V", ">", "0"}]}]}]}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Wseries", "=", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"FullSimplify", "[", 
+      RowBox[{
+       RowBox[{"Normal", "@", 
+        RowBox[{"Series", "[", 
+         RowBox[{
+          RowBox[{"W", "[", "i", "]"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"V", ",", "0", ",", "6"}], "}"}]}], "]"}]}], ",", 
+       RowBox[{"Assumptions", "->", 
+        RowBox[{"A", ">", "0"}]}]}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "3"}], "}"}]}], "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.997851275047213*^9, 3.99785128743703*^9}, {
+  3.997851342957099*^9, 3.997851359634535*^9}, {3.997851434693163*^9, 
+  3.9978515129180183`*^9}, {3.9978515898063*^9, 3.9978515917389*^9}, {
+  3.99785169401377*^9, 3.997851694313418*^9}, {3.997851765362337*^9, 
+  3.997851779951872*^9}, {3.997852520721932*^9, 3.997852556819729*^9}, {
+  3.997852830066297*^9, 3.997852830660956*^9}, {3.997852967307715*^9, 
+  3.997853205667283*^9}, {3.997853237841167*^9, 3.997853238367725*^9}, {
+  3.997853274045476*^9, 3.997853285568448*^9}, {3.9978533745726013`*^9, 
+  3.9978535036735067`*^9}, {3.997853560198779*^9, 
+  3.997853781791663*^9}},ExpressionUUID->"d19e4250-7585-4345-a961-\
+9187ecbfd6f2"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Root", "sbr", 
+   "\"Because of branch cuts, the series may represent a different root of \
+\\!\\(\\*RowBox[{RowBox[{RowBox[{\\\"225\\\", \\\" \\\", SuperscriptBox[\\\"A\
+\\\", \\\"3\\\"]}], \\\"-\\\", RowBox[{\\\"26\\\", \\\" \\\", \\\"A\\\", \\\" \
+\\\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}], \\\"+\\\", \
+RowBox[{RowBox[{\\\"(\\\", RowBox[{RowBox[{\\\"259\\\", \\\" \\\", \
+SuperscriptBox[\\\"A\\\", \\\"2\\\"]}], \\\"-\\\", RowBox[{\\\"2\\\", \\\" \\\
+\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}]}], \\\")\\\"}], \\\" \\\", \
+\\\"#1\\\"}], \\\"+\\\", RowBox[{\\\"35\\\", \\\" \\\", \\\"A\\\", \\\" \\\", \
+SuperscriptBox[\\\"#1\\\", \\\"2\\\"]}], \\\"+\\\", \
+SuperscriptBox[\\\"#1\\\", \\\"3\\\"]}], \\\"&\\\"}]\\) for some values of \
+\\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"A\\\", \\\",\\\", \\\"V\\\"}], \
+\\\"}\\\"}]\\).\"", 2, 866, 85, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{
+  3.997851784183899*^9, 3.99785256970403*^9, 3.9978528316894712`*^9, {
+   3.9978533940250177`*^9, 3.99785347376087*^9}, 3.997853505779601*^9},
+ CellLabel->
+  "During evaluation of \
+In[853]:=",ExpressionUUID->"f8e6edcf-9992-454c-bb65-77f53169ac9b"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Root", "sbr", 
+   "\"Because of branch cuts, the series may represent a different root of \
+\\!\\(\\*RowBox[{RowBox[{RowBox[{\\\"225\\\", \\\" \\\", SuperscriptBox[\\\"A\
+\\\", \\\"3\\\"]}], \\\"-\\\", RowBox[{\\\"26\\\", \\\" \\\", \\\"A\\\", \\\" \
+\\\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}], \\\"+\\\", \
+RowBox[{RowBox[{\\\"(\\\", RowBox[{RowBox[{\\\"259\\\", \\\" \\\", \
+SuperscriptBox[\\\"A\\\", \\\"2\\\"]}], \\\"-\\\", RowBox[{\\\"2\\\", \\\" \\\
+\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}]}], \\\")\\\"}], \\\" \\\", \
+\\\"#1\\\"}], \\\"+\\\", RowBox[{\\\"35\\\", \\\" \\\", \\\"A\\\", \\\" \\\", \
+SuperscriptBox[\\\"#1\\\", \\\"2\\\"]}], \\\"+\\\", \
+SuperscriptBox[\\\"#1\\\", \\\"3\\\"]}], \\\"&\\\"}]\\) for some values of \
+\\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"A\\\", \\\",\\\", \\\"V\\\"}], \
+\\\"}\\\"}]\\).\"", 2, 866, 86, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{
+  3.997851784183899*^9, 3.99785256970403*^9, 3.9978528316894712`*^9, {
+   3.9978533940250177`*^9, 3.99785347376087*^9}, 3.997853505823184*^9},
+ CellLabel->
+  "During evaluation of \
+In[853]:=",ExpressionUUID->"950960e4-ba09-4187-9bdf-4a13ad834f3d"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "Root", "sbr", 
+   "\"Because of branch cuts, the series may represent a different root of \
+\\!\\(\\*RowBox[{RowBox[{RowBox[{\\\"225\\\", \\\" \\\", SuperscriptBox[\\\"A\
+\\\", \\\"3\\\"]}], \\\"-\\\", RowBox[{\\\"26\\\", \\\" \\\", \\\"A\\\", \\\" \
+\\\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}], \\\"+\\\", \
+RowBox[{RowBox[{\\\"(\\\", RowBox[{RowBox[{\\\"259\\\", \\\" \\\", \
+SuperscriptBox[\\\"A\\\", \\\"2\\\"]}], \\\"-\\\", RowBox[{\\\"2\\\", \\\" \\\
+\", SuperscriptBox[\\\"V\\\", \\\"2\\\"]}]}], \\\")\\\"}], \\\" \\\", \
+\\\"#1\\\"}], \\\"+\\\", RowBox[{\\\"35\\\", \\\" \\\", \\\"A\\\", \\\" \\\", \
+SuperscriptBox[\\\"#1\\\", \\\"2\\\"]}], \\\"+\\\", \
+SuperscriptBox[\\\"#1\\\", \\\"3\\\"]}], \\\"&\\\"}]\\) for some values of \
+\\!\\(\\*RowBox[{\\\"{\\\", RowBox[{\\\"A\\\", \\\",\\\", \\\"V\\\"}], \
+\\\"}\\\"}]\\).\"", 2, 866, 87, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{
+  3.997851784183899*^9, 3.99785256970403*^9, 3.9978528316894712`*^9, {
+   3.9978533940250177`*^9, 3.99785347376087*^9}, 3.997853505829864*^9},
+ CellLabel->
+  "During evaluation of \
+In[853]:=",ExpressionUUID->"c36ad962-6bb2-4192-852d-105acac516d1"],
+
+Cell[BoxData[
+ TemplateBox[{
+  "General", "stop", 
+   "\"Further output of \\!\\(\\*StyleBox[RowBox[{\\\"Root\\\", \\\"::\\\", \
+\\\"sbr\\\"}], \\\"MessageName\\\"]\\) will be suppressed during this \
+calculation.\"", 2, 866, 88, 26621648292425923833, "Local"},
+  "MessageTemplate",
+  BaseStyle->"MSG"]], "Message",
+ CellChangeTimes->{
+  3.997851784183899*^9, 3.99785256970403*^9, 3.9978528316894712`*^9, {
+   3.9978533940250177`*^9, 3.99785347376087*^9}, 3.997853505835373*^9},
+ CellLabel->
+  "During evaluation of \
+In[853]:=",ExpressionUUID->"55bf9b0c-7db6-4321-b2b3-4208811f4581"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{943.5, 851.25},
+WindowMargins->{{-2.25, Automatic}, {Automatic, -22.5}},
+FrontEndVersion->"15.0 for Linux x86 (64-bit) (July 2, 2026)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"6490d027-0f58-49b9-afc9-8d35751be2f6"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[576, 22, 170, 3, 96, "Title",ExpressionUUID->"193d6222-013d-4c22-b8d3-123bb789d8ac"],
+Cell[749, 27, 228, 4, 52, "Subtitle",ExpressionUUID->"3b5c0dd2-169a-4f12-9c61-beb179df3242"],
+Cell[CellGroupData[{
+Cell[1002, 35, 4333, 127, 471, "Input",ExpressionUUID->"2a21c899-81c1-47e1-a74b-18220a4aeff6"],
+Cell[5338, 164, 2359, 46, 317, "Output",ExpressionUUID->"1d782bd3-bb72-478c-89ce-93e03fcad368"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[7734, 215, 176, 3, 52, "Subtitle",ExpressionUUID->"33f83c40-c822-46fc-bc96-915179d73c20"],
+Cell[7913, 220, 266, 7, 55, "Text",ExpressionUUID->"2a68f73c-9c45-4c73-a446-4dc7a82ee043"],
+Cell[CellGroupData[{
+Cell[8204, 231, 2899, 85, 289, "Input",ExpressionUUID->"f9487e14-06bc-4ae5-bd31-486827479402"],
+Cell[11106, 318, 645, 17, 52, "Output",ExpressionUUID->"2d1fff06-9a62-4a90-8979-9a90e3e57ab3"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[11800, 341, 176, 3, 52, "Subtitle",ExpressionUUID->"44cd7671-5ae4-471e-92fb-bee51192ea4e"],
+Cell[11979, 346, 180, 3, 33, "Text",ExpressionUUID->"d3748330-99f1-48bb-b870-d77f0f5feb49"],
+Cell[CellGroupData[{
+Cell[12184, 353, 4395, 127, 369, "Input",ExpressionUUID->"666c66e2-0517-4893-90f4-6da4f1dd5fd1"],
+Cell[16582, 482, 771, 17, 51, "Output",ExpressionUUID->"2707145c-de61-4348-9231-717bc9921b44"],
+Cell[17356, 501, 2504, 66, 78, "Output",ExpressionUUID->"955bde38-3011-4551-8926-04423a94611d"],
+Cell[19863, 569, 853, 20, 51, "Output",ExpressionUUID->"6068a955-77ca-4d0c-8a5a-6e9cae983eff"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[20765, 595, 187, 3, 52, "Subtitle",ExpressionUUID->"52a8fdf5-d712-47db-9023-d031818196eb"],
+Cell[20955, 600, 250, 6, 33, "Text",ExpressionUUID->"419378f8-3a02-45fc-8006-4254fb7c2c80"],
+Cell[CellGroupData[{
+Cell[21230, 610, 2825, 76, 229, "Input",ExpressionUUID->"300f5f33-6793-4540-98a5-0f8edfa2b447"],
+Cell[24058, 688, 1457, 37, 53, "Output",ExpressionUUID->"295cf0f6-0d98-4ef7-a383-b12eeeb4038e"]
+}, Open  ]],
+Cell[25530, 728, 324, 7, 33, "Text",ExpressionUUID->"f0b0d6d6-e173-49b1-a37a-d8399a78419b"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[25891, 740, 176, 3, 52, "Subtitle",ExpressionUUID->"e016136d-c0ca-4171-9a4d-5bef0a19bb71"],
+Cell[26070, 745, 454, 9, 55, "Text",ExpressionUUID->"0bb88278-03b4-45a3-9b3a-676a5ced14dd"],
+Cell[CellGroupData[{
+Cell[26549, 758, 4844, 134, 251, "Input",ExpressionUUID->"aa42d58b-c3ed-47dc-9537-bd0ecf8186dc"],
+Cell[31396, 894, 1030, 31, 52, "Output",ExpressionUUID->"159f5375-db22-4c52-99c0-7b6141371b25"],
+Cell[32429, 927, 423, 11, 26, "Message",ExpressionUUID->"0a86b408-676e-4d5f-aef1-b5a58f163f8f"],
+Cell[32855, 940, 469, 11, 26, "Message",ExpressionUUID->"ccde60fe-f677-4134-9046-55baeba11b20"],
+Cell[33327, 953, 2313, 37, 46, "Message",ExpressionUUID->"c9d8af9e-b11b-4154-b606-6533c71c5d19"],
+Cell[35643, 992, 452, 11, 26, "Message",ExpressionUUID->"8e95db05-db4b-4332-97e7-f3229cebf9bc"],
+Cell[36098, 1005, 452, 11, 26, "Message",ExpressionUUID->"c1559ce2-e4fa-474e-af3b-6dde9a60854f"],
+Cell[36553, 1018, 467, 11, 26, "Message",ExpressionUUID->"44504245-2a53-4354-a552-9db9d27eeb88"],
+Cell[37023, 1031, 71687, 1245, 187, "Output",ExpressionUUID->"6baaf4dc-0977-4a33-9317-7744a91c30c2"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[108747, 2281, 3953, 112, 289, "Input",ExpressionUUID->"d19e4250-7585-4345-a961-9187ecbfd6f2"],
+Cell[112703, 2395, 1232, 22, 45, "Message",ExpressionUUID->"f8e6edcf-9992-454c-bb65-77f53169ac9b"],
+Cell[113938, 2419, 1232, 22, 45, "Message",ExpressionUUID->"950960e4-ba09-4187-9bdf-4a13ad834f3d"],
+Cell[115173, 2443, 1232, 22, 45, "Message",ExpressionUUID->"c36ad962-6bb2-4192-852d-105acac516d1"],
+Cell[116408, 2467, 584, 13, 26, "Message",ExpressionUUID->"55bf9b0c-7db6-4321-b2b3-4208811f4581"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+

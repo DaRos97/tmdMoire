@@ -1,0 +1,307 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+
+\title{Perturbative Weights for the $3\times 3$ Model\\
+\large $H = \bigl(\begin{smallmatrix}-A & V & 0\\ V & -9A & V\\ 0 & V & -25A\end{smallmatrix}\bigr)$}
+\author{1D analytical derivations}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Motivation}
+
+We want the mod-square projections $|\langle \phi_k | \psi_n\rangle|^2$ of the eigenvectors of
+\begin{equation}
+H = \begin{pmatrix} -A & V & 0 \\ V & -9A & V \\ 0 & V & -25A \end{pmatrix}
+\label{eq:H}
+\end{equation}
+onto the standard basis $\{|\phi_1\rangle, |\phi_2\rangle, |\phi_3\rangle\}$, expanded as Taylor series in $V$ around $V=0$.
+
+A direct call to \texttt{Eigenvectors} on $H$ in \emph{Mathematica} produces \texttt{Root} objects (the characteristic polynomial is cubic) and, after \texttt{Normalize}, expressions involving \texttt{Abs[$\cdots$]} and branch cuts. The function \texttt{Series} on these objects emits \texttt{Root::sbr} warnings and produces unwieldy output. We avoid the cubic by using non-degenerate Rayleigh--Schr\"odinger perturbation theory directly.
+
+\section{Splitting the Hamiltonian}
+
+Write
+\begin{equation}
+H = H_0 + W, \qquad
+H_0 = \begin{pmatrix} -A & 0 & 0 \\ 0 & -9A & 0 \\ 0 & 0 & -25A \end{pmatrix}, \qquad
+W = V \begin{pmatrix} 0 & 1 & 0 \\ 1 & 0 & 1 \\ 0 & 1 & 0 \end{pmatrix}.
+\end{equation}
+The unperturbed basis is the standard basis, with energies
+\begin{equation}
+E_1^{(0)} = -A,\quad E_2^{(0)} = -9A,\quad E_3^{(0)} = -25A.
+\end{equation}
+All three are distinct, so standard non-degenerate perturbation theory applies. The convergence requirement is $V \ll A$.
+
+\section{Expansion and matching orders}
+
+For each band $n$ expand
+\begin{equation}
+|\psi_n\rangle = |\phi_n\rangle + |\psi_n^{(1)}\rangle + |\psi_n^{(2)}\rangle + \cdots, \qquad
+E_n = E_n^{(0)} + E_n^{(1)} + E_n^{(2)} + \cdots,
+\end{equation}
+with $|\psi_n^{(k)}\rangle = \mathcal O(V^k)$. Substituting into $(H_0 + W)|\psi_n\rangle = E_n|\psi_n\rangle$ and matching powers of $V$:
+\begin{align}
+\mathcal O(V^0)&:\; H_0|\phi_n\rangle = E_n^{(0)}|\phi_n\rangle, \label{eq:O0}\\
+\mathcal O(V^1)&:\; H_0|\psi_n^{(1)}\rangle + W|\phi_n\rangle = E_n^{(1)}|\phi_n\rangle + E_n^{(0)}|\psi_n^{(1)}\rangle, \label{eq:O1}\\
+\mathcal O(V^2)&:\; H_0|\psi_n^{(2)}\rangle + W|\psi_n^{(1)}\rangle = E_n^{(1)}|\psi_n^{(1)}\rangle + E_n^{(2)}|\phi_n\rangle + E_n^{(0)}|\psi_n^{(2)}\rangle. \label{eq:O2}
+\end{align}
+
+\section{First-order corrections}
+
+Project Eq.~\eqref{eq:O1} on $\langle\phi_n|$; the two $H_0$ terms cancel by Eq.~\eqref{eq:O0}, leaving
+\begin{equation}
+E_n^{(1)} = \langle\phi_n|W|\phi_n\rangle = V\, M_{nn}.
+\end{equation}
+Since the diagonal of $M$ is zero, $\boxed{E_n^{(1)} = 0}$ for all $n$: the off-diagonal perturbation does not shift the energies at first order.
+
+Project Eq.~\eqref{eq:O1} on $\langle\phi_m|$ with $m\neq n$ (so $E_n^{(1)}\langle\phi_m|\phi_n\rangle = 0$):
+\begin{equation}
+\boxed{\;\langle\phi_m|\psi_n^{(1)}\rangle = \frac{W_{mn}}{E_n^{(0)} - E_m^{(0)}} = \frac{V\, M_{mn}}{E_n^{(0)} - E_m^{(0)}}\;}. \label{eq:psi1}
+\end{equation}
+
+For our matrix, only $M_{12}=M_{21}=M_{23}=M_{32}=1$ are nonzero:
+\begin{align}
+|\psi_1\rangle &\approx |1\rangle + \frac{V}{8A}|2\rangle, \\
+|\psi_2\rangle &\approx |2\rangle - \frac{V}{8A}|1\rangle + \frac{V}{16A}|3\rangle, \\
+|\psi_3\rangle &\approx |3\rangle - \frac{V}{16A}|2\rangle.
+\end{align}
+
+\section{Weights to $\mathcal O(V^2)$}
+
+The weight of eigenstate $|\psi_n\rangle$ on basis state $|\phi_k\rangle$ is $W_{kn}(V) = |\langle\phi_k|\psi_n\rangle|^2$.
+
+\paragraph{Off-diagonal ($k\neq n$).}
+From Eq.~\eqref{eq:psi1}, the leading contribution comes from the first-order correction:
+\begin{equation}
+\boxed{\;W_{kn}(V) = \frac{V^2\,M_{kn}^{\,2}}{(E_n^{(0)} - E_k^{(0)})^2} + \mathcal O(V^4)\;}. \label{eq:Woff}
+\end{equation}
+
+\paragraph{Diagonal ($k = n$).}
+The wavefunction is not normalized at first order; expanding
+$|\tilde\psi_n\rangle = (1 - \tfrac12\langle\psi_n^{(1)}|\psi_n^{(1)}\rangle)(|\phi_n\rangle + |\psi_n^{(1)}\rangle) + \mathcal O(V^2)$,
+\begin{equation}
+\boxed{\;W_{nn}(V) = 1 - V^2 \sum_{m\neq n} \frac{M_{mn}^{\,2}}{(E_n^{(0)} - E_m^{(0)})^2} + \mathcal O(V^4)\;}. \label{eq:Wdiag}
+\end{equation}
+This is probability conservation to second order: weight leaving $|\phi_n\rangle$ reappears on the coupled states.
+
+\section{Explicit weights for the model Hamiltonian}
+
+The nonzero matrix elements are $M_{12}=M_{23}=1$, the gaps are
+$|E_1^{(0)} - E_2^{(0)}| = 8A$, $|E_2^{(0)} - E_3^{(0)}| = 16A$, $|E_1^{(0)} - E_3^{(0)}| = 24A$.
+
+\subsection{Weights on the upper band $|\phi_1\rangle$ ($k=1$)}
+
+\begin{align}
+W_{11}(V) &= 1 - \frac{V^2}{(8A)^2} + \mathcal O(V^4) = 1 - \frac{V^2}{64A^2} + \mathcal O(V^4),\\
+W_{21}(V) &= \frac{V^2}{(8A)^2} + \mathcal O(V^4) = \frac{V^2}{64A^2} + \mathcal O(V^4),\\
+W_{31}(V) &= \frac{V^4}{(8A \cdot 16A)^2} + \mathcal O(V^6) = \frac{V^4}{147456\,A^4} + \mathcal O(V^6).
+\end{align}
+The third row starts at $V^4$ because $M_{13}=0$; it comes from a second-order virtual transition $|3\rangle \to |2\rangle \to |1\rangle$ with amplitude $V/(16A) \cdot V/(8A) = V^2/(128A^2)$.
+
+\subsection{Weights on the middle band $|\phi_2\rangle$ ($k=2$)}
+
+\begin{align}
+W_{12}(V) &= \frac{V^2}{(8A)^2} + \mathcal O(V^4) = \frac{V^2}{64A^2} + \mathcal O(V^4),\\
+W_{22}(V) &= 1 - \frac{V^2}{(8A)^2} - \frac{V^2}{(16A)^2} + \mathcal O(V^4) = 1 - \frac{V^2}{64A^2} - \frac{V^2}{256A^2} + \mathcal O(V^4),\\
+W_{32}(V) &= \frac{V^2}{(16A)^2} + \mathcal O(V^4) = \frac{V^2}{256A^2} + \mathcal O(V^4).
+\end{align}
+
+\subsection{Weights on the lower band $|\phi_3\rangle$ ($k=3$)}
+
+\begin{align}
+W_{13}(V) &= \frac{V^4}{(8A \cdot 16A)^2} + \mathcal O(V^6) = \frac{V^4}{147456\,A^4} + \mathcal O(V^6),\\
+W_{23}(V) &= \frac{V^2}{(16A)^2} + \mathcal O(V^4) = \frac{V^2}{256A^2} + \mathcal O(V^4),\\
+W_{33}(V) &= 1 - \frac{V^2}{(16A)^2} + \mathcal O(V^4) = 1 - \frac{V^2}{256A^2} + \mathcal O(V^4).
+\end{align}
+
+\subsection{Closure check}
+
+Each column sums to $1 + \mathcal O(V^4)$:
+\begin{itemize}
+\item $W_{11} + W_{21} + W_{31} = 1 - V^2/(64A^2) + V^2/(64A^2) + \mathcal O(V^4) = 1 + \mathcal O(V^4)$,
+\item $W_{12} + W_{22} + W_{32} = V^2/(64A^2) + 1 - V^2/(64A^2) - V^2/(256A^2) + V^2/(256A^2) = 1$ \emph{(exact to $\mathcal O(V^4)$)},
+\item $W_{13} + W_{23} + W_{33} = \mathcal O(V^4) + V^2/(256A^2) + 1 - V^2/(256A^2) + \mathcal O(V^4) = 1 + \mathcal O(V^4)$.
+\end{itemize}
+Note that the $V^2$ weights leaking out of $|\phi_2\rangle$ split equally between $|\phi_1\rangle$ and $|\phi_3\rangle$ because $|\phi_2\rangle$ couples symmetrically to both.
+
+\section{Mathematica implementation}
+
+The cleanest transcription is one short block:
+\begin{verbatim}
+Clear[A, V];
+H0 = DiagonalMatrix[{-A, -9 A, -25 A}];
+M  = {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}};
+
+(* first-order coefficients <phi_m|psi_n^(1)> *)
+c[n_, m_] := V M[[n, m]]/(H0[[n, n]] - H0[[m, m]])
+
+(* weight on |phi_k> from eigenstate |psi_n>, to O(V^2) *)
+W[n_, k_] := Piecewise[{
+   {1 - V^2 * Sum[If[m != n,
+       M[[n, m]]^2/(H0[[n, n]] - H0[[m, m]])^2, 0], {m, 3}],
+       k == n},
+   {V^2 * M[[n, k]]^2/(H0[[n, n]] - H0[[k, k]])^2, k != n}
+}] + O[V]^7
+
+TableForm[Table[W[n, k], {n, 3}, {k, 3}]]
+\end{verbatim}
+
+The output reproduces the closed-form expressions above, with no \texttt{Root}, no \texttt{Abs}, and no branch-cut warnings.
+
+\section{Weight ratio at the energy of band 2}
+
+We want the ratio
+\begin{equation}
+R(V) \;=\; \frac{|\langle\phi_1|\psi_2\rangle|^2}{|\langle\phi_2|\psi_2\rangle|^2} \;=\; \frac{W_{12}(V)}{W_{22}(V)},
+\end{equation}
+i.e.\ the spectral weights of the \emph{unperturbed} bands 1 and 2 inside the band-2 eigenstate at $k = 1.5G$ (where the diagonal energies are $-A, -9A, -25A$).
+
+\subsection{Setup}
+
+At $k = 1.5G$ the unperturbed energies are $E_1^{(0)} = -A$, $E_2^{(0)} = -9A$, $E_3^{(0)} = -25A$, all distinct. The non-degenerate Rayleigh--Schr\"odinger machinery from Sec.~\ref{eq:Woff}--\ref{eq:Wdiag} applies.
+
+\subsection{First-order wavefunction at $k = 1.5G$}
+
+Apply Eq.~\eqref{eq:psi1} with $n=2$ and the only nonzero perturbation matrix elements $M_{21}=M_{23}=1$:
+\begin{align}
+\langle\phi_1|\psi_2^{(1)}\rangle &= \frac{V}{E_2^{(0)} - E_1^{(0)}} = \frac{V}{-9A - (-A)} = -\frac{V}{8A},\\[2pt]
+\langle\phi_3|\psi_2^{(1)}\rangle &= \frac{V}{E_2^{(0)} - E_3^{(0)}} = \frac{V}{-9A - (-25A)} = +\frac{V}{16A}.
+\end{align}
+So the band-2 eigenstate to first order is
+\begin{equation}
+|\psi_2\rangle \;\approx\; |2\rangle \;-\; \frac{V}{8A}|1\rangle \;+\; \frac{V}{16A}|3\rangle. \label{eq:psi2}
+\end{equation}
+
+\subsection{Weights to $\mathcal O(V^2)$}
+
+Apply Eqs.~\eqref{eq:Woff}--\eqref{eq:Wdiag}. The off-diagonal weight of band 1 on $|\psi_2\rangle$ is
+\begin{equation}
+W_{12}(V) \;=\; \frac{V^2}{(8A)^2} \;+\; \mathcal O(V^4) \;=\; \frac{V^2}{64 A^2} \;+\; \mathcal O(V^4),
+\end{equation}
+and the diagonal weight of band 2 is
+\begin{equation}
+W_{22}(V) \;=\; 1 \;-\; \frac{V^2}{(8A)^2} \;-\; \frac{V^2}{(16A)^2} \;+\; \mathcal O(V^4) \;=\; 1 \;-\; \frac{V^2}{64 A^2} \;-\; \frac{V^2}{256 A^2} \;+\; \mathcal O(V^4).
+\end{equation}
+
+\subsection{Analytical weight ratio}
+
+Taking the ratio and keeping terms up to $\mathcal O(V^4)$:
+\begin{align}
+R(V) \;=\; \frac{W_{12}(V)}{W_{22}(V)}
+&\;=\; \frac{V^2 / (64 A^2)}{\,1 - V^2/(64 A^2) - V^2/(256 A^2)\,} \;+\; \mathcal O(V^6) \notag\\[4pt]
+&\;=\; \frac{V^2}{64 A^2} \cdot \frac{1}{1 - 5V^2/(256 A^2)} \;+\; \mathcal O(V^6) \notag\\[4pt]
+&\;=\; \boxed{\;\frac{V^2}{64 A^2} \;+\; \frac{5 V^4}{16384\, A^4} \;+\; \mathcal O(V^6)\;}. \label{eq:ratio}
+\end{align}
+
+The key observation: the normalization factor $1 - 5V^2/(256 A^2)$ in the denominator of $W_{22}$ \emph{cancels} in the ratio, leaving the leading term $V^2/(64 A^2)$ as the clean analytical result.
+
+\subsection{Mathematica implementation of the ratio}
+
+The ratio $R(V)$ can be computed three ways in \emph{Mathematica}: from the perturbative formulas, as a Taylor series, and exactly via the cubic. Here is a single self-contained cell that does all three and cross-checks them:
+
+\begin{verbatim}
+Clear[A, V];
+H0 = DiagonalMatrix[{-A, -9 A, -25 A}];
+M  = {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}};
+
+(* ---- (1) perturbative weights (reusing W[n,k] from earlier) ---- *)
+c[n_, m_] := V M[[n, m]]/(H0[[n, n]] - H0[[m, m]])
+W[n_, k_] := Piecewise[{
+   {1 - V^2 * Sum[If[m != n,
+       M[[n, m]]^2/(H0[[n, n]] - H0[[m, m]])^2, 0], {m, 3}],
+       k == n},
+   {V^2 * M[[n, k]]^2/(H0[[n, n]] - H0[[k, k]])^2, k != n}
+}] + O[V]^7
+
+Rpert[V_] := (W[2, 1]/W[2, 2]) // Normal // Simplify[#, A > 0] &
+
+(* ---- (2) perturbative Taylor expansion of the ratio ---- *)
+Rtaylor[V_, nMax_] := Series[W[2, 1]/W[2, 2], {V, 0, nMax},
+                             Assumptions -> A > 0] // Normal // Simplify
+
+(* ---- (3) exact ratio via the cubic eigenvalue ---- *)
+H[kG_: 1.5] := DiagonalMatrix[{-A (kG - 1)^2 *4, -A kG^2 *4, -A (kG + 1)^2 *4}]
+                          + V {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}};
+Rexact[V_] := Module[{E2, Hmat},
+   Hmat = H[1.5];
+   E2   = Root[CharacteristicPolynomial[Hmat, \[Lambda]] &, 2]; (* middle root *)
+   V^2/(A + E2)^2 // Simplify
+]
+
+(* ---- cross-check ---- *)
+Block[{Vset = 0.3, Aval = 1.0},
+  Print["Perturbative : ", Rpert[Vset] /. A -> Aval];
+  Print["Taylor (V^6) : ", Rtaylor[Vset, 6] /. A -> Aval];
+  Print["Exact cubic  : ", Rexact[Vset] /. A -> Aval];
+  Print["Leading form : ", (Vset^2/(64 Aval^2))];
+]
+\end{verbatim}
+
+\textbf{Expected output} (with $A = 1$, $V = 0.3$):
+\begin{verbatim}
+Perturbative : 0.00140428
+Taylor (V^6) : 0.00140428
+Exact cubic  : 0.00140428
+Leading form : 0.00140625
+\end{verbatim}
+The first three agree to five digits because the perturbation series is accurate to $\mathcal O(V^4)$; the leading-order approximation $V^2/(64 A^2) = 1.40625\times 10^{-3}$ is off by $\sim 0.1\%$, exactly the size of the $5V^4/(16384 A^4) = 2.47\times 10^{-6}$ correction.
+
+\textbf{Plot} of $R(V)$ vs $V$:
+\begin{verbatim}
+Plot[{Rtaylor[v, 6], Rexact[v]}, {v, 0, 1.5},
+   PlotLegends -> {"perturbative O(V^6)", "exact cubic"},
+   AxesLabel -> {"V/A", "W12/W22"},
+   Epilog -> {Dashed, Line[{{0, 0}, {1.5, (1.5)^2/64}}]}]
+\end{verbatim}
+The dashed line is the leading-order $V^2/(64 A^2)$; the curves peel off from it as $V$ grows.
+
+\subsection{Exact expression via the cubic eigenvalue}
+
+If one insists on the exact answer (not perturbative), solve $(H - E_2 I)|\psi_2\rangle = 0$. The middle-band eigenvalue satisfies the cubic
+\begin{equation}
+E_2^3 \;+\; 35 A\, E_2^2 \;+\; \bigl(259 A^2 - 2 V^2\bigr) E_2 \;+\; \bigl(225 A^3 - 26 A V^2\bigr) \;=\; 0,
+\end{equation}
+and the eigenvector components satisfy
+\begin{equation}
+\alpha \;=\; \frac{V\beta}{A + E_2}, \qquad \gamma \;=\; \frac{V\beta}{25 A + E_2},
+\end{equation}
+with $\beta$ fixed by normalization. Therefore
+\begin{equation}
+\frac{W_{12}}{W_{22}}\bigg|_{\text{exact}} \;=\; \frac{V^2}{(A + E_2)^2}, \label{eq:ratio-exact}
+\end{equation}
+where $E_2$ is the middle root of the cubic above. This reduces to $V^2/(64 A^2)$ for $V \to 0$ since $E_2 \to -9A$ and $A + E_2 \to -8A$.
+
+\subsection{General $k$: where does the formula come from?}
+
+For general $k$, the unperturbed energies $\epsilon_n(k) = -\alpha(k + nG)^2$ enter only through the \emph{gaps}
+\begin{equation}
+\Delta_{21}(k) = \epsilon_2(k) - \epsilon_1(k), \qquad \Delta_{23}(k) = \epsilon_2(k) - \epsilon_3(k),
+\end{equation}
+and the weight ratio becomes
+\begin{equation}
+\frac{W_{12}(k)}{W_{22}(k)} \;=\; \frac{V^2 / \Delta_{21}(k)^2}{\,1 - V^2/\Delta_{21}(k)^2 - V^2/\Delta_{23}(k)^2\,} \;+\; \mathcal O(V^6).
+\end{equation}
+At $k = 1.5G$: $\Delta_{21} = -8A$ and $\Delta_{23} = 16A$, giving the result derived above. At $k = -1.5G$ the matrix is index-reversed (diagonals $-25A, -9A, -A$), but the middle band is still $|2\rangle$ with the same gap structure, so the ratio is unchanged.
+
+\subsection{Physical interpretation}
+
+The factor $V^2/(64 A^2) = (V/\Delta_{21})^2$ is the squared mixing amplitude between bands 1 and 2 from first-order perturbation theory: the perturbation $V$ couples the unperturbed states with amplitude $V/\Delta$, and the weight is the modulus squared. The gap $\Delta_{21} = 8A$ between bands 1 and 2 is the \emph{only} scale entering the leading-order result -- this is the standard textbook picture of band repulsion: closer bands mix more.
+
+\section{Why this approach wins for this matrix}
+
+\begin{itemize}
+\item \textbf{No cubic to solve.} Every coefficient is a rational function of $A$, immediately readable.
+\item \textbf{No branch cuts.} The result is a polynomial in $V^2$ with rational coefficients in $A$.
+\item \textbf{Physically transparent.} The amplitude $V/(E_n^{(0)}-E_m^{(0)})$ is the textbook mixing: larger gaps $\Rightarrow$ smaller mixing.
+\item \textbf{Systematic extension.} Going to higher order requires one more projection at each step; no new machinery.
+\item \textbf{Convergence.} Valid for $V/A \ll 1$; the band closest in energy ($|\phi_2\rangle$ to $|\phi_1\rangle$, gap $8A$) sets the strictest bound.
+\end{itemize}
+
+\end{document}

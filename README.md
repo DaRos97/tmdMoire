@@ -44,6 +44,14 @@ python scripts/plot_moire_bands.py --n-shells 2 --k-pts 300
 python scripts/compute_ldos.py --n-shells 2 --k-pts 10 --r-pts 80
 ```
 
+## Theory
+
+The `theory/` directory holds the analytical and numerical work behind the theoretical paper figures:
+
+- **Analytical derivations (Mathematica)** — `notebooks/my1Dnotebook.nb` derives the 1D moiré band model analytically. LaTeX write-up of the perturbative 3-band weights lives in `derivations/perturbative_weights_3band.tex`.
+- **Numerical observables** — `python_checks/1D_analysis.py` and `python_checks/2D_analysis.py` compute observables (band weights, gaps, energy splittings) by sweeping the moiré potential parameters of the 1D and 2D models.
+- **Paper figures** — `python_checks/1D_figure.py`, `python_checks/2D_figure.py`, and `python_checks/theta_cartoon.py` produce the three figures of the theoretical paper (`fig_1D_theory.pdf`, `fig_2D_theory.pdf`, `fig_2D_theta.pdf` in `theoryPaper/figures_paper/`).
+
 ## Documentation
 
 | Topic | File |
