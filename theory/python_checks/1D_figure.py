@@ -41,7 +41,7 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
         )
     ax.axhline(0.0, color="k", lw=0.5, ls="--")
     ax.set_xlabel("k (G)")
-    ax.set_ylabel("energy")
+    ax.set_ylabel("Energy")
     ax.set_yticks([])
     ax.set_xlim(ks[0] / g, ks[-1] / g)
     ax.set_ylim(-50, 5)
@@ -193,7 +193,7 @@ def main():
         "mathtext.fontset": "cm",
     })
 
-    fig = plt.figure(figsize=(6.75, 3))
+    fig = plt.figure(figsize=(6.75, 2.5))
     gs = gridspec.GridSpec(3, 2, figure=fig,
                             left=0.07, right=0.97, top=0.94, bottom=0.18,
                             width_ratios=[1.2, 0.8],
@@ -210,7 +210,7 @@ def main():
     ax1.plot(vs, -data["gap_analytic_v3"], color="black", lw=0.5, ls="--",
              label=r"$2V$")
     ax1.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
-    ax1.tick_params(labelbottom=False)
+    ax1.tick_params(labelbottom=False, bottom=False)
     ax1.text(4.6, float(data["gap_at_k_g2"][np.argmin(np.abs(vs - 4.6))]) - 0.5,
              r"$\Delta$", color="black", fontsize=12, va="top")
     ax1.legend(fontsize=7, loc="upper left")
@@ -222,9 +222,9 @@ def main():
              label=r"$V^2/A^2$")
     ax2.set_ylim(-0.3, 6.5)
     ax2.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
-    ax2.tick_params(labelbottom=False)
-    ax2.text(4.6, float((data["dist_bot_at_0"] - shift_4a)[np.argmin(np.abs(vs - 4.6))]) - 0.3,
-             r"$\chi$", color="black", fontsize=12, va="top")
+    ax2.tick_params(labelbottom=False, bottom=False)
+    ax2.text(3.5, 4.5, r"$\chi-4A$", color="black", fontsize=12,
+             ha="center", va="center")
     ax2.legend(fontsize=7, loc="upper left")
 
     ax3 = fig.add_subplot(gs[2, 1], sharex=ax1)

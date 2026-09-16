@@ -79,6 +79,10 @@ def main():
             ax.axvspan(start - 0.5, end + 0.5, color=GROUP_COLORS[gi],
                        alpha=0.07, zorder=0)
 
+        # Dashed vertical lines at each parameter index
+        for i in range(npars):
+            ax.axvline(i, color="#888", lw=0.5, ls="--", alpha=0.5, zorder=1)
+
         # Colours and bounds
         param_colors = [""] * npars
         param_bound = [None] * npars
@@ -115,7 +119,10 @@ def main():
         ax.set_xlim(-0.4, npars - 0.6)
         ax.axhline(0, color="#555", lw=0.8, zorder=4)
         ax.spines[["top", "right"]].set_visible(False)
-        ax.tick_params(bottom=False)
+        if col == 1:
+            ax.tick_params(bottom=True, direction="out", length=4)
+        else:
+            ax.tick_params(bottom=False)
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax.grid(axis="y", ls=":", lw=0.5, color="#bbb", zorder=0)
 
@@ -147,11 +154,9 @@ def main():
     out_dir = Path(args.output_dir) if args.output_dir else Path(master_folder) / "Figures"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for fmt, dpi in [("png", 600), ("pdf", None)]:
-        kw = {"dpi": dpi} if dpi else {}
-        fn = out_dir / f"params_WSe2_WS2.{fmt}"
-        fig.savefig(fn, **kw)
-        print(f"Saved: {fn}", flush=True)
+    fn = out_dir / "fig_params_WSe2_WS2.pdf"
+    fig.savefig(fn)
+    print(f"Saved: {fn}", flush=True)
 
 
 if __name__ == "__main__":

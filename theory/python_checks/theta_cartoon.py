@@ -129,14 +129,14 @@ def plot_geometry_vs_theta(ax, theta_max=5.0, n_pts=200):
     L_M = np.array([g.moire_length for g in geo])
     eta = np.array([g.mini_bz_rotation for g in geo])
 
-    color_L = "C0"
+    color_L = "#0072B2"
     ax.plot(thetas, L_M, color=color_L, lw=1.5, label=r"$L_M$")
     ax.set_xlabel(r"$\theta$ (deg)", labelpad=0)
     ax.set_ylabel(r"$a_{\mathrm{moir\'e}}$ ($\mathrm{\AA}$)", color=color_L)
     ax.tick_params(axis="y", labelcolor=color_L)
 
     ax2 = ax.twinx()
-    color_eta = "C3"
+    color_eta = "#E69F00"
     ax2.plot(thetas, np.degrees(eta), color=color_eta, lw=1.5, ls="--",
              label=r"$\eta$")
     ax2.set_ylabel(r"$\eta$ (deg)", color=color_eta)
@@ -211,7 +211,7 @@ def main():
     n_shells = 1
     n_k = 800
     V_off = 0.0
-    V_on = 0.4
+    V_on = 0.8
     theta_band = 0.8
 
     panel_band = compute_bands(theta_band, n_shells, n_k, 3, V_off, V_on, 0.0)
@@ -223,7 +223,7 @@ def main():
     })
 
     fig = plt.figure(figsize=(3.4, 3.5))
-    gs_outer = fig.add_gridspec(2, 1, hspace=0.25, height_ratios=[1, 1])
+    gs_outer = fig.add_gridspec(2, 1, hspace=0.35, height_ratios=[1, 1])
 
     ax_geom = fig.add_subplot(gs_outer[0])
     ax_bands = fig.add_subplot(gs_outer[1])
@@ -235,7 +235,7 @@ def main():
                            edgecolor="black", lw=0.8))
     ax_hex = ax_geom.inset_axes([0.55, 0.28, 0.45, 0.52])
     draw_hexagon_cartoon(ax_hex, a_red=3.5)
-    plot_main_panel(ax_bands, *panel_band)
+    plot_main_panel(ax_bands, *panel_band, max_size=30.0)
     ax_bands.set_ylabel("Energy")
 
     fig.subplots_adjust(left=0.18, right=0.82, top=0.96, bottom=0.09)

@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -104,7 +105,7 @@ def decorate_main_axis(ax):
 def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
                     max_size=60.0):
     for band in range(n_cells):
-        ax.plot(k_vals / K_mag, evals_off[:, band], color="red", lw=0.2, zorder=5)
+        ax.plot(k_vals / K_mag, evals_off[:, band], color="red", lw=0.1, zorder=5)
 
     central_weight = np.abs(evecs_on[:, 0, :]) ** 2
     for band in range(n_cells):
@@ -125,13 +126,17 @@ def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
     ]
     ax.legend(handles=legend_elements, loc="lower center", frameon=False)
 
+    zoom_box = Rectangle((-0.5, -12), 1.0, 4, fill=False,
+                         edgecolor="black", linewidth=1.2, zorder=10)
+    ax.add_patch(zoom_box)
+
     decorate_main_axis(ax)
 
 
 def plot_inset(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
                max_size=60.0, marker_boost=5.0):
     for band in range(n_cells):
-        ax.plot(k_vals / K_mag, evals_off[:, band], color="red", lw=0.2, zorder=5)
+        ax.plot(k_vals / K_mag, evals_off[:, band], color="red", lw=0.1, zorder=5)
 
     central_weight = np.abs(evecs_on[:, 0, :]) ** 2
     for band in range(n_cells):
