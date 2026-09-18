@@ -169,6 +169,12 @@ def main():
     panels = [compute_bands(theta, n_shells, n_k, 3, V_off, V_on, 0.0)
               for theta in thetas]
 
+    geo_a = MoireGeometry(0.0)
+    g_mag = float(np.linalg.norm(geo_a.reciprocal_vectors()[1]))
+    A = alpha * g_mag ** 2 / 4.0
+    A2 = A * A
+    print(f"A = alpha*|G_M|²/4 = {A:.6f} meV  (|G_M| = {g_mag:.6f} 1/Å)")
+
     phase_panels = []
     for phase_deg in phase_degs:
         phi = phase_deg * np.pi / 180.0
@@ -291,6 +297,21 @@ def main():
                     ax.text(0.02, 0.95, rf"$\times 10^{{{exponent}}}$",
                             transform=ax.transAxes,
                             fontsize=7, ha="left", va="top")
+
+        if ax is ax_Delta:
+            coeffs = np.polyfit(Vs, y_v, 1)
+            print(f"Δ(V) = {coeffs[0]:.4f} V + {coeffs[1]:.4f}")
+        elif ax in (ax_chi, ax_lam, ax_rho):
+            y0 = float(y_v[0])
+            y_shifted = y_v - y0
+            design = np.column_stack([np.ones_like(Vs), Vs ** 2])
+            a_q, b_q = np.linalg.lstsq(design, y_shifted, rcond=None)[0]
+            name = {ax_chi: "χ", ax_lam: "λ", ax_rho: "ρ"}[ax]
+            A_sq_b = A2 * b_q
+            print(
+                f"{name}(V) - {name}(0) = {a_q:.6e} + {b_q:.6e} V²"
+                f"   | A²·b = {A_sq_b:.6e}"
+            )
 
     fig.subplots_adjust(left=0.08, right=0.97, top=0.94, bottom=0.12)
 

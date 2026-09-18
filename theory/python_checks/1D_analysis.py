@@ -1,31 +1,14 @@
+import sys
 import numpy as np
 from pathlib import Path
 
-
-hbar_si = 1.054571817e-34
-m0 = 9.1093837e-31
-g = 0.1257
-m = 3.5 * m0
-eV = 1.602176634e-19
-
-alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
-
-
-def eps(k, n):
-    return -alpha * (k + n * g) ** 2
-
-
-def H(k, v):
-    return np.array([
-        [eps(k, -1), v, 0.0],
-        [v,         eps(k, 0), v],
-        [0.0,       v,         eps(k, 1)],
-    ])
+sys.path.insert(0, str(Path(__file__).parent))
+from _1D_common import g, alpha, eps, H
 
 
 def main():
     n_v = 201
-    vs = np.linspace(0.0, 5.0, n_v)
+    vs = np.linspace(0.0, 3.0, n_v)
 
     a_val = alpha * g ** 2 / 4.0
     b_val = 4.0 * a_val

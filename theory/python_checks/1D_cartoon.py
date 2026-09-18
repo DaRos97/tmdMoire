@@ -1,31 +1,13 @@
+import sys
 import numpy as np
 from pathlib import Path
 
-
-hbar = 6.582119569e-13
-m0 = 9.1093837e-31
-g = 0.1257
-m = 3.5 * m0
-hbar_si = 1.054571817e-34
-eV = 1.602176634e-19
-
-alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
-
-
-def eps(k, n):
-    return -alpha * (k + n * g) ** 2
-
-
-def H(k, v):
-    return np.array([
-        [eps(k, -1), v, 0.0],
-        [v,         eps(k, 0), v],
-        [0.0,       v,         eps(k, 1)],
-    ])
+sys.path.insert(0, str(Path(__file__).parent))
+from _1D_common import g, alpha, eps, H
 
 
 def main():
-    v = 2.0
+    v = 1.0
     ks = np.linspace(-3.0 * g, 3.0 * g, 1201)
 
     eigenvalues = np.empty((ks.size, 3))
@@ -81,9 +63,9 @@ def main():
     ax.set_ylabel("Energy")
     ax.set_yticks([])
     ax.set_xlim(ks[0] / g, ks[-1] / g)
-    ax.set_ylim(-50, 5)
+    ax.set_ylim(-20, 1)
 
-    axins = fig.add_axes([0.66, 0.17, 0.28, 0.25])
+    axins = fig.add_axes([0.72, 0.17, 0.22, 0.25])
     for n in range(3):
         axins.plot(ks / g, v0_bands[:, n], color="red", lw=0.2, zorder=4)
     for band in range(3):
@@ -95,8 +77,8 @@ def main():
             linewidths=0,
             zorder=3,
         )
-    axins.set_xlim(-0.25, 0.25)
-    axins.set_ylim(-20, -15)
+    axins.set_xlim(-0.3, 0.3)
+    axins.set_ylim(-8.7, -6.7)
     axins.set_xticks([])
     axins.set_yticks([])
 
