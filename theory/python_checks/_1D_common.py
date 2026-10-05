@@ -5,10 +5,10 @@ hbar_si = 1.054571817e-34
 m0 = 9.1093837e-31
 eV = 1.602176634e-19
 
-L_moire = 76.0
+L_moire = 50.0
 g = 2.0 * np.pi / L_moire
 
-m = 3.5 * m0
+m = 1.19 * m0
 
 alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
 

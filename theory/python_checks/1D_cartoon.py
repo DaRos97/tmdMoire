@@ -7,8 +7,8 @@ from _1D_common import g, alpha, eps, H
 
 
 def main():
-    v = 1.0
-    ks = np.linspace(-3.0 * g, 3.0 * g, 1201)
+    v = 5.0
+    ks = np.linspace(-3.0 * g, 3.0 * g, 3001)
 
     eigenvalues = np.empty((ks.size, 3))
     eigenvectors = np.empty((ks.size, 3, 3))
@@ -58,12 +58,12 @@ def main():
             linewidths=0,
             zorder=3,
         )
-    ax.axhline(0.0, color="k", lw=0.5, ls="--")
+    ax.axhline(0.0, color="k", lw=0.8, ls="--")
     ax.set_xlabel("k (G)")
     ax.set_ylabel("Energy")
     ax.set_yticks([])
     ax.set_xlim(ks[0] / g, ks[-1] / g)
-    ax.set_ylim(-20, 1)
+    ax.set_ylim(-130, 1)
 
     axins = fig.add_axes([0.72, 0.17, 0.22, 0.25])
     for n in range(3):
@@ -77,8 +77,8 @@ def main():
             linewidths=0,
             zorder=3,
         )
-    axins.set_xlim(-0.3, 0.3)
-    axins.set_ylim(-8.7, -6.7)
+    axins.set_xlim(-0.2, 0.2)
+    axins.set_ylim(-56.5, -44.5)
     axins.set_xticks([])
     axins.set_yticks([])
 
@@ -126,8 +126,8 @@ def main():
     ax.plot([-1.5, -1.5], [y_src, y_tgt], color="orange",
             lw=0.8, ls="--", zorder=5)
     x_mid_h = 0.5 * (-1.5 + k_cross / g)
-    ax.text(x_mid_h, y_src + 1.5, r"$\rho$", color="orange",
-            fontsize=12, ha="center")
+    ax.text(x_mid_h, y_src + 3.0, r"$\rho$", color="orange",
+            fontsize=10, ha="center")
     ax.text(-1.5 - 0.12, 0.5 * (y_src + y_tgt), r"$\lambda$", color="orange",
             fontsize=12, va="center", ha="right")
 

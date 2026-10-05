@@ -8,7 +8,7 @@ from _1D_common import g, alpha, eps, H
 
 def main():
     n_v = 201
-    vs = np.linspace(0.0, 3.0, n_v)
+    vs = np.linspace(0.0, 10.0, n_v)
 
     a_val = alpha * g ** 2 / 4.0
     b_val = 4.0 * a_val

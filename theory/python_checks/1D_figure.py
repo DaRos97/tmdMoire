@@ -22,12 +22,12 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
             zorder=3,
             rasterized=True,
         )
-    ax.axhline(0.0, color="k", lw=0.5, ls="--")
+    ax.axhline(0.0, color="k", lw=0.8, ls="--")
     ax.set_xlabel("k (G)")
     ax.set_ylabel("Energy")
     ax.set_yticks([])
     ax.set_xlim(ks[0] / g, ks[-1] / g)
-    ax.set_ylim(-20, 1)
+    ax.set_ylim(-130, 10)
 
     axins = ax.inset_axes([0.66, 0.03, 0.30, 0.30])
     for n in range(3):
@@ -42,8 +42,8 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
             zorder=3,
             rasterized=True,
         )
-    axins.set_xlim(-0.3, 0.3)
-    axins.set_ylim(-8.7, -6.7)
+    axins.set_xlim(-0.2, 0.2)
+    axins.set_ylim(-56.5, -44.5)
     axins.set_xticks([])
     axins.set_yticks([])
 
@@ -51,7 +51,7 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
 
     k_gap = -0.5 * g
     i_gap = int(np.argmin(np.abs(ks - k_gap)))
-    e_gap = np.linalg.eigvalsh(H(ks[i_gap], 1.0))
+    e_gap = np.linalg.eigvalsh(H(ks[i_gap], 5.0))
     e_top = e_gap[2]
     e_mid = e_gap[1]
     ax.annotate(
@@ -64,9 +64,9 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
     )
     ax.text(
         k_gap / g + 0.08,
-        0.5 * (e_top + e_mid) - 0.5,
+        0.5 * (e_top + e_mid) - 1.5,
         r"$\Delta$",
-        color="c",
+        color="black",
         fontsize=10,
         va="center",
     )
@@ -126,12 +126,12 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
     ax.plot([-1.5, -1.5], [y_src, y_tgt], color="orange",
             lw=0.8, ls="--", zorder=5)
     x_mid_h = 0.5 * (-1.5 + k_cross / g)
-    ax.text(x_mid_h, y_src + 1.5, r"$\rho$", color="gold",
+    ax.text(x_mid_h, y_src + 3.0, r"$\rho$", color="black",
             fontsize=10, ha="center")
-    ax.text(-1.5 - 0.12, 0.5 * (y_src + y_tgt), r"$\lambda$", color="orange",
+    ax.text(-1.5 - 0.12, 0.5 * (y_src + y_tgt), r"$\lambda$", color="black",
             fontsize=10, va="center", ha="right")
 
-    e_0 = np.linalg.eigvalsh(H(ks[idx0], 1.0))
+    e_0 = np.linalg.eigvalsh(H(ks[idx0], 5.0))
     e_top_0 = e_0[2]
     e_bot_0 = e_0[0]
     ax.annotate(
@@ -146,15 +146,29 @@ def draw_cartoon(ax, ks, eigenvalues, eigenvectors):
         0.08,
         0.5 * (e_top_0 + e_bot_0) + 1.5,
         r"$\chi$",
-        color="limegreen",
+        color="black",
         fontsize=10,
         va="center",
     )
 
+    e_cross = -alpha * g ** 2 / 4.0
+    ax.plot([0.25, 2.0], [e_cross, e_cross], color="black",
+            lw=0.8, ls="--", zorder=5)
+    ax.annotate(
+        "",
+        xy=(1.0, e_cross),
+        xytext=(1.0, 0.0),
+        arrowprops=dict(arrowstyle="<->", color="black", lw=0.7, mutation_scale=8,
+                        shrinkA=0, shrinkB=0),
+        zorder=5,
+    )
+    ax.text(1.1, 0.5 * e_cross, "W", color="black",
+            fontsize=10, va="center", ha="left")
+
 
 def main():
-    v = 1.0
-    ks = np.linspace(-3.0 * g, 3.0 * g, 1201)
+    v = 5.0
+    ks = np.linspace(-3.0 * g, 3.0 * g, 3001)
     eigenvalues = np.empty((ks.size, 3))
     eigenvectors = np.empty((ks.size, 3, 3))
     for i, k in enumerate(ks):
@@ -188,6 +202,8 @@ def main():
 
     ax_cartoon = fig.add_subplot(gs[:, 0])
     draw_cartoon(ax_cartoon, ks, eigenvalues, eigenvectors)
+    ax_cartoon.text(-0.05, 0.97, "a.", transform=ax_cartoon.transAxes,
+                    fontsize=8, fontweight="bold", va="top")
 
     vs = data["vs"]
     a_val = float(data["a_val"])
@@ -198,37 +214,46 @@ def main():
              label=r"$2V$")
     ax1.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
     ax1.tick_params(labelbottom=False, bottom=False)
-    ax1.text(2.8, float(data["gap_at_k_g2"][np.argmin(np.abs(vs - 4.6))]) - 0.6,
+    ax1.set_ylabel("[meV]")
+    ax1.text(9.5, float(data["gap_at_k_g2"][np.argmin(np.abs(vs - 9.5))]) - 0.6,
              r"$\Delta$", color="black", fontsize=10, va="top")
     ax1.legend(fontsize=8, loc="upper left")
+    ax1.text(-0.18, 1.0, "b.", transform=ax1.transAxes,
+             fontsize=8, fontweight="bold", va="top")
 
     ax2 = fig.add_subplot(gs[1, 1], sharex=ax1)
     shift_4a = 4.0 * a_val
-    ax2.plot(vs, data["dist_bot_at_0"] - shift_4a, color="limegreen", lw=1.5)
-    ax2.plot(vs, data["analytic_full_2"], color="black", lw=0.5, ls="--",
-             label=r"$V^2/A^2$")
-    ax2.set_ylim(-0.3, 5.5)
+    ax2.plot(vs, data["dist_bot_at_0"], color="limegreen", lw=1.5)
+    ax2.plot(vs, shift_4a + vs ** 2 / a_val, color="black", lw=0.5, ls="--",
+             label=r"$4W + V^2/W$")
+    ax2.set_ylim(49.0, 59.0)
     ax2.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
     ax2.tick_params(labelbottom=False, bottom=False)
-    ax2.text(2.5, 4.5, r"$\chi-4A$", color="black", fontsize=10,
+    ax2.set_ylabel("[meV]")
+    ax2.text(9.5, 56.0, r"$\chi$", color="black", fontsize=10,
              ha="center", va="center")
     ax2.legend(fontsize=8, loc="upper left")
+    ax2.text(-0.18, 1.0, "c.", transform=ax2.transAxes,
+             fontsize=8, fontweight="bold", va="top")
 
     ax3 = fig.add_subplot(gs[2, 1], sharex=ax1)
-    ax3.plot(vs, data["weight_ratio_same_k"], color="orange", lw=1.5)
-    ax3.plot(vs, data["analytic_ratio_same"], color="black", lw=0.5, ls="--",
-             label=r"$V^2/(64A^2)$")
-    ax3.plot(vs, data["weight_ratio_cross"], color="gold", lw=1.5)
-    ax3.plot(vs, data["analytic_ratio_cross"], color="darkgray", lw=0.5, ls="--",
-             label=r"$V^2/(256A^2)$")
+    ax3.plot(vs, data["weight_ratio_same_k"] * 100, color="orange", lw=1.5)
+    ax3.plot(vs, data["analytic_ratio_same"] * 100, color="black", lw=0.5, ls="--",
+             label=r"$V^2/(64W^2)$")
+    ax3.plot(vs, data["weight_ratio_cross"] * 100, color="gold", lw=1.5)
+    ax3.plot(vs, data["analytic_ratio_cross"] * 100, color="darkgray", lw=0.5, ls="--",
+             label=r"$V^2/(256W^2)$")
     ax3.set_xlabel("V")
     ax3.tick_params(labelbottom=True)
     ax3.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
-    ax3.text(2.4, float(data["weight_ratio_same_k"][np.argmin(np.abs(vs - 4.6))]),
+    ax3.set_ylabel("$\\%$")
+    ax3.text(9.5, float(data["weight_ratio_same_k"][np.argmin(np.abs(vs - 9.5))]) * 100,
              r"$\lambda$", color="black", fontsize=10, va="top")
-    ax3.text(2.4, float(data["weight_ratio_cross"][np.argmin(np.abs(vs - 4.6))]),
+    ax3.text(9.5, float(data["weight_ratio_cross"][np.argmin(np.abs(vs - 9.5))]) * 100,
              r"$\rho$", color="black", fontsize=10, va="bottom")
     ax3.legend(fontsize=8, loc="upper left")
+    ax3.text(-0.18, 1.0, "d.", transform=ax3.transAxes,
+             fontsize=8, fontweight="bold", va="top")
 
     out = Path(__file__).with_name("figures") / "fig_1D_theory.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)

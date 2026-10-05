@@ -99,6 +99,13 @@ def _get_gkm_path(n_k, tmd, endpoint=True):
     return get_k_list("G-K-M", n_k, tmd=tmd, endpoint=endpoint, return_norm=True)
 
 
+def _add_panel_label(ax, letter, x=-0.05):
+    ax.text(x, 0.98, rf"$\mathbf{{{letter}.}}$",
+            transform=ax.transAxes,
+            fontsize=9, fontweight="bold", va="top", ha="right",
+            zorder=10)
+
+
 # ─── Main plotting ───────────────────────────────────────────────────────────
 
 def main():
@@ -384,6 +391,7 @@ def main():
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
     ax.text(xr_text, y_text, "Fit", transform=ax.transAxes,
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
+    _add_panel_label(ax, "a")
 
     # ── Panel 2: Orbital content (DFT left, Fit right) ───────────────────
     ax = fig.add_subplot(gs_left[1])
@@ -439,6 +447,7 @@ def main():
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
     ax.text(xr_text, y_text, "Fit", transform=ax.transAxes,
             ha="left", va="center", fontsize=s_norm, bbox=dict_box)
+    _add_panel_label(ax, "c")
 
     # ── Panel 3: chi2 heatmap (WS2 only) ───────────────────────────────────
     ax_heat_frame = fig.add_subplot(gs[0, 1])
@@ -471,6 +480,7 @@ def main():
             ax_heat.set_xlabel(r"$K_2$", fontsize=s_small)
             ax_heat.set_ylabel(r"$K_3$", fontsize=s_small)
             ax_heat.tick_params(labelsize=5)
+            _add_panel_label(ax_heat_frame, "b", x=-0.10)
 
     elif tmd == "WSe2":
         inset_path = Path(master_folder) / "Figures" / "hoppings.png"
@@ -479,6 +489,7 @@ def main():
             ax_heat_frame.imshow(inset_img, aspect="equal")
             ax_heat_frame.set_xticks([])
             ax_heat_frame.set_yticks([])
+            _add_panel_label(ax_heat_frame, "b", x=-0.10)
 
     # ── Panel 4: Band comparison ─────────────────────────────────────────
     ax = fig.add_subplot(gs[1, 1])
@@ -512,6 +523,7 @@ def main():
     a_mono = LATTICE_CONSTANTS[tmd]
     ks = [arpes_bands[0, 0], 4 / 3 * np.pi / a_mono, arpes_bands[-1, 0]]
     ax.set_xticks(ks, [r"$\Gamma$", r"$K$", r"$M$"], size=s_norm)
+    _add_panel_label(ax, "d", x=-0.10)
 
     plt.subplots_adjust(
         bottom=0.064, top=0.983, right=0.974, left=0.076,
@@ -525,11 +537,7 @@ def main():
         out_dir = Path(master_folder) / "Figures"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    fig.savefig(out_dir / f"fig_monolayer_{tmd}.svg")
-    fig.savefig(out_dir / f"fig_monolayer_{tmd}.png", dpi=600)
     fig.savefig(out_dir / f"fig_monolayer_{tmd}.pdf", dpi=600)
-    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.svg'}", flush=True)
-    print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.png'}", flush=True)
     print(f"Saved: {out_dir / f'fig_monolayer_{tmd}.pdf'}", flush=True)
 
 

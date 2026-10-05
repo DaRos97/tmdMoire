@@ -134,3 +134,31 @@ class MoireGeometry:
                     else:
                         j += 1
         return lu
+
+
+class MoireGeometryFixed(MoireGeometry):
+    """MoireGeometry with optional override of the moiré length.
+
+    Useful for forcing a_moiré = 50 Å at theta = 0 (the default ~75 Å
+    at theta = 0 for WSe2/WS2 is unphysical for cartoon setups) or
+    otherwise decoupling the twist angle from the resulting moiré
+    period.
+
+    Parameters
+    ----------
+    theta_deg : float
+        Twist angle in degrees (used for mini-BZ rotation).
+    a_moire_override : float, optional
+        If given, ``moire_length`` returns this value instead of the
+        geometrically-derived one.
+    """
+    def __init__(self, theta_deg: float, a_moire_override: float | None = None):
+        super().__init__(theta_deg)
+        self._a_moire_override = a_moire_override
+
+    @property
+    def moire_length(self) -> float:
+        if self._a_moire_override is not None:
+            return float(self._a_moire_override)
+        return super().moire_length
+

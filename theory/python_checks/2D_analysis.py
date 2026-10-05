@@ -1,40 +1,32 @@
-"""2D moire analysis: parameter sweeps with band-weight plots and gap analysis.
+"""2D moire analysis: V sweep and phi sweep with band-weight plots and gap analysis.
 
 Sweeps a single-band moire Hamiltonian (parabolic dispersion + V*exp(i*phi)
-nearest-neighbor coupling).
+nearest-neighbor coupling) in the cartoon geometry: theta = 0 deg,
+a_moire = 50 A (forced via MoireGeometryFixed).
 
-Two sweeps:
-  (1) V = 0.2 meV, phi in [0, 120] deg
-  (2) phi = 180 deg, V in [0, 1] meV
+Two sweeps, both with 61 points:
+  (1) V sweep:   phi = 180 deg, V in [0, 10] meV
+  (2) phi sweep: V   = 2 meV,    phi in [0, 120] deg
 
 For each (V, phi):
-  - 1000 k-points are sampled from -5 K_M to 0
+  - 3000 k-points are sampled from -5 K_M to 0
   - gap is computed as: k* = argmin_k (E_{n-1}(k) - E_{n-3}(k)), then
     delta = max(E_{n-1}(k*) - E_{n-2}(k*), E_{n-2}(k*) - E_{n-3}(k*))
-  - chi at k=0 is the distance between the top band and the band with
-    the second-highest central-cell weight |psi_{cell=0}|^2
+  - chi at k=0: distance between the top band and the band with the
+    second-highest central-cell weight |psi_{cell=0}|^2
   - lambda at k=-2 K_M: ratio of the highest-weight band with energy
-    larger than the main (highest-weight) band, divided by the main
-    band's weight
-  - rho: at k=-2 K_M the main band has energy E_main. For each of the two
-    highest-energy bands, find the k' < -2K_M where that band's energy is
-    closest to E_main; rho is then the ratio of the higher-weight candidate
-    to the main band's weight.
-  - a band-weight plot is saved to figures/temp/ with marker size proportional
-    to the central-cell weight |psi_k(Gamma)|^2 of each eigenstate. An inset
-    in the top-left zooms around k*; the two energies that define the
-    active sub-gap (either E_{n-1}(k*) & E_{n-2}(k*), or E_{n-2}(k*) &
-    E_{n-3}(k*)) are highlighted in red inside the inset only. A side panel
-    lists all bands at k=0 (idx, E, |w|^2) with the two bands used for chi
-    shown in red. Green markers on the main plot show the main and side
-    bands at k=-2 K_M used for lambda; an orange marker shows the side
-    band used for rho at k' < -2 K_M.
+    above the main (highest-weight) band, divided by the main band's
+    weight
+  - rho: at k=-2 K_M the main band has energy E_main. For each of the
+    two highest-energy bands, find the k' < -2K_M where that band's
+    energy is closest to E_main; rho is the ratio of the higher-weight
+    candidate to the main band's weight.
 
-A summary figure with 4 subplots is also saved to figures/2D_analysis.pdf:
+A summary figure with 4 subplots is saved to figures/2D_analysis.pdf:
   Row 1: Delta = max(Delta_top2, Delta_2_3) at k*    (twin V / phi axes)
   Row 2: chi at k=0                                  (twin V / phi axes)
   Row 3: lambda at k=-2 K_M                          (twin V / phi axes)
-  Row 4: rho at k' < -2 K_M (side band at same E as main)  (twin V/phi axes)
+  Row 4: rho at k' < -2 K_M                          (twin V / phi axes)
 """
 import sys
 from pathlib import Path
@@ -43,13 +35,13 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from tmdmoire.bilayer.geometry import MoireGeometry
+from tmdmoire.bilayer.geometry import MoireGeometryFixed
 from tmdmoire.constants import M_LIST
 
 
 hbar_si = 1.054571817e-34
 m0 = 9.1093837e-31
-m = 3.5 * m0
+m = 1.19 * m0
 eV = 1.602176634e-19
 
 alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
@@ -64,7 +56,7 @@ def build_hamiltonian(k_vec, geo, n_shells, V, phi):
     """
     G_M = geo.reciprocal_vectors()
     G1, G2 = G_M[1], G_M[2]
-    lu = MoireGeometry.lu_table(n_shells)
+    lu = MoireGeometryFixed.lu_table(n_shells)
     n_cells = len(lu)
 
     G_cells = np.array([lu[c][0] * G1 + lu[c][1] * G2 for c in range(n_cells)])
@@ -89,7 +81,7 @@ def build_hamiltonian(k_vec, geo, n_shells, V, phi):
 
 def compute_bands(geo, n_shells, k_vals, V, phi):
     """Diagonalize H(k) along the k-path; return (evals, evecs)."""
-    n_cells = MoireGeometry.n_cells(n_shells)
+    n_cells = MoireGeometryFixed.n_cells(n_shells)
     n_k = len(k_vals)
     evals = np.empty((n_k, n_cells))
     evecs = np.empty((n_k, n_cells, n_cells), dtype=complex)
@@ -272,7 +264,7 @@ def decorate_axis(ax, k_vals, K_mag):
         ax.set_xticklabels(labels)
     ax.set_xlim(k_min, k_max)
     ax.set_ylabel("Energy (meV)")
-    ax.set_ylim(-30, 5)
+    ax.set_ylim(-100, 10)
 
 
 def save_band_weight_plot(out_path, k_vals, K_mag, evals, evecs, V, phi_deg,
@@ -478,7 +470,13 @@ def run_sweep(out_dir, geo, n_shells, k_vals, K_mag, V_arr, phi_arr, label,
 
 
 def _plot_twin(ax, Vs, y_V, phi_degs, y_phi, ylabel, color_v, color_p):
-    """Helper: plot two curves on twin axes (V sweep on bottom, phi on top)."""
+    """Helper: plot V curve on bottom axis; phi curve on top twin axis.
+
+    If ``y_phi`` is None or empty, the twin axis is still drawn (for
+    layout) but no phi curve is plotted.
+    """
+    has_phi = y_phi is not None and len(np.atleast_1d(y_phi)) > 0
+
     line_v = ax.plot(Vs, y_V, color=color_v, lw=1.5,
                      label=r"$V$ sweep ($\phi=180^\circ$)")
     ax.set_xlim(Vs[0], Vs[-1])
@@ -487,24 +485,32 @@ def _plot_twin(ax, Vs, y_V, phi_degs, y_phi, ylabel, color_v, color_p):
     ax.axhline(0.0, color="k", lw=0.5, ls=":")
 
     ax2 = ax.twiny()
-    line_p = ax2.plot(phi_degs, y_phi, color=color_p, lw=1.5,
-                      label=r"$\phi$ sweep ($V=0.2$)")
+    if has_phi:
+        line_p = ax2.plot(phi_degs, y_phi, color=color_p, lw=1.5,
+                          label=r"$\phi$ sweep ($V=2$ meV)")
+        y_all = np.concatenate([np.atleast_1d(y_V), np.atleast_1d(y_phi)])
+    else:
+        line_p = []
+        y_all = np.atleast_1d(y_V)
     ax2.set_xlim(phi_degs[0], phi_degs[-1])
     ax2.set_xlabel(r"$\phi$ (deg)")
 
-    y_all = np.concatenate([np.atleast_1d(y_V), np.atleast_1d(y_phi)])
     y_min = np.nanmin(y_all)
     y_max = np.nanmax(y_all)
     pad = 0.10 * (y_max - y_min) if y_max > y_min else 0.1
     ax.set_ylim(y_min - pad, y_max + pad)
 
-    handles = line_v + line_p
+    handles = line_v + list(line_p)
     labels = [h.get_label() for h in handles]
     ax.legend(handles, labels, loc="best", fontsize=8)
 
 
-def make_summary_figure(out_path, data_phi, data_V, Vs, phi_degs):
-    """Four-panel summary: Delta, chi, lambda, rho vs V and vs phi (twin axes)."""
+def make_summary_figure(out_path, data_V, data_phi, Vs, phi_degs):
+    """Four-panel summary: Delta, chi, lambda, rho vs V and vs phi.
+
+    Twin axes: bottom = V (V-sweep at phi = 180 deg);
+               top = phi (phi-sweep at V = 2 meV).
+    """
     import matplotlib.pyplot as plt
 
     color_v = "C0"
@@ -535,12 +541,16 @@ def make_summary_figure(out_path, data_phi, data_V, Vs, phi_degs):
     print(f"Saved figure to {out_path}")
 
 
-def save_data(out_path, data_phi, data_V):
+def save_data(out_path, data_V, data_phi,
+              theta, a_moire, phi_V_sweep, v_for_phi_sweep):
     """Save both sweep data lists to a single .npz file.
 
-    Each scalar field is saved twice, once per sweep, with a "_V" or "_phi"
-    suffix. The "active" tag is saved as a unicode string array. The full
-    weights_zero arrays at k=0 are saved as 2D arrays (n_pts, n_cells).
+    Each scalar per-point field is saved twice, once per sweep, with a
+    "_V" or "_phi" suffix. The "active" tag is saved as a unicode string
+    array. The full weights_zero arrays at k=0 are saved as 2D arrays
+    (n_pts, n_cells). Geometry (theta, a_moire) and the fixed-axis values
+    of each sweep are stored as scalar attributes so downstream consumers
+    can verify the setup.
     """
     scalar_fields = [
         "V", "phi_deg", "delta", "k_star",
@@ -565,18 +575,27 @@ def save_data(out_path, data_phi, data_V):
         save_dict["weights_zero" + suffix] = np.array(
             [d_i["weights_zero"] for d_i in d]
         )
+    save_dict["theta"] = np.array(float(theta))
+    save_dict["a_moire"] = np.array(float(a_moire))
+    save_dict["phi_V_sweep"] = np.array(float(phi_V_sweep))
+    save_dict["v_for_phi_sweep"] = np.array(float(v_for_phi_sweep))
     np.savez(out_path, **save_dict)
     print(f"Saved data to {out_path}")
 
 
 def main():
     theta = 0.0
+    a_moire = 50.0
+    phi_V_sweep_deg = 180.0
+    v_for_phi_sweep = 2.0
+    phi_degs_phi_sweep = np.linspace(0.0, 120.0, 61)
     n_shells = 1
     n_sweep_pts = 61
-    n_k = 5000
+    v_max = 10.0
+    n_k = 3000
     save_temp_plots = False
 
-    geo = MoireGeometry(theta)
+    geo = MoireGeometryFixed(theta, a_moire_override=a_moire)
     G_M = geo.reciprocal_vectors()
     G1, G2 = G_M[1], G_M[2]
     K_mag = np.linalg.norm((G1 + G2) / 3)
@@ -587,23 +606,25 @@ def main():
     if save_temp_plots:
         out_dir.mkdir(parents=True, exist_ok=True)
 
-    phi_degs = np.linspace(0.0, 120.0, n_sweep_pts)
-    phis = phi_degs * np.pi / 180.0
-    V_phi_sweep = np.full(n_sweep_pts, 0.4)
-    data_phi = run_sweep(out_dir, geo, n_shells, k_vals, K_mag, V_phi_sweep,
-                         phis, "phisweep_V0.4", save_plots=save_temp_plots)
-
-    Vs = np.linspace(0.0, 1.0, n_sweep_pts)
-    phi_V_sweep = np.full(n_sweep_pts, 180.0 * np.pi / 180.0)
-    data_V = run_sweep(out_dir, geo, n_shells, k_vals, K_mag, Vs, phi_V_sweep,
+    Vs = np.linspace(0.0, v_max, n_sweep_pts)
+    phi_V_sweep = phi_V_sweep_deg * np.pi / 180.0
+    phis_V_sweep = np.full(n_sweep_pts, phi_V_sweep)
+    data_V = run_sweep(out_dir, geo, n_shells, k_vals, K_mag, Vs, phis_V_sweep,
                        "Vsweep_phi180", save_plots=save_temp_plots)
 
+    Vs_phi_sweep = np.full(n_sweep_pts, v_for_phi_sweep)
+    phis_phi_sweep = phi_degs_phi_sweep * np.pi / 180.0
+    data_phi = run_sweep(out_dir, geo, n_shells, k_vals, K_mag, Vs_phi_sweep,
+                         phis_phi_sweep, "phisweep_V2.0",
+                         save_plots=save_temp_plots)
+
     summary_path = Path(__file__).with_name("figures") / "2D_analysis.pdf"
-    make_summary_figure(summary_path, data_phi, data_V, Vs, phi_degs)
+    make_summary_figure(summary_path, data_V, data_phi, Vs, phi_degs_phi_sweep)
 
     data_path = Path(__file__).with_name("data") / "2D_analysis.npz"
     data_path.parent.mkdir(parents=True, exist_ok=True)
-    save_data(data_path, data_phi, data_V)
+    save_data(data_path, data_V, data_phi,
+              theta, a_moire, phi_V_sweep, v_for_phi_sweep)
 
 
 if __name__ == "__main__":
