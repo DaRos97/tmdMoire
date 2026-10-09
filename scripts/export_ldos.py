@@ -5,7 +5,7 @@ diagonal and packages everything into a self-contained .npz file.
 Output goes to scripts/plotsPaper/data/.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/export_ldos.py
     python scripts/export_ldos.py --k-pts 10 --n-shells 2 --e-min -1.28 --e-max -1.11
 """

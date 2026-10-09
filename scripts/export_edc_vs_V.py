@@ -5,7 +5,7 @@ fits 4 Lorentzians, and exports the TVB–side band distances together with
 all metadata. Output goes to scripts/plotsPaper/data/.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/export_edc_vs_V.py
     python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
 """

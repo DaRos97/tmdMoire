@@ -10,11 +10,13 @@ Tight-binding model of WSe2/WS2 heterobilayer moire superlattices. Three-stage w
 
 ## Environment
 
-Use `../PyEnv` as the Python virtual environment. Activate with:
+Use the project-local `.venv` as the Python virtual environment. Create and install dependencies with:
 ```
-source ../PyEnv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
-Or use `../PyEnv/bin/python` directly.
+Or use `.venv/bin/python` directly.
 
 ## Commands
 

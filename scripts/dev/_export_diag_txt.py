@@ -4,7 +4,7 @@
 - All intensity dirs: intensity_KpGK.txt, intensity_KpMK.txt, intensity_meta.json
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/dev/_export_diag_txt.py
 """
 import json

@@ -3,7 +3,7 @@
 Path: Gamma -> K -> M -> K' -> Gamma along the G1+G2 direction.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/plot_moire_mini_bz.py [--k-pts 50] [--n-shells 2] [--no-cache]
 
 Parameters loaded from Inputs/plot_bilayer/.

@@ -6,7 +6,7 @@ keeping all other parameters identical. Saves diag.npz and generates
 diag_half_bands.png / diag_bands_over_arpes.png in new diag_* folders.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/dev/_gen_diag_n01.py
 """
 import sys

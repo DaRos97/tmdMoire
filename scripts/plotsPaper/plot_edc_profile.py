@@ -1,10 +1,11 @@
 """Standalone EDC intensity profile plot for a selected (Vg, phiG) cell.
 
 Zero dependency on tmdmoire. Requires only numpy + matplotlib.
-Reads the .npz produced by scripts/export_edc_gamma_data.py (with --vg/--phig).
+Reads the .npz produced by scripts/export_edc_gamma_data.py (with --vg/--phig)
+or scripts/export_moire_bands.py (profile at V_G = 21 meV).
 
 Produces:
-  edc_profile_4L.png  -- EDC intensity + 4-Lorentzian fit + ARPES reference lines
+  edc_profile_4L_<run_id>.png  -- EDC intensity + 4-Lorentzian fit + ARPES reference lines
 
 Usage:
     python plot_edc_profile.py <data.npz>
@@ -19,29 +20,21 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-def main():
-    args = sys.argv[1:]
-    if not args:
-        print("Usage: python plot_edc_profile.py <data.npz> [--output-dir <dir>]")
-        sys.exit(1)
-
-    data_path = Path(args[0])
-    output_dir = Path(__file__).resolve().parent / "figures"
-
-    i = 1
-    while i < len(args):
-        if args[i] == "--output-dir" and i + 1 < len(args):
-            output_dir = Path(args[i + 1])
-            i += 2
-        else:
-            i += 1
+def plot_edc_profile(data_path, output_dir=None):
+    data_path = Path(data_path)
+    if output_dir is None:
+        output_dir = Path(__file__).resolve().parent / "figures"
+    else:
+        output_dir = Path(output_dir)
 
     d = np.load(data_path)
 
     if "energy_list" not in d:
         print("Error: .npz does not contain EDC profile data.")
-        print("Export with --vg/--phig to include it:")
+        print("Export a selected Gamma EDC profile with:")
         print("  python scripts/export_edc_gamma_data.py --id <id> --vg <Vg> --phig <phiG>")
+        print("Or use the moire-band export, which includes the V_G = 21 meV profile:")
+        print("  python scripts/export_moire_bands.py")
         sys.exit(1)
 
     energy_list = d["energy_list"]
@@ -89,9 +82,31 @@ def main():
     )
     ax.legend(fontsize=9, loc="upper left")
 
-    fig.savefig(output_dir / f"edc_profile_4L_{run_id}.png", dpi=200, bbox_inches="tight")
+    out_fn = output_dir / f"edc_profile_4L_{run_id}.png"
+    fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved {output_dir / f'edc_profile_4L_{run_id}.png'}")
+    print(f"Saved {out_fn}")
+    return out_fn
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        print("Usage: python plot_edc_profile.py <data.npz> [--output-dir <dir>]")
+        sys.exit(1)
+
+    data_path = Path(args[0])
+    output_dir = None
+
+    i = 1
+    while i < len(args):
+        if args[i] == "--output-dir" and i + 1 < len(args):
+            output_dir = Path(args[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    plot_edc_profile(data_path, output_dir)
 
 
 if __name__ == "__main__":

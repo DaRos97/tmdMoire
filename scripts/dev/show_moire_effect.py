@@ -5,7 +5,7 @@ for three values of V_G (0, 12, 25 meV), overlays weight-proportional
 blue dots, and saves a 3-panel comparison figure.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/dev/show_moire_effect.py
 """
 import sys

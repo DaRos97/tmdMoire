@@ -9,7 +9,9 @@ Tight-binding model of WSe₂/WS₂ heterobilayer moiré superlattices. Three-st
 ## Environment
 
 ```bash
-source ../PyEnv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
 ## Quick Start

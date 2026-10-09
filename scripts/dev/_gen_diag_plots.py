@@ -1,7 +1,7 @@
 """Generate diag_* band-line plots for all existing diag.npz folders.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/dev/_gen_diag_plots.py
 """
 import sys

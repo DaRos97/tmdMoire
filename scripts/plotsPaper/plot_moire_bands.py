@@ -4,8 +4,10 @@ Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_moire_bands.py.
 
 Produces:
-  moire_bands_gamma.png  -- 1x2 panels (V_G = 0, 12 meV) with band lines
-                            and weight-proportional circles.
+  moire_bands_gamma.png  -- one panel per exported V_G, with band lines and
+                             weight-proportional circles.
+  edc_profile_4L_<run_id>.png -- companion Gamma EDC profile when present in
+                                 the input export.
 
 Usage:
     python plot_moire_bands.py <data.npz>
@@ -18,6 +20,11 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+if __package__:
+    from .plot_edc_profile import plot_edc_profile
+else:
+    from plot_edc_profile import plot_edc_profile
 
 
 def main():
@@ -40,14 +47,11 @@ def main():
     d = np.load(data_path, allow_pickle=True)
 
     k_vals = d["k_vals"]
-    Vg_labels = d["Vg_labels"]
-    evals_0 = d["evals_0"]
-    weights_0 = d["weights_0"]
-    evals_1 = d["evals_1"]
-    weights_1 = d["weights_1"]
-
-    all_evals = [evals_0, evals_1]
-    all_weights = [weights_0, weights_1]
+    vg_labels = d["Vg_labels"]
+    all_evals = [d[f"evals_{i}"] for i in range(len(vg_labels))]
+    all_weights = [d[f"weights_{i}"] for i in range(len(vg_labels))]
+    if not all_evals:
+        raise ValueError(f"No V_G band data found in {data_path}")
 
     k_range = float(d["k_range"])
     n_shells = int(d["n_shells"])
@@ -57,7 +61,7 @@ def main():
     w2p = float(d["interlayer_w2p"])
     w2d = float(d["interlayer_w2d"])
 
-    all_e = np.concatenate([evals_0.ravel(), evals_1.ravel()])
+    all_e = np.concatenate([evals.ravel() for evals in all_evals])
     e_min = np.nanmin(all_e)
     e_max = np.nanmax(all_e)
     pad = 0.1 * (e_max - e_min) if (e_max - e_min) > 0 else 0.1
@@ -66,9 +70,16 @@ def main():
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True, constrained_layout=True)
+    fig, axes = plt.subplots(
+        1,
+        len(all_evals),
+        figsize=(6.5 * len(all_evals), 7),
+        sharey=True,
+        constrained_layout=True,
+    )
+    axes = np.atleast_1d(axes)
 
-    for ax, evals, weights, label in zip(axes, all_evals, all_weights, Vg_labels):
+    for ax, evals, weights, label in zip(axes, all_evals, all_weights, vg_labels):
         for ib in range(evals.shape[1]):
             ax.plot(k_vals, evals[:, ib], color="lightgray", lw=0.5, alpha=0.5, zorder=1)
 
@@ -105,6 +116,9 @@ def main():
     fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out_fn}")
+
+    if "energy_list" in d.files:
+        plot_edc_profile(data_path, output_dir)
 
 
 if __name__ == "__main__":

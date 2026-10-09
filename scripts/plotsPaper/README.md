@@ -20,20 +20,22 @@ S3 experimental EDC positions: -0.69484, -0.77307, -1.35 eV.
 
 Filters applied: L1 < 26 meV, L2 < 10 meV, a2/a1 >= 0.
 
-## Exporting data (requires tmdmoire + PyEnv)
+## Exporting data (requires tmdmoire + `.venv`)
 
 The data `.npz` files in `data/` are produced by the `scripts/export_*.py` scripts. Each script now accepts `--sample`, `--w1p/--w1d/--w2p/--w2d`, `--phiG`, and `--Vg` CLI arguments. Defaults are the S11 values, so existing usage is unchanged.
 
 ```bash
 # ── In the repo root ──────────────────────────────────────────────────────────
 
-source ../PyEnv/bin/activate
+source .venv/bin/activate
 
 # Step 1: Export EDC Gamma data (reads Data/edc_gamma_{id}/combined.h5)
 python scripts/export_edc_gamma_data.py --id S3_2a --sample S3 --vg 0.0115 --phig 175
 
-# Step 2: Export moire bands
-python scripts/export_moire_bands.py --sample S3 --Vg 11.5 --w1p -1.2 --w1d 0.455 --phiG 175
+# Step 2: Export moire bands at V_G = 0, 10.5, and 21 meV, plus the 21 meV Gamma EDC
+#          (the EDC uses the same Gamma-only potential setup, V_K = 0)
+python scripts/export_moire_bands.py --sample S11 --Vg 10.5
+python scripts/export_moire_bands.py --sample S3 --Vg 10.5 --w1p -1.2 --w1d 0.455 --phiG 175
 
 # Step 3: Export EDC vs V_G
 python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
@@ -69,11 +71,13 @@ python plot_distance_heatmaps.py  data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg
 python plot_distance_w_heatmap.py data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg.npz
 python plot_edc_profile.py        data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg.npz
 
-# EDC vs V and moire bands
+# EDC vs V and moire bands (moire plot command also saves the 21 meV Gamma EDC profile)
 python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz       # S11
 python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20.npz    # S3
-python plot_moire_bands.py data/moire_bands_k301_n2_Vg0_10.5.npz       # S11
-python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_11.5.npz    # S3
+python plot_moire_bands.py data/moire_bands_S11_k301_n2_Vg0_10.5_21.npz  # S11: 0, 10.5, 21 meV
+python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_10.5_21.npz   # S3: 0, 10.5, 21 meV
+# Optional: replot the S11 EDC profile independently
+python plot_edc_profile.py data/moire_bands_S11_k301_n2_Vg0_10.5_21.npz
 
 # LDOS
 python plot_ldos.py data/ldos_S11_n2_k10_10.5meV_170deg.npz
@@ -148,6 +152,7 @@ python plot_edc_profile.py <data.npz> [--output-dir ./figures]
 ```
 
 EDC intensity curve + 4-Lorentzian total fit + experimental ARPES reference lines. Requires `.npz` with EDC profile data.
+The moire-band export includes a profile at V_G = 21 meV; `plot_moire_bands.py` saves this companion EDC figure automatically.
 
 ### EDC TVB-side band distance vs V_G
 
@@ -163,9 +168,11 @@ TVB-side band distance (meV) vs V_G (meV). Black markers + red dashed line at AR
 ```bash
 python plot_moire_bands.py <data.npz> [--output-dir ./figures]
 # -> figures/moire_bands_gamma.png
+# -> figures/edc_profile_4L_<run_id>.png when the data includes an EDC profile
 ```
 
-1x2 panels: TVB bands along k in [-0.4, 0.4] A^-1 for two V_G values. Thin gray lines + weight-proportional blue circles. Y-axis auto-scales from the data (works for both S11 and S3).
+Three panels: TVB bands along k in [-0.4, 0.4] A^-1 for V_G = 0, 10.5, and 21 meV. Thin gray lines + weight-proportional blue circles. Y-axis auto-scales from the data (works for both S11 and S3).
+When the input `.npz` includes the 21 meV profile, the same command also writes `edc_profile_4L_<run_id>.png`.
 
 ### LDOS in real space
 

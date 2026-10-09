@@ -5,7 +5,7 @@ mirrors it to produce K'->G->K and K->M->K' plots via reverse+attach,
 and generates ARPES-like intensity heatmaps with Gaussian/Lorentzian spreading.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/plot_moire_bands.py [--k-pts 300] [--n-shells 2] ...
 
 All parameters are loaded from Inputs/plot_bilayer/:

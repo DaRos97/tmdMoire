@@ -6,7 +6,7 @@ between the TVB main peak and the side-band peak as a function of V_G.
 A horizontal red line marks the experimental ARPES distance.
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/dev/show_EDC_vs_V.py
 """
 import sys

@@ -7,7 +7,7 @@ each real-space point to compute:
     LDOS(r, E) = (1/N_k) * Σ_{k,n} |ψ_{nk}(r)|² * η / [π ((E - E_{nk})² + η²)]
 
 Usage:
-    source ../PyEnv/bin/activate
+    source .venv/bin/activate
     python scripts/compute_ldos.py [--k-pts 12] [--r-pts 300] ...
 
 All monolayer and interlayer parameters are loaded from Inputs/plot_bilayer/.
