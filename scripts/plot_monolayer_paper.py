@@ -472,7 +472,7 @@ def main():
             img = ax_heat.pcolormesh(x_vals, y_vals, grid, shading="nearest",
                                      cmap="viridis_r")
             cb = fig.colorbar(img, ax=ax_heat, fraction=0.12, pad=0.04)
-            cb.set_label(r"$\chi^2$", fontsize=s_small)
+            cb.set_label(r"$\chi^2$ [eV$^2$]", fontsize=s_small)
             cb.ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
             cb.ax.ticklabel_format(style="sci", scilimits=(0, 0), axis="y")
             cb.ax.tick_params(labelsize=5)

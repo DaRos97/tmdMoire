@@ -104,7 +104,7 @@ def main():
         "text.latex.preamble": r"\usepackage{amsmath}",
     })
 
-    fig, axes = plt.subplots(2, 1, figsize=(3.4, 2.7), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(3.6, 2.7), sharex=True)
     fig.patch.set_facecolor("white")
 
     for col, (tmd, ax) in enumerate(zip(materials, axes.flat)):
@@ -157,6 +157,7 @@ def main():
                 param_bound[i] = Bs[gi]
 
         bar_w = 0.8
+        right_edge = npars - 1 + bar_w / 2
         for i in range(npars):
             val, ref = pars_plot[i], dft[i]
             ax.bar(i, val, width=bar_w, color=param_colors[i], alpha=0.80,
@@ -166,8 +167,11 @@ def main():
                     zorder=6, solid_capstyle="butt", linestyle="-")
             yo = val + (0.05 if val >= 0 else -0.05)
             va = "bottom" if val >= 0 else "top"
+            if col == 1 and i == 0:
+                yo = val * 0.6
+                va = "center"
             ax.text(i, yo, f"{val:.3f}", ha="center", va=va,
-                    fontsize=3, color="#333", rotation=90, zorder=7,
+                    fontsize=4, color="#333", rotation=90, zorder=7,
                     fontweight="bold")
 
             if param_bound[i] is not None:
@@ -176,18 +180,18 @@ def main():
                     ax.plot([i - 0.5, i + 0.5], [sign * b, sign * b],
                             color="#CC3311", lw=0.7, ls="--", zorder=5, alpha=0.8)
 
-        ax.set_xlim(-0.4, npars + 0.0)
+        ax.set_xlim(-0.4, right_edge)
         ax.set_xticks(range(0, npars, 2))
         if col == 0:
             ax.set_xticklabels([""] * (npars // 2))
             top_ax = ax.twiny()
-            top_ax.set_xlim(-0.4, npars + 0.0)
+            top_ax.set_xlim(-0.4, right_edge)
             top_ax.set_xticks(range(1, npars, 2))
             top_ax.set_xticklabels(
                 [TICK_LABELS[i] for i in range(1, npars, 2)],
-                rotation=45, ha="center", fontsize=3
+                rotation=30, ha="center", fontsize=4
             )
-            top_ax.tick_params(axis="x", which="both", length=2, pad=1)
+            top_ax.tick_params(axis="x", which="both", length=2, pad=0.2)
             for spine in top_ax.spines.values():
                 spine.set_visible(False)
             for lbl in top_ax.get_xticklabels():
@@ -195,29 +199,32 @@ def main():
         else:
             ax.set_xticklabels(
                 [TICK_LABELS[i] for i in range(0, npars, 2)],
-                rotation=45, ha="center", fontsize=3
+                rotation=30, ha="center", fontsize=4
             )
             for lbl in ax.get_xticklabels():
                 lbl.set_clip_on(False)
         ax.axhline(0, color="#555", lw=0.6, zorder=4)
         if col == 0:
             ax.spines["bottom"].set_visible(False)
-            ax.spines["right"].set_visible(False)
+            ax.spines["right"].set_visible(True)
+            ax.spines["right"].set_zorder(10)
             ax.spines["top"].set_visible(True)
             ax.spines["left"].set_visible(True)
             for spine in ax.spines.values():
                 spine.set_linewidth(0.5)
         else:
-            ax.spines[["top", "right"]].set_visible(False)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(True)
+            ax.spines["right"].set_zorder(10)
             for spine in ax.spines.values():
                 spine.set_linewidth(0.5)
         if col == 1:
-            ax.tick_params(bottom=True, direction="out", length=2, pad=1)
+            ax.tick_params(bottom=True, direction="out", length=2, pad=0.2)
         else:
             ax.tick_params(bottom=False, pad=1)
         ax.yaxis.set_minor_locator(ticker.MultipleLocator(1))
         ax.set_yticks([-6, -3, 0, 3, 6])
-        ax.tick_params(axis="y", labelsize=5, pad=1)
+        ax.tick_params(axis="y", labelsize=4, pad=1)
 
         # Group separators
         for gi, (start, end) in enumerate(GROUP_BOUNDS[:-1]):
@@ -240,7 +247,7 @@ def main():
         ax.set_ylabel("Value [eV]", fontsize=7, labelpad=1)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.90, bottom=0.08, right=0.99, left=0.11, hspace=0)
+    fig.subplots_adjust(top=0.90, bottom=0.08, right=0.97, left=0.11, hspace=0)
 
     pos1 = axes.flat[1].get_position()
     pos0 = axes.flat[0].get_position()

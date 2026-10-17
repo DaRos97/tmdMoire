@@ -243,7 +243,7 @@ def main():
     ax3.plot(vs, data["weight_ratio_cross"] * 100, color="gold", lw=1.5)
     ax3.plot(vs, data["analytic_ratio_cross"] * 100, color="darkgray", lw=0.5, ls="--",
              label=r"$V^2/(256W^2)$")
-    ax3.set_xlabel("V")
+    ax3.set_xlabel("V [eV]")
     ax3.tick_params(labelbottom=True)
     ax3.axhline(0.0, color="k", lw=0.5, ls=":", zorder=0)
     ax3.set_ylabel("$\\%$")

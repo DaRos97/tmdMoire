@@ -1,38 +1,32 @@
-"""Theta cartoon: how the twist angle reshapes the moire bands.
+"""Twist-angle dependence of moire geometry and parabolic bands.
 
-Same physics as 2D_cartoon.py (parabolic dispersion + nearest-neighbor
-moire coupling V*exp(i*phi)) but sweeps the twist angle to show how the
-mini-BZ size and the resulting band structure evolve with theta.
-
-Subplot (1) top-left: moire length L_M (left axis) and mini-BZ rotation
-eta (right axis) as a function of twist angle.
-Subplot (2) top-right: bands along K'->Gamma->K for theta = 0.5 deg
-at V=0 (red lines) and V=0.4 meV (blue circles sized by central-cell
-weight).
-Bottom row: reserved (empty).
-
-Total figure width matches 2D_cartoon.py (6.75 in).
+The top panel shows moire length and mini-BZ rotation versus twist angle,
+with a mini-BZ construction redrawn as a vector inset. The bottom panel
+compares parabolic bands with and without moire coupling.
 """
 import sys
 from pathlib import Path
 
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+from matplotlib.path import Path as MplPath
+from matplotlib.patches import ConnectionPatch, PathPatch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from tmdmoire.bilayer.geometry import MoireGeometry
+from tmdmoire.bilayer.geometry import MoireGeometry, MoireGeometryFixed
 from tmdmoire.constants import M_LIST
-from tmdmoire.utils.kpoints import R_z
 
 
 hbar_si = 1.054571817e-34
 m0 = 9.1093837e-31
-m = 3.5 * m0
+m = 1.19 * m0
 eV = 1.602176634e-19
 
 alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
+
+minibz_x_limits = (13.0, 78.0)
+minibz_y_limits = (46.0, 5.0)
 
 
 def build_hamiltonian(k_vec, geo, n_shells, V, phi):
@@ -67,13 +61,14 @@ def build_hamiltonian(k_vec, geo, n_shells, V, phi):
     return H
 
 
-def compute_bands(theta, n_shells, n_k, k_range_factor, V_off, V_on, phi):
-    geo = MoireGeometry(theta)
+def compute_bands(theta, n_shells, n_k, k_range_factor, V_off, V_on, phi,
+                  a_moire_override=None):
+    geo = MoireGeometryFixed(theta, a_moire_override=a_moire_override)
     G_M = geo.reciprocal_vectors()
     G1, G2 = G_M[1], G_M[2]
     K_mag = np.linalg.norm((G1 + G2) / 3)
 
-    n_cells = MoireGeometry.n_cells(n_shells)
+    n_cells = MoireGeometryFixed.n_cells(n_shells)
     k_vals = np.linspace(-k_range_factor * K_mag, k_range_factor * K_mag, n_k)
 
     evals_off = np.empty((n_k, n_cells))
@@ -99,7 +94,7 @@ def decorate_main_axis(ax):
                         r"$\Gamma$", r"$K$", r"$K'$", r"$\Gamma$"])
     ax.set_xlim(-3, 3)
     ax.set_yticks([])
-    ax.set_ylim(-30, 5)
+    ax.set_ylim(-50, 5)
 
 
 def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
@@ -121,7 +116,7 @@ def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
     decorate_main_axis(ax)
 
 
-def plot_geometry_vs_theta(ax, theta_max=5.0, n_pts=200):
+def plot_geometry_vs_theta(ax, theta_selected=0.8, theta_max=5.0, n_pts=200):
     """Plot moire length L_M (left axis) and mini-BZ rotation eta (right axis)
     as a function of twist angle theta.
     """
@@ -132,109 +127,136 @@ def plot_geometry_vs_theta(ax, theta_max=5.0, n_pts=200):
 
     color_L = "#0072B2"
     ax.plot(thetas, L_M, color=color_L, lw=1.5, label=r"$L_M$")
-    ax.set_xlabel(r"$\theta$ (deg)", labelpad=0)
+    ax.set_xlabel(r"$\theta$ [deg]", labelpad=0)
+    ax.xaxis.set_label_position("top")
+    ax.tick_params(axis="x", which="both", top=True, labeltop=True,
+                   bottom=False, labelbottom=False, pad=1)
     ax.set_ylabel(r"$a_M$ [$\mathrm{\AA}$]", color=color_L)
-    ax.tick_params(axis="y", labelcolor=color_L)
+    ax.spines["left"].set_color(color_L)
+    ax.tick_params(axis="y", left=True, right=False, colors=color_L)
 
     ax2 = ax.twinx()
     color_eta = "#E69F00"
     ax2.plot(thetas, np.degrees(eta), color=color_eta, lw=1.5, ls="--",
              label=r"$\eta$")
     ax2.set_ylabel(r"$\eta$ [deg]", color=color_eta)
-    ax2.tick_params(axis="y", labelcolor=color_eta)
-    ax2.axhline(0.0, color="gray", lw=0.5, ls=":")
+    ax2.spines["right"].set_color(color_eta)
+    ax2.spines["left"].set_visible(False)
+    tick_label_size = ax.xaxis.label.get_size() - 1
+    ax.tick_params(axis="both", labelsize=tick_label_size)
+    ax2.tick_params(axis="y", left=False, right=True, colors=color_eta,
+                    labelsize=tick_label_size)
+    ax2.tick_params(axis="x", which="both", top=False, labeltop=False,
+                    bottom=False, labelbottom=False)
 
-    ax.axvline(0.8, color="gray", lw=1.0, ls="--")
+    ax.axvline(theta_selected, color="gray", lw=1.0, ls="--")
     ax.set_xlim(0, theta_max)
+    ticks = ax.get_xticks()
+    ticks = ticks[(ticks >= 0) & (ticks <= theta_max)]
+    ticks = np.unique(np.append(ticks, theta_selected))
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"{tick:g}" for tick in ticks])
 
 
-def _draw_hexagon(ax, center, radius, color, alpha=1.0, zorder=1):
-    angles = np.linspace(0, 2 * np.pi, 7)
-    vertices = np.array([[center[0] + radius * np.cos(a),
-                          center[1] + radius * np.sin(a)] for a in angles])
-    ax.plot(vertices[:, 0], vertices[:, 1], color=color, linewidth=1.2,
-            alpha=alpha, zorder=zorder)
+def draw_minibz_diagram(ax, label_fontsize):
+    """Draw a vector mini-BZ/twist schematic based on figures/miniBZ.svg.
 
+    Coordinates follow the SVG's drawing coordinate system (y increases
+    downward), making the relative placement of its hexagon, labels, arrows,
+    reference lines, and angle arcs easy to retain.
+    """
+    color = "black"
+    line_width = 0.65
 
-def draw_hexagon_cartoon(ax, a_red=5.0):
-    """19-hexagon schematic of the moire supercell (from plot_stacking_moire.py),
-    rotated as a single rigid group by eta(theta=0.8)."""
-    cmap = plt.get_cmap("viridis")
-    ring_colors = [cmap(i) for i in [0, 0.5, 1.0]]
+    # Reference directions and the rotated mini-BZ hexagon.
+    ax.plot([18.5557, 68.19597], [38.49802, 38.49802],
+            color=color, lw=line_width, ls=(0, (2.4, 2.4)))
+    ax.plot([18.528534, 67.741878], [38.504802, 33.809279],
+            color=color, lw=line_width, ls=(0, (2.4, 2.4)))
 
-    r_red = a_red / np.sqrt(3)
-    r_draw = r_red * 0.95
+    center = np.array([58.132, 26.498])
+    radius = 12.06
+    angles = np.deg2rad(37.34 + np.arange(6) * 60.0)
+    vertices = center + radius * np.column_stack((np.cos(angles), np.sin(angles)))
+    vertices = np.vstack((vertices, vertices[0]))
+    ax.plot(vertices[:, 0], vertices[:, 1], color=color, lw=0.8)
 
-    centers_by_ring = {0: [(0, 0)], 1: [], 2: []}
-    g1 = np.array([a_red / 2 * np.sqrt(3), a_red / 2])
-    for i in range(6):
-        centers_by_ring[1].append(tuple(R_z(np.pi / 3 * i) @ g1))
-    g1 = np.array([r_red * 3, 0])
-    g2 = np.array([a_red * np.sqrt(3), a_red])
-    for i in range(6):
-        centers_by_ring[2].append(tuple(R_z(np.pi / 3 * i) @ g1))
-        centers_by_ring[2].append(tuple(R_z(np.pi / 3 * i) @ g2))
+    # Reciprocal-vector arrows from the mini-BZ center.
+    ax.annotate("", xy=(50.075, 7.196), xytext=center,
+                arrowprops=dict(arrowstyle="-|>", color=color, lw=0.75,
+                                mutation_scale=6, shrinkA=0, shrinkB=0))
+    ax.annotate("", xy=(70.807, 9.858), xytext=center,
+                arrowprops=dict(arrowstyle="-|>", color=color, lw=0.75,
+                                mutation_scale=6, shrinkA=0, shrinkB=0))
 
-    eta = MoireGeometry(0.8).mini_bz_rotation
-    rot = R_z(eta)
+    # Curved angle indicators, represented by the SVG's cubic Bezier arcs.
+    angle_arcs = [
+        [(47.833636, 35.689433), (48.644331, 36.450524),
+         (48.916950, 37.338347), (48.031110, 38.499020)],
+        [(66.537161, 34.176907), (67.707786, 35.449303),
+         (67.945351, 36.887891), (67.302773, 38.483247)],
+    ]
+    for points in angle_arcs:
+        patch = PathPatch(
+            MplPath(points, [MplPath.MOVETO, MplPath.CURVE4,
+                             MplPath.CURVE4, MplPath.CURVE4]),
+            fill=False, edgecolor=color, lw=0.65,
+        )
+        ax.add_patch(patch)
 
-    for ring in range(2):
-        color = ring_colors[ring]
-        for cx, cy in centers_by_ring[ring]:
-            angles = np.linspace(0, 2 * np.pi, 7)
-            vertices = np.array([[cx + r_draw * np.cos(a),
-                                 cy + r_draw * np.sin(a)] for a in angles])
-            rotated_v = (rot @ vertices.T).T
-            ax.plot(rotated_v[:, 0], rotated_v[:, 1], color=color,
-                    linewidth=1.2, alpha=1.0, zorder=1)
+    # Math-text labels mirror the SVG while keeping Greek glyphs in math mode.
+    labels = [
+        (18.15, 36.85, r"$\mathbf{\Gamma}$", "center"),
+        (67.13, 17.91, r"$\mathbf{G}_1$", "left"),
+        (53.41, 12.5, r"$\mathbf{G}_2$", "left"),
+        (68.66, 33.41, r"$\mathbf{K}_2$", "left"),
+        (55.33, 43.0, r"$\mathbf{K}_1$", "left"),
+        (44.0, 34.0, r"$\theta$", "left"),
+        (69.15, 37.20, r"$\eta$", "left"),
+    ]
+    for x, y, label, alignment in labels:
+        ax.text(x, y, label, ha=alignment, va="center", fontsize=label_fontsize,
+                color=color, clip_on=False)
 
-    geo = MoireGeometry(0.0)
-    G_M = geo.reciprocal_vectors()
-    G1, G2 = G_M[1], G_M[2]
-    G1 = G1 / np.linalg.norm(G1) * a_red
-    G2 = G2 / np.linalg.norm(G2) * a_red
-    G1 = rot @ G1
-    G2 = rot @ G2
-    ax.axhline(0, color="gray", lw=1.0, ls="--", zorder=2)
-    ax.arrow(0, 0, G1[0], G1[1],
-             head_width=0.12, head_length=0.1, fc="black", ec="black", lw=1.2, zorder=3)
-    ax.arrow(0, 0, G2[0], G2[1],
-             head_width=0.12, head_length=0.1, fc="black", ec="black", lw=1.2, zorder=3)
-
-    max_extent = a_red * 1.7
-    ax.set_xlim(-max_extent, max_extent)
-    ax.set_ylim(-max_extent, max_extent)
-    ax.set_aspect("equal")
-    ax.axis("off")
+    ax.set_xlim(*minibz_x_limits)
+    ax.set_ylim(*minibz_y_limits)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.set_facecolor("white")
+    ax.patch.set_edgecolor("none")
+    ax.patch.set_linewidth(0)
+    ax.patch.set_alpha(0.7)
+    ax.patch.set_visible(True)
 
 
 def main():
     n_shells = 1
     n_k = 800
     V_off = 0.0
-    V_on = 0.8
-    theta_band = 0.8
+    V_on = 2.0
+    theta_band = 0.4
+    a_moire = 76.0
 
-    panel_band = compute_bands(theta_band, n_shells, n_k, 3, V_off, V_on, 0.0)
+    panel_band = compute_bands(theta_band, n_shells, n_k, 3, V_off, V_on, 0.0,
+                               a_moire_override=a_moire)
 
     plt.rcParams.update({
         "font.family": "serif",
         "mathtext.fontset": "cm",
         "font.size": 9,
+        "text.usetex": False,
     })
 
     fig = plt.figure(figsize=(3.4, 3.5))
-    gs_outer = fig.add_gridspec(2, 1, hspace=0.35, height_ratios=[1, 1])
+    gs_outer = fig.add_gridspec(2, 1, hspace=0.40, height_ratios=[1, 1])
 
     ax_geom = fig.add_subplot(gs_outer[0])
     ax_bands = fig.add_subplot(gs_outer[1])
 
-    plot_geometry_vs_theta(ax_geom)
-    ax_geom.text(0.20, 0.15, r"$\theta = 0.8^\circ$", transform=ax_geom.transAxes,
-                 ha="left", va="center", color="black",
-                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                           edgecolor="black", lw=0.8))
-    img = None
+    plot_geometry_vs_theta(ax_geom, theta_selected=theta_band)
     plot_main_panel(ax_bands, *panel_band, max_size=30.0)
     ax_bands.set_ylabel("Energy")
 
@@ -243,7 +265,41 @@ def main():
     ax_bands.text(-0.18, 1.05, "b.", transform=ax_bands.transAxes,
                   fontsize=9, fontweight="bold", va="top", ha="left")
 
-    fig.subplots_adjust(left=0.18, right=0.82, top=0.96, bottom=0.09)
+    fig.subplots_adjust(left=0.15, right=0.87, top=0.91, bottom=0.06)
+
+    inset_x, inset_y, inset_width = 0.2, -0.395, 0.62
+    parent_pos = ax_geom.get_position()
+    parent_aspect = (parent_pos.width * fig.get_figwidth()) / (
+        parent_pos.height * fig.get_figheight()
+    )
+    diagram_aspect = abs(
+        (minibz_x_limits[1] - minibz_x_limits[0]) /
+        (minibz_y_limits[1] - minibz_y_limits[0])
+    )
+    inset_height = inset_width * parent_aspect / diagram_aspect
+    inset_bounds = [
+        parent_pos.x0 + inset_x * parent_pos.width,
+        parent_pos.y0 + inset_y * parent_pos.height,
+        inset_width * parent_pos.width,
+        inset_height * parent_pos.height,
+    ]
+    minibz_ax = fig.add_axes(inset_bounds, zorder=20)
+    draw_minibz_diagram(minibz_ax, label_fontsize=ax_geom.yaxis.label.get_size())
+
+    for corner_x in (0.0, 1.0):
+        connector = ConnectionPatch(
+            xyA=(theta_band, 0.0),
+            coordsA=ax_geom.get_xaxis_transform(),
+            xyB=(corner_x, 1.0),
+            coordsB=ax_bands.transAxes,
+            axesA=ax_geom,
+            axesB=ax_bands,
+            color="gray",
+            linewidth=0.5,
+            clip_on=False,
+            zorder=15,
+        )
+        fig.add_artist(connector)
 
     out = Path(__file__).with_name("figures") / "fig_2D_theta.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)

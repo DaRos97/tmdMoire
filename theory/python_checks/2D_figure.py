@@ -26,7 +26,8 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
+from matplotlib.patches import ConnectionPatch, Rectangle
+from matplotlib.path import Path as MarkerPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -43,6 +44,7 @@ m = 1.19 * m0
 eV = 1.602176634e-19
 
 alpha = (hbar_si ** 2 / (2.0 * m)) / (eV * 1e-3) * 1e20
+CHI_ARROW_COLOR = "limegreen"
 
 
 def build_hamiltonian(k_vec, geo, n_shells, V, phi):
@@ -130,9 +132,10 @@ def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
         Line2D([0], [0], marker="o", color="w", markerfacecolor="C0",
                markersize=5, label=r"$V = 2$ meV"),
     ]
-    ax.legend(handles=legend_elements, loc="lower center", frameon=True,
-              fontsize=9, fancybox=True, shadow=False, edgecolor="black",
-              facecolor="white", framealpha=1.0)
+    legend = ax.legend(handles=legend_elements, loc="lower center", frameon=True,
+                       fontsize=9, fancybox=True, shadow=False,
+                       edgecolor="black", facecolor="white", framealpha=1.0)
+    legend.set_zorder(1000)
 
     zoom_box = Rectangle((-0.3, -75), 0.6, 15, fill=False,
                          edgecolor="black", linewidth=1.2, zorder=10)
@@ -142,7 +145,8 @@ def plot_main_panel(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
 
 
 def plot_inset(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
-               max_size=60.0, marker_boost=5.0):
+               max_size=60.0, marker_boost=5.0, show_y_ticks=False,
+               show_gamma_arrow=False, gamma_label_x=0.035):
     for band in range(n_cells):
         ax.plot(k_vals / K_mag, evals_off[:, band], color="red", lw=0.1, zorder=5)
 
@@ -160,12 +164,34 @@ def plot_inset(ax, k_vals, K_mag, n_cells, evals_off, evals_on, evecs_on,
     ax.set_xlim(-0.3, 0.3)
     ax.set_ylim(-75, -60)
     ax.axvline(0.0, color="gray", lw=0.5, ls="--", zorder=5)
+    if show_gamma_arrow:
+        i_gamma = int(np.argmin(np.abs(k_vals)))
+        gamma_weights = np.abs(evecs_on[i_gamma, 0, :]) ** 2
+        visible_bands = (evals_on[i_gamma] >= -75) & (evals_on[i_gamma] <= -60)
+        visible_weights = np.where(visible_bands, gamma_weights, -1.0)
+        band_idx = int(np.argmax(visible_weights))
+        e_weighted = float(evals_on[i_gamma, band_idx])
+        ax.annotate(
+            "",
+            xy=(0.0, e_weighted),
+            xytext=(0.0, -60.0),
+            arrowprops=dict(arrowstyle="->", color=CHI_ARROW_COLOR, lw=1.2,
+                            mutation_scale=12, shrinkA=0, shrinkB=0),
+            zorder=8,
+        )
+        ax.text(gamma_label_x, 0.5 * (-60.0 + e_weighted), r"$\chi$",
+                ha="left", va="center", fontsize=10, color="black")
     ax.tick_params(axis="x", which="both", direction="out", length=3,
                    bottom=True, top=False, labelbottom=False)
     ax.set_xticks([0])
     ax.text(0.0, -0.05, r"$\Gamma$", transform=ax.get_xaxis_transform(),
             ha="center", va="top", fontsize=9)
-    ax.set_yticks([])
+    if show_y_ticks:
+        ax.set_yticks([-75, -70, -65, -60])
+        ax.tick_params(axis="y", which="both", direction="out", length=3,
+                       labelsize=7, left=True, right=False, labelleft=True)
+    else:
+        ax.set_yticks([])
 
 
 def annotate_main_panel(ax, k_vals, K_mag, n_cells, evals, evecs):
@@ -188,7 +214,7 @@ def annotate_main_panel(ax, k_vals, K_mag, n_cells, evals, evecs):
         "",
         xy=(k_star / K_mag, e_hi),
         xytext=(k_star / K_mag, e_lo),
-        arrowprops=dict(arrowstyle="<->", color="black", lw=0.5,
+        arrowprops=dict(arrowstyle="<->", color="c", lw=0.5,
                         mutation_scale=5, shrinkA=0, shrinkB=0),
         zorder=7,
     )
@@ -203,7 +229,7 @@ def annotate_main_panel(ax, k_vals, K_mag, n_cells, evals, evecs):
         "",
         xy=(0.0, e_top_0),
         xytext=(0.0, e_2nd_w),
-        arrowprops=dict(arrowstyle="<->", color="black", lw=0.7,
+        arrowprops=dict(arrowstyle="<->", color=CHI_ARROW_COLOR, lw=0.7,
                         mutation_scale=12, shrinkA=0, shrinkB=0),
         zorder=7,
     )
@@ -215,12 +241,28 @@ def annotate_main_panel(ax, k_vals, K_mag, n_cells, evals, evecs):
     lam, main_band_idx, side_band_idx, e_main, e_side, _ = \
         compute_lambda(evals, evecs, i_lambda)
     k_mark = k_vals[i_lambda] / K_mag
-    ax.scatter([k_mark], [e_main], s=40, c="black", edgecolors="black",
-               linewidths=0.5, zorder=6)
+
+    def half_circle_marker(start_deg, end_deg):
+        angles = np.deg2rad(np.linspace(start_deg, end_deg, 61))
+        arc = np.column_stack([np.cos(angles), np.sin(angles)])
+        vertices = np.vstack([[0.0, 0.0], arc, [0.0, 0.0]])
+        codes = ([MarkerPath.MOVETO]
+                 + [MarkerPath.LINETO] * len(arc)
+                 + [MarkerPath.CLOSEPOLY])
+        return MarkerPath(vertices, codes)
+
+    ax.scatter([k_mark], [e_main], s=40,
+               marker=half_circle_marker(-45.0, 135.0),
+               facecolor="orange", edgecolors="black", linewidths=0.5,
+               zorder=6)
+    ax.scatter([k_mark], [e_main], s=40,
+               marker=half_circle_marker(135.0, 315.0),
+               facecolor="gold", edgecolors="black", linewidths=0.5,
+               zorder=6)
     if side_band_idx >= 0 and not np.isnan(e_side):
-        ax.scatter([k_mark], [e_side], s=40, c="black", edgecolors="black",
+        ax.scatter([k_mark], [e_side], s=40, c="orange", edgecolors="black",
                    linewidths=0.5, zorder=6)
-        ax.plot([k_mark, k_mark], [e_main, e_side], color="black",
+        ax.plot([k_mark, k_mark], [e_main, e_side], color="orange",
                 lw=0.8, ls="--", zorder=5)
         ax.text(k_mark - 0.08, 0.5 * (e_main + e_side), r"$\lambda$",
                 color="black", fontsize=10, va="center", ha="right")
@@ -232,9 +274,9 @@ def annotate_main_panel(ax, k_vals, K_mag, n_cells, evals, evecs):
         compute_rho(evals, evecs, k_vals, i_lambda, main_band_idx)
     if side_k_idx >= 0 and not np.isnan(e_side_rho):
         k_rho = k_vals[side_k_idx] / K_mag
-        ax.scatter([k_rho], [e_side_rho], s=40, c="black",
+        ax.scatter([k_rho], [e_side_rho], s=40, c="gold",
                    edgecolors="black", linewidths=0.5, zorder=6)
-        ax.plot([k_mark, k_rho], [e_main, e_main], color="black",
+        ax.plot([k_mark, k_rho], [e_main, e_main], color="gold",
                 lw=0.8, ls="--", zorder=5)
         k_mid = 0.5 * (k_mark + k_rho)
         ax.text(k_mid, e_main + 3, r"$\rho$",
@@ -304,7 +346,7 @@ def main():
     })
 
     fig = plt.figure(figsize=(6.75, 4.5))
-    gs_outer = fig.add_gridspec(2, 2, width_ratios=[0.7, 1.3], wspace=0.05,
+    gs_outer = fig.add_gridspec(2, 2, width_ratios=[0.7, 1.3], wspace=0.12,
                                 hspace=0.45, height_ratios=[2.0, 1.0])
 
     ax_left_top = fig.add_subplot(gs_outer[0, 0])
@@ -321,11 +363,21 @@ def main():
                      transform=ax_left_top.transAxes,
                      fontsize=9, fontweight="bold", va="bottom", ha="left")
 
-    gs_right_top = gs_outer[0, 1].subgridspec(1, 4, wspace=0.20)
+    gs_right_top = gs_outer[0, 1].subgridspec(1, 4, wspace=0.0)
     ax_right_top = [fig.add_subplot(gs_right_top[0, i]) for i in range(4)]
-    for ax, panel, phase_deg in zip(ax_right_top, phase_panels, phase_degs):
-        plot_inset(ax, *panel, marker_boost=20.0)
+    for i, (ax, panel, phase_deg) in enumerate(
+            zip(ax_right_top, phase_panels, phase_degs)):
+        plot_inset(ax, *panel, marker_boost=20.0, show_y_ticks=(i == 0),
+                   show_gamma_arrow=(i == 0 or i == 3),
+                   gamma_label_x=(0.06 if i == 0 else 0.035))
         ax.set_title(rf"$\phi = {phase_deg}^\circ$", fontsize=9)
+    for source_y, target_y in [(-60.0, 1.0), (-75.0, 0.0)]:
+        connector = ConnectionPatch(
+            xyA=(-0.3, source_y), coordsA="data", axesA=ax_left_top,
+            xyB=(0.0, target_y), coordsB="axes fraction", axesB=ax_right_top[0],
+            color="black", linewidth=0.7, clip_on=False, zorder=1,
+        )
+        ax_left_top.add_artist(connector)
     ax_right_top[0].text(-0.15, 1.05, r"$\mathbf{b.}$",
                           transform=ax_right_top[0].transAxes,
                           fontsize=9, fontweight="bold", va="bottom", ha="left")
@@ -333,17 +385,6 @@ def main():
     gs_bottom = gs_outer[1, :].subgridspec(1, 4, wspace=0.40)
     ax_right_bot = [fig.add_subplot(gs_bottom[0, i]) for i in range(4)]
     ax_Delta, ax_chi, ax_lam, ax_rho = ax_right_bot
-
-    label_box = dict(boxstyle="round,pad=0.3", facecolor="lightyellow",
-                     edgecolor="black", linewidth=0.8)
-    ax_Delta.text(0.85, 0.45, r"$\Delta$", transform=ax_Delta.transAxes,
-                  ha="center", va="bottom", fontsize=12, bbox=label_box)
-    ax_chi.text(0.5, 0.90, r"$\chi$", transform=ax_chi.transAxes,
-                ha="center", va="top", fontsize=12, bbox=label_box)
-    ax_lam.text(0.5, 0.90, r"$\lambda$", transform=ax_lam.transAxes,
-                ha="center", va="top", fontsize=12, bbox=label_box)
-    ax_rho.text(0.5, 0.90, r"$\rho$", transform=ax_rho.transAxes,
-                ha="center", va="top", fontsize=12, bbox=label_box)
 
     ax_Delta.set_ylabel("[meV]", fontsize=9, labelpad=2)
     ax_chi.set_ylabel("[meV]", fontsize=9, labelpad=2)
@@ -364,17 +405,19 @@ def main():
     lambda_p_s = lambda_p * 100.0
 
     quantities = [
-        (ax_Delta, Delta_v, Delta_p, "linear", True),
-        (ax_chi, chi_v, chi_p, "linear", True),
-        (ax_lam, lambda_v_s, lambda_p_s, "linear", True),
-        (ax_rho, rho_v, rho_p, "linear", True),
+        (ax_Delta, Delta_v, Delta_p, "linear", True, r"$\Delta$"),
+        (ax_chi, chi_v, chi_p, "linear", True, r"$\chi$"),
+        (ax_lam, lambda_v_s, lambda_p_s, "linear", True, r"$\lambda$"),
+        (ax_rho, rho_v, rho_p, "linear", True, r"$\rho$"),
     ]
 
-    for ax, y_v, y_p, yscale, show_yticks in quantities:
+    for ax, y_v, y_p, yscale, show_yticks, quantity_label in quantities:
         ax.plot(Vs, y_v, color=color_v, lw=1.5)
         ax.set_xlim(Vs[0], Vs[-1])
-        ax.set_xlabel("V [meV]", fontsize=9)
+        ax.set_xlabel("V [meV]", fontsize=9, color="black")
         ax.tick_params(axis="both", labelsize=7)
+        ax.spines["bottom"].set_color(color_v)
+        ax.tick_params(axis="x", color=color_v, labelcolor=color_v)
         if not show_yticks:
             ax.set_yticks([])
         if ax is ax_lam or ax is ax_rho:
@@ -386,8 +429,11 @@ def main():
         ax2.plot(phi_degs, y_p, color=color_p, lw=1.5)
         ax2.set_xlim(phi_degs[0], phi_degs[-1])
         ax2.set_xticks([0, 30, 60, 90, 120])
-        ax2.set_xlabel(r"$\phi$ [deg]", fontsize=9)
+        ax2.set_xlabel(r"$\phi$ [deg]", fontsize=9, color="black")
         ax2.tick_params(axis="both", labelsize=7)
+        ax2.spines["top"].set_color(color_p)
+        ax2.spines["bottom"].set_visible(False)
+        ax2.tick_params(axis="x", color=color_p, labelcolor=color_p)
         if not show_yticks:
             ax2.set_yticks([])
 
@@ -417,6 +463,34 @@ def main():
 
         if ax is ax_rho:
             ax.set_yticks([0, 0.005, 0.01])
+
+        v_label_idx = int(0.68 * (len(Vs) - 1))
+        phi_label_idx = int(0.68 * (len(phi_degs) - 1))
+        ax.annotate(
+            rf"{quantity_label} (V)",
+            xy=(Vs[v_label_idx], y_v[v_label_idx]),
+            xytext=((-4, 4) if ax is not ax_Delta else (-2, -5)),
+            textcoords="offset points",
+            color=color_v, fontsize=10,
+            ha=("right" if ax is not ax_Delta else "left"),
+            va=("bottom" if ax is not ax_Delta else "top"), zorder=7,
+        )
+        if ax is ax_Delta:
+            phi_mid = 0.5 * (phi_degs[0] + phi_degs[-1])
+            y_phi_mid = float(np.interp(phi_mid, phi_degs, y_p))
+            ax2.annotate(
+                rf"{quantity_label} ($\phi$)",
+                xy=(phi_mid, y_phi_mid),
+                xytext=(0, -4), textcoords="offset points",
+                color=color_p, fontsize=10, ha="center", va="top", zorder=7,
+            )
+        else:
+            ax2.annotate(
+                rf"{quantity_label} ($\phi$)",
+                xy=(phi_degs[phi_label_idx], y_p[phi_label_idx]),
+                xytext=(4, 4), textcoords="offset points",
+                color=color_p, fontsize=10, ha="left", va="bottom", zorder=7,
+            )
 
         if ax is ax_Delta:
             coeffs = np.polyfit(Vs, y_v, 1)
