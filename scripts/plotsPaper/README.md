@@ -32,14 +32,46 @@ source .venv/bin/activate
 # Step 1: Export EDC Gamma data (reads Data/edc_gamma_{id}/combined.h5)
 python scripts/export_edc_gamma_data.py --id S3_2a --sample S3 --vg 0.0115 --phig 175
 
-# Step 2: Export moire bands at V_G = 0, 10.5, and 21 meV, plus the 21 meV Gamma EDC
-#          (the EDC uses the same Gamma-only potential setup, V_K = 0)
+# Step 2: Export bands and Gamma EDC profiles at V_G = 0, 10.5, and 21 meV
 python scripts/export_moire_bands.py --sample S11 --Vg 10.5
 python scripts/export_moire_bands.py --sample S3 --Vg 10.5 --w1p -1.2 --w1d 0.455 --phiG 175
 
+# Same S11 interlayer couplings, recalculated at phiG = 180 degrees
+python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180 \
+    --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+```
+
+Each `export_moire_bands.py` run saves **three matched band datasets and three
+Gamma-point EDC intensity profiles** in one `.npz`: at V_G = 0, 10.5 (the
+`--Vg` value), and 21 meV. For each potential, the band eigenvalues/weights
+and EDC profile come from the same Hamiltonian parameters and phase; the EDC
+uses the Gamma-only setup (V_K = 0). The EDC data includes the broadened
+intensity, four-Lorentzian fit, and fitted peak centers. The plot command
+produces three band panels and three matching EDC panels. Phase-specific
+filenames keep results for different phi_G values separate.
+
+The three potential-indexed sets are stored as:
+
+| V_G | Band data | EDC profile and fit |
+|---:|---|---|
+| 0 meV | `evals_0`, `weights_0` | `energy_list_0`, `weight_list_0`, `fit_4L_curve_0`, `fit_4L_centers_0` |
+| 10.5 meV | `evals_1`, `weights_1` | `energy_list_1`, `weight_list_1`, `fit_4L_curve_1`, `fit_4L_centers_1` |
+| 21 meV | `evals_2`, `weights_2` | `energy_list_2`, `weight_list_2`, `fit_4L_curve_2`, `fit_4L_centers_2` |
+
+```bash
 # Step 3: Export EDC vs V_G
 python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
 
+# S11 EDC-vs-V_G at phiG = 180 degrees, using the same couplings as above
+python scripts/export_edc_vs_V.py --sample S11 --phiG 180 \
+    --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+```
+
+This is a separate observable: `export_edc_vs_V.py` sweeps V_G from 1 to 20 meV
+and exports one TVB-to-side-band distance per V_G, rather than the three full
+EDC intensity profiles saved by `export_moire_bands.py`.
+
+```bash
 # Step 4: Export LDOS
 python scripts/export_ldos.py --sample S3 --Vg 0.0115 --phiG 175 --w1p -1.2 --w1d 0.455 \
     --e-min -0.85 --e-max -0.55
@@ -71,13 +103,13 @@ python plot_distance_heatmaps.py  data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg
 python plot_distance_w_heatmap.py data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg.npz
 python plot_edc_profile.py        data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg.npz
 
-# EDC vs V and moire bands (moire plot command also saves the 21 meV Gamma EDC profile)
+# EDC vs V and moire bands (moire plot command also saves all exported Gamma EDC profiles)
 python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz       # S11
 python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20.npz    # S3
-python plot_moire_bands.py data/moire_bands_S11_k301_n2_Vg0_10.5_21.npz  # S11: 0, 10.5, 21 meV
-python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_10.5_21.npz   # S3: 0, 10.5, 21 meV
-# Optional: replot the S11 EDC profile independently
-python plot_edc_profile.py data/moire_bands_S11_k301_n2_Vg0_10.5_21.npz
+python plot_edc_vs_V.py data/edc_vs_V_S11_n20_Vg1-20_phiG180.npz # S11: phiG=180
+# Outputs edc_vs_V_S11_phiG180.png
+python plot_moire_bands.py data/moire_bands_S11_k301_n2_Vg0_10.5_21_phiG180.npz # S11: phiG=180
+# Outputs moire_bands_S11_gamma_phiG180.png and edc_profiles_S11_gamma_phiG180.png
 
 # LDOS
 python plot_ldos.py data/ldos_S11_n2_k10_10.5meV_170deg.npz

@@ -4,10 +4,10 @@ Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_moire_bands.py.
 
 Produces:
-  moire_bands_gamma.png  -- one panel per exported V_G, with band lines and
-                             weight-proportional circles.
-  edc_profile_4L_<run_id>.png -- companion Gamma EDC profile when present in
-                                 the input export.
+  moire_bands_<sample>_gamma_phiG<phase>.png -- one panel per exported V_G,
+                                                with bands and orbital weights.
+  edc_profiles_<sample>_gamma_phiG<phase>.png -- companion EDC panels when
+                                                 present in the input export.
 
 Usage:
     python plot_moire_bands.py <data.npz>
@@ -55,6 +55,7 @@ def main():
 
     k_range = float(d["k_range"])
     n_shells = int(d["n_shells"])
+    sample = str(d["sample"]) if "sample" in d.files else "sample"
     phiG_deg = float(d["phiG_deg"])
     w1p = float(d["interlayer_w1p"])
     w1d = float(d["interlayer_w1d"])
@@ -112,12 +113,13 @@ def main():
         fontsize=14, fontweight="bold", y=1.08,
     )
 
-    out_fn = output_dir / "moire_bands_gamma.png"
+    phase_str = f"{phiG_deg:g}".replace(".", "p")
+    out_fn = output_dir / f"moire_bands_{sample}_gamma_phiG{phase_str}.png"
     fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out_fn}")
 
-    if "energy_list" in d.files:
+    if "energy_list_0" in d.files or "energy_list" in d.files:
         plot_edc_profile(data_path, output_dir)
 
 

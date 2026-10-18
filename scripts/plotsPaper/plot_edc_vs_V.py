@@ -4,8 +4,8 @@ Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_edc_vs_V.py.
 
 Produces:
-  edc_vs_V.png  -- distance between TVB main and side-band peaks (meV)
-                   vs V_G (meV), with ARPES reference line.
+  edc_vs_V_<sample>_phiG<phase>.png -- TVB-to-side-band peak distance (meV)
+                                      vs V_G (meV), with ARPES reference line.
 
 Usage:
     python plot_edc_vs_V.py <data.npz>
@@ -47,6 +47,9 @@ def main():
     w2p = float(d["interlayer_w2p"])
     w2d = float(d["interlayer_w2d"])
     phiG_deg = float(d["phiG_deg"])
+    sample = str(d["sample"]) if "sample" in d.files else (
+        "S3" if "S3" in data_path.name else "S11"
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -66,7 +69,8 @@ def main():
     )
     ax.legend(fontsize=10)
 
-    out_fn = output_dir / "edc_vs_V.png"
+    phase_str = f"{phiG_deg:g}".replace(".", "p")
+    out_fn = output_dir / f"edc_vs_V_{sample}_phiG{phase_str}.png"
     fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out_fn}")

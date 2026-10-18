@@ -7,7 +7,7 @@ all metadata. Output goes to scripts/plotsPaper/data/.
 Usage:
     source .venv/bin/activate
     python scripts/export_edc_vs_V.py
-    python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
+    python scripts/export_edc_vs_V.py --sample S11 --phiG 180
 """
 import sys
 from pathlib import Path
@@ -204,9 +204,14 @@ def main():
     print(f"\nARPES TVB–side band distance: {arpes_distance:.2f} meV")
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_fn = OUTPUT_DIR / f"edc_vs_V_{sample}_n{n_vg}_Vg{vg_min_meV:.0f}-{vg_max_meV:.0f}.npz"
+    phase_str = f"{phiG_deg:g}".replace(".", "p")
+    out_fn = OUTPUT_DIR / (
+        f"edc_vs_V_{sample}_n{n_vg}_Vg{vg_min_meV:.0f}-{vg_max_meV:.0f}_"
+        f"phiG{phase_str}.npz"
+    )
     np.savez(
         out_fn,
+        sample=sample,
         Vg_vals_meV=vg_vals_meV,
         distances_meV=distances,
         arpes_distance_meV=arpes_distance,

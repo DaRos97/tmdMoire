@@ -1,13 +1,17 @@
 """EDC intensity grid sweep at Gamma for HPC.
 
-Loads grid parameters from Inputs/bilayer_fitting/grid_config.json,
-sweeps 4D parameter space (Vg, phiG, w1p, w1d) with w2p/w2d fixed,
-fits 3 Lorentzians to each EDC, and saves results.
+Loads grid parameters from Inputs/bilayer_fitting/grid_config_gamma.json by
+default (or an alternate file passed with --config), sweeps the 4D parameter
+space (Vg, phiG, w1p, w1d) with w2p/w2d fixed, and saves results. It fits
+four Lorentzians and stores the three centers used by the distance analysis.
 
 Usage:
     python scripts/edc_grid_gamma.py --chunk <id>/<total>
     python scripts/edc_grid_gamma.py --chunk 0/128 --id 001
     python scripts/edc_grid_gamma.py --chunk 0/128 --id test
+    python scripts/edc_grid_gamma.py --prepare --chunk 0/150 --id extension \
+        --config Inputs/bilayer_fitting/grid_config_gamma_extension.json \
+        --interlayer-params Data/edc_gamma_4Dsm8a/interlayer_params.npy
 """
 import sys
 import os
@@ -15,6 +19,7 @@ import json
 import time
 import shutil
 import datetime
+import tempfile
 from pathlib import Path
 from itertools import product, islice
 
@@ -31,12 +36,87 @@ from tmdmoire.utils.paths import get_repo_root
 
 master_folder = get_repo_root()
 
+
+def _resolve_input_path(path_arg, default_path):
+    path = Path(path_arg) if path_arg else Path(default_path)
+    if not path.is_absolute():
+        path = Path(master_folder) / path
+    return path.resolve()
+
+
+def _metadata_matches(existing, requested):
+    """Check that all chunks for one run use the same grid and fixed inputs."""
+    keys = (
+        "run_id",
+        "sample",
+        "n_chunks",
+        "grid_sizes",
+        "fixed_params",
+        "fitted_interlayer",
+        "total_points",
+        "grid_config",
+    )
+    return all(existing.get(key) == requested.get(key) for key in keys)
+
+
+def _write_json_if_missing(path, payload):
+    """Atomically create run metadata; tolerate identical concurrent writers."""
+    if not path.exists():
+        fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(payload, f, indent=2)
+            try:
+                os.link(temp_name, path)
+            except FileExistsError:
+                pass
+        finally:
+            if os.path.exists(temp_name):
+                os.unlink(temp_name)
+
+    with open(path) as f:
+        existing = json.load(f)
+    if not _metadata_matches(existing, payload):
+        raise ValueError(
+            f"Run metadata in {path} does not match this grid/configuration. "
+            "Use a new --id for a different sweep."
+        )
+
+
+def _snapshot_interlayer_params(source_path, destination_path, expected_params):
+    """Save a run-local parameter snapshot without racing concurrent chunks."""
+    if not destination_path.exists():
+        fd, temp_name = tempfile.mkstemp(
+            prefix=f".{destination_path.name}.", dir=destination_path.parent
+        )
+        os.close(fd)
+        try:
+            shutil.copy2(source_path, temp_name)
+            try:
+                os.link(temp_name, destination_path)
+            except FileExistsError:
+                pass
+        finally:
+            if os.path.exists(temp_name):
+                os.unlink(temp_name)
+
+    saved_params = np.load(destination_path)
+    if not np.array_equal(saved_params, expected_params):
+        raise ValueError(
+            f"Interlayer parameter snapshot {destination_path} differs from "
+            f"the requested input {source_path}. Use a new --id."
+        )
+
+
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
 run_id = "default"
 sample = "S11"
 chunk_id = 0
 n_chunks = 1
+config_arg = None
+interlayer_params_arg = None
+prepare_only = False
 args = sys.argv[1:]
 i = 0
 while i < len(args):
@@ -53,12 +133,23 @@ while i < len(args):
     elif args[i] == "--sample" and i + 1 < len(args):
         sample = args[i + 1]
         i += 2
+    elif args[i] == "--config" and i + 1 < len(args):
+        config_arg = args[i + 1]
+        i += 2
+    elif args[i] == "--interlayer-params" and i + 1 < len(args):
+        interlayer_params_arg = args[i + 1]
+        i += 2
+    elif args[i] == "--prepare":
+        prepare_only = True
+        i += 1
     else:
         i += 1
 
 # ─── Load grid config ────────────────────────────────────────────────────────
 
-config_path = master_folder + "/Inputs/bilayer_fitting/grid_config_gamma.json"
+config_path = _resolve_input_path(
+    config_arg, "Inputs/bilayer_fitting/grid_config_gamma.json"
+)
 with open(config_path) as f:
     grid_cfg = json.load(f)
 
@@ -81,7 +172,12 @@ ws2.load_fitted(monolayer_fns["WS2"])
 
 # ─── Load fitted interlayer params ──────────────────────────────────────────
 
-fitted_interlayer = np.load(master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy")
+interlayer_params_path = _resolve_input_path(
+    interlayer_params_arg, "Inputs/bilayer_fitting/interlayer_params.npy"
+)
+fitted_interlayer = np.load(interlayer_params_path)
+if fitted_interlayer.shape != (4,) or not np.all(np.isfinite(fitted_interlayer)):
+    raise ValueError(f"Expected four finite interlayer params in {interlayer_params_path}")
 w1p_fit, w1d_fit, w2p_fit, w2d_fit = fitted_interlayer
 
 # ─── Build grid ──────────────────────────────────────────────────────────────
@@ -212,38 +308,41 @@ out_dir = Path("Data") / f"edc_gamma_{run_id}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # Save combined metadata
-grid_config_src = master_folder + "/Inputs/bilayer_fitting/grid_config_gamma.json"
 meta_fn = out_dir / "metadata.json"
-if not meta_fn.exists():
-    with open(grid_config_src) as f:
-        grid_cfg_src = json.load(f)
-    meta = {
-        "run_id": run_id,
-        "timestamp_start": datetime.datetime.now().isoformat(),
-        "n_chunks": n_chunks,
-        "grid_sizes": {
-            "Vg": len(list_Vg), "phiG": len(list_phiG),
-            "w1p": len(list_w1p), "w1d": len(list_w1d),
-        },
-        "fixed_params": {
-            "Vk_ev": Vk,
-            "phiK_deg": phiK_deg,
-            "w2p_ev": float(w2p),
-            "w2d_ev": float(w2d),
-        },
-        "total_points": total_jobs,
-        "fitted_interlayer": {
-            "w1p": float(w1p_fit), "w1d": float(w1d_fit),
-        },
-        "grid_config": grid_cfg_src,
-    }
-    with open(meta_fn, "w") as f:
-        json.dump(meta, f, indent=2)
+meta = {
+    "run_id": run_id,
+    "sample": sample,
+    "timestamp_start": datetime.datetime.now().isoformat(),
+    "n_chunks": n_chunks,
+    "grid_sizes": {
+        "Vg": len(list_Vg), "phiG": len(list_phiG),
+        "w1p": len(list_w1p), "w1d": len(list_w1d),
+    },
+    "fixed_params": {
+        "Vk_ev": Vk,
+        "phiK_deg": phiK_deg,
+        "w2p_ev": float(w2p),
+        "w2d_ev": float(w2d),
+    },
+    "total_points": total_jobs,
+    "fitted_interlayer": {
+        "w1p": float(w1p_fit), "w1d": float(w1d_fit),
+    },
+    "config_file": str(config_path),
+    "interlayer_params_file": str(interlayer_params_path),
+    "grid_config": grid_cfg,
+}
+_write_json_if_missing(meta_fn, meta)
 
-interlayer_src = master_folder + "/Inputs/bilayer_fitting/interlayer_params.npy"
 interlayer_dst = out_dir / "interlayer_params.npy"
-if not interlayer_dst.exists() or os.path.getmtime(interlayer_src) > interlayer_dst.stat().st_mtime:
-    shutil.copy2(interlayer_src, interlayer_dst)
+_snapshot_interlayer_params(interlayer_params_path, interlayer_dst, fitted_interlayer)
+
+if prepare_only:
+    print(f"Prepared run {run_id} in {out_dir}")
+    print(f"Grid points: {total_jobs:,}; chunks: {n_chunks}")
+    print(f"Config snapshot: {meta_fn}")
+    print(f"Interlayer snapshot: {interlayer_dst}")
+    sys.exit(0)
 
 out_fn = out_dir / f"chunk_{chunk_id}_{n_chunks}.h5"
 

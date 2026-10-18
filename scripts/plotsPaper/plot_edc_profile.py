@@ -2,10 +2,11 @@
 
 Zero dependency on tmdmoire. Requires only numpy + matplotlib.
 Reads the .npz produced by scripts/export_edc_gamma_data.py (with --vg/--phig)
-or scripts/export_moire_bands.py (profile at V_G = 21 meV).
+or scripts/export_moire_bands.py (profiles at each exported V_G value).
 
 Produces:
-  edc_profile_4L_<run_id>.png  -- EDC intensity + 4-Lorentzian fit + ARPES reference lines
+  edc_profile_4L_<run_id>.png  -- one selected EDC profile from an EDC-grid export
+  edc_profiles_<sample>_gamma_phiG<phase>.png -- exported profiles at all V_G values
 
 Usage:
     python plot_edc_profile.py <data.npz>
@@ -27,13 +28,16 @@ def plot_edc_profile(data_path, output_dir=None):
     else:
         output_dir = Path(output_dir)
 
-    d = np.load(data_path)
+    d = np.load(data_path, allow_pickle=True)
+
+    if "energy_list_0" in d:
+        return _plot_gamma_edc_profiles(d, output_dir)
 
     if "energy_list" not in d:
         print("Error: .npz does not contain EDC profile data.")
         print("Export a selected Gamma EDC profile with:")
         print("  python scripts/export_edc_gamma_data.py --id <id> --vg <Vg> --phig <phiG>")
-        print("Or use the moire-band export, which includes the V_G = 21 meV profile:")
+        print("Or use the moire-band export, which includes profiles for all V_G values:")
         print("  python scripts/export_moire_bands.py")
         sys.exit(1)
 
@@ -83,6 +87,98 @@ def plot_edc_profile(data_path, output_dir=None):
     ax.legend(fontsize=9, loc="upper left")
 
     out_fn = output_dir / f"edc_profile_4L_{run_id}.png"
+    fig.savefig(out_fn, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved {out_fn}")
+    return out_fn
+
+
+def _plot_gamma_edc_profiles(data, output_dir):
+    vg_labels = data["Vg_labels"]
+    n_profiles = len(vg_labels)
+    required_keys = [
+        f"{key}_{i_profile}"
+        for i_profile in range(n_profiles)
+        for key in ("energy_list", "weight_list", "fit_4L_curve", "fit_4L_centers", "fit_4L_redchi")
+    ]
+    missing_keys = [key for key in required_keys if key not in data]
+    if missing_keys:
+        raise ValueError(f"EDC profile data is incomplete; missing: {missing_keys}")
+
+    exp_positions = data["exp_positions_ev"]
+    phiG_deg = float(data["phiG_deg"])
+    sample = str(data["sample"])
+    interlayer = {
+        "w1p": float(data["interlayer_w1p"]),
+        "w1d": float(data["interlayer_w1d"]),
+        "w2p": float(data["interlayer_w2p"]),
+        "w2d": float(data["interlayer_w2d"]),
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(
+        1,
+        n_profiles,
+        figsize=(6.5 * n_profiles, 6),
+        sharey=True,
+        constrained_layout=True,
+    )
+    axes = np.atleast_1d(axes)
+
+    for i_profile, (ax, vg_label) in enumerate(zip(axes, vg_labels)):
+        energy_list = data[f"energy_list_{i_profile}"]
+        weight_list = data[f"weight_list_{i_profile}"]
+        fit_4l_curve = data[f"fit_4L_curve_{i_profile}"]
+        fit_4l_centers = data[f"fit_4L_centers_{i_profile}"]
+        fit_4l_redchi = float(data[f"fit_4L_redchi_{i_profile}"])
+
+        ax.plot(energy_list, weight_list, "k-", lw=1.5, label="EDC intensity")
+        if not np.all(np.isnan(fit_4l_curve)):
+            ax.plot(
+                energy_list,
+                fit_4l_curve,
+                "r--",
+                lw=2,
+                label=rf"4-Lorentzian fit ($\chi^2_\nu$ = {fit_4l_redchi:.4f})",
+            )
+
+        for i_energy, energy in enumerate(exp_positions):
+            ax.axvline(
+                x=energy,
+                color="#2ecc71",
+                ls="--",
+                lw=1.5,
+                alpha=0.8,
+                label="ARPES EDC position" if i_energy == 0 else "",
+            )
+
+        for i_center, center in enumerate(fit_4l_centers):
+            if np.isnan(center):
+                continue
+            ax.axvline(
+                x=center,
+                color="#e74c3c",
+                ls=":",
+                lw=1.5,
+                alpha=0.8,
+                label="4-Lor. center" if i_center == 0 else "",
+            )
+
+        ax.set_xlabel("Energy (eV)", fontsize=12)
+        ax.set_title(rf"$V_G = {vg_label}$", fontsize=13, fontweight="bold")
+        ax.legend(fontsize=8, loc="upper left")
+
+    axes[0].set_ylabel("Intensity (a.u.)", fontsize=12)
+    fig.suptitle(
+        f"Gamma EDC profiles (sample={sample}, phiG={phiG_deg:.0f} deg)\n"
+        f"w1p={interlayer['w1p']:.3f}, w1d={interlayer['w1d']:.3f}, "
+        f"w2p={interlayer['w2p']:.4f}, w2d={interlayer['w2d']:.4f}",
+        fontsize=14,
+        fontweight="bold",
+    )
+
+    phase_str = f"{phiG_deg:g}".replace(".", "p")
+    out_fn = output_dir / f"edc_profiles_{sample}_gamma_phiG{phase_str}.png"
     fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out_fn}")

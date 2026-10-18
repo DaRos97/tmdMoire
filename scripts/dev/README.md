@@ -8,6 +8,8 @@ This directory contains scripts for testing, debugging, and inspecting intermedi
 |---|---|
 | `test_edc_gamma.py` | Computes the EDC intensity profile at Gamma for a single parameter set (Vg=15 meV, phiG=180°), fits 3 Lorentzians, and plots the intensity profile with individual peak contributions. Saves to `Data/edc_intensity_test/`. |
 | `benchmark_edc.py` | Measures the wall-clock time for a single EDC computation (diagonalization + spreading + fitting). Reports average time per point over N runs. |
+| `phase_boundary_check.py` | Compares S11 bands and Gamma EDC profiles at Vg=13 meV for phiG=165°, 160°, and 155°. Saves figures to `scripts/dev/figures/`. |
+| `merge_edc_gamma_runs.py` | Safely merges two disjoint Gamma EDC runs into a new analysis-ready run directory without modifying the source runs. |
 
 ## Monolayer constraint debugging
 
@@ -26,7 +28,13 @@ Scripts in this directory are run directly from the repository root:
 ```bash
 python scripts/dev/test_edc_gamma.py
 python scripts/dev/benchmark_edc.py
+python scripts/dev/phase_boundary_check.py
 python scripts/dev/check_k5_detail.py
+
+# After combining chunks from a supplemental Gamma sweep:
+python scripts/dev/merge_edc_gamma_runs.py \
+    --base-id 4Dsm8a --extension-id 4Dsm8a_phi155_164 \
+    --output-id 4Dsm8a_extended
 ```
 
 They are intended for one-off inspection and should not be used for production grid sweeps.

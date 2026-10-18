@@ -2,14 +2,14 @@
 
 Computes the supercell band structure along a G->K line through Gamma for
 V_G = 0, a chosen middle value (10.5 meV by default), and 21 meV. Also
-exports the 21 meV Gamma EDC profile and its four-Lorentzian fit. Output goes
-to scripts/plotsPaper/data/. The profile uses the same Gamma-only potential
-configuration as the band plot (V_K = 0).
+exports the Gamma EDC profile and its four-Lorentzian fit for each potential.
+Output goes to scripts/plotsPaper/data/. The profiles use the same Gamma-only
+potential configuration as the band plot (V_K = 0).
 
 Usage:
     source .venv/bin/activate
     python scripts/export_moire_bands.py
-    python scripts/export_moire_bands.py --sample S3 --Vg 10.5 --w1p -1.2 --w1d 0.455 --phiG 175
+    python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180
 """
 import sys
 from pathlib import Path
@@ -36,7 +36,6 @@ OUTPUT_DIR = Path("scripts") / "plotsPaper" / "data"
 K_RANGE = 0.4
 N_K_PTS = 301
 N_SHELLS = 2
-PROFILE_VG_MEV = 21.0
 EDC_SPREAD_E = 0.03
 EDC_ENERGY_STEP = 0.005
 
@@ -198,11 +197,11 @@ def main():
 
     interlayer = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
     phiG_rad = phiG_deg * np.pi / 180.0
-    vg_values_mev = np.array([0.0, vg_middle_mev, PROFILE_VG_MEV])
-    if not 0.0 < vg_middle_mev < PROFILE_VG_MEV:
+    vg_values_mev = np.array([0.0, vg_middle_mev, 21.0])
+    if not 0.0 < vg_middle_mev < 21.0:
         raise ValueError("The middle Vg value must be between 0 and 21 meV.")
     vg_values = vg_values_mev / 1000.0
-    vg_labels = np.array([f"{vg_mev:g} meV" for vg_mev in vg_values_mev], dtype=object)
+    vg_labels = np.array([f"{vg_mev:g} meV" for vg_mev in vg_values_mev], dtype=str)
 
     print("Loading monolayer parameters from Inputs/plot_bilayer/")
     tb_wse2 = np.load(INPUT_DIR / "tb_WSe2.npy")
@@ -235,6 +234,7 @@ def main():
         "k_range": K_RANGE,
         "sample": sample,
         "phiG_deg": phiG_deg,
+        "exp_positions_ev": EDC_G_POSITIONS[sample],
         "Vk_meV": 0.0,
         "phiK_deg": 0.0,
         "interlayer_w1p": w1p,
@@ -260,38 +260,30 @@ def main():
         export[f"evals_{i_probe}"] = evals
         export[f"weights_{i_probe}"] = weights
 
-        if np.isclose(vg_mev, PROFILE_VG_MEV):
-            edc_profile = _compute_gamma_edc_profile(
-                evals_full[gamma_index] + energy_offset,
-                evecs_full[gamma_index],
-                n_cells,
-                sample,
-            )
-            export.update(edc_profile)
-            export.update({
-                "run_id": f"moire_{sample}_Vg{PROFILE_VG_MEV:g}meV",
-                "exp_positions_ev": EDC_G_POSITIONS[sample],
-                "selected_Vg_meV": PROFILE_VG_MEV,
-                "selected_phiG_deg": phiG_deg,
-                "selected_w1p_ev": w1p,
-                "selected_w1d_ev": w1d,
-                "selected_w2p_ev": w2p,
-                "selected_w2d_ev": w2d,
-            })
-            print(
-                "  EDC fit centers: "
-                f"{[f'{center:.4f}' for center in edc_profile['fit_4L_centers']]} eV, "
-                f"redchi={edc_profile['fit_4L_redchi']:.6f}",
-                flush=True,
-            )
+        edc_profile = _compute_gamma_edc_profile(
+            evals_full[gamma_index] + energy_offset,
+            evecs_full[gamma_index],
+            n_cells,
+            sample,
+        )
+        for key, value in edc_profile.items():
+            export[f"{key}_{i_probe}"] = value
+        print(
+            "  EDC fit centers: "
+            f"{[f'{center:.4f}' for center in edc_profile['fit_4L_centers']]} eV, "
+            f"redchi={edc_profile['fit_4L_redchi']:.6f}",
+            flush=True,
+        )
 
         print(f"  Done.", flush=True)
         del evals_full, evecs_full, evals, evecs, weights
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     vg_middle_str = f"{vg_middle_mev:g}"
+    phase_str = f"{phiG_deg:g}".replace(".", "p")
     out_fn = OUTPUT_DIR / (
-        f"moire_bands_{sample}_k{N_K_PTS}_n{N_SHELLS}_Vg0_{vg_middle_str}_21.npz"
+        f"moire_bands_{sample}_k{N_K_PTS}_n{N_SHELLS}_Vg0_{vg_middle_str}_21_"
+        f"phiG{phase_str}.npz"
     )
     np.savez(out_fn, **export)
     print(f"Exported: {out_fn}")
