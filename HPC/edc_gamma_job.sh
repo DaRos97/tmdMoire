@@ -11,18 +11,24 @@
 # Usage: ./HPC/edc_gamma_job.sh
 #        ./HPC/edc_gamma_job.sh 001              # with run ID (default 128 tasks)
 #        ./HPC/edc_gamma_job.sh 001 256          # with run ID and custom number of tasks
-#        ./HPC/edc_gamma_job.sh extension 150 <config.json> <interlayer.npy>
+#        ./HPC/edc_gamma_job.sh extension 128 <config.json> <interlayer.npy> S11_m26
 
 RUN_ID=${1:-default}
 N_TASKS=${2:-128}
 GRID_CONFIG=${3:-}
 INTERLAYER_PARAMS=${4:-}
+SAMPLE=${5:-S11}
 
 if [ -n "$GRID_CONFIG" ] || [ -n "$INTERLAYER_PARAMS" ]; then
     if [ -z "$GRID_CONFIG" ] || [ -z "$INTERLAYER_PARAMS" ]; then
         echo "Pass both GRID_CONFIG and INTERLAYER_PARAMS, or neither."
         exit 1
     fi
+fi
+
+if [ "$SAMPLE" != "S11" ] && { [ -z "$GRID_CONFIG" ] || [ -z "$INTERLAYER_PARAMS" ]; }; then
+    echo "A non-default SAMPLE requires both GRID_CONFIG and INTERLAYER_PARAMS."
+    exit 1
 fi
 
 #NODES='compute-2-11|compute-2-12|compute-2-13|compute-3-01|compute-3-02|compute-3-03|compute-3-04|compute-4-01|compute-4-02|compute-4-03|compute-4-04|compute-4-05|compute-4-06|compute-4-07|compute-4-08'
@@ -36,7 +42,7 @@ if [ "$N_TASKS" -gt 128 ]; then
          -e HPC/out_edc_G_${RUN_ID}_rad.err \
          -t 1-128 \
          -q rademaker \
-         HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 0 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}"
+          HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 0 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}" "${SAMPLE}"
 
     # Remaining tasks on specified compute nodes
     REMAINING=$((N_TASKS - 128))
@@ -46,12 +52,12 @@ if [ "$N_TASKS" -gt 128 ]; then
          -e HPC/out_edc_G_${RUN_ID}_nodes.err \
          -t 1-${REMAINING} \
          -l hostname="${NODES}" \
-         HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 128 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}"
+         HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 128 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}" "${SAMPLE}"
 else
     qsub -N edc_G_${RUN_ID} \
          -o HPC/out_edc_G_${RUN_ID}.out \
          -e HPC/out_edc_G_${RUN_ID}.err \
          -t 1-${N_TASKS} \
          -l hostname="${NODES}" \
-         HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 0 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}"
+         HPC/edc_gamma_qjob.sh ${N_TASKS} ${RUN_ID} 0 "${GRID_CONFIG}" "${INTERLAYER_PARAMS}" "${SAMPLE}"
 fi

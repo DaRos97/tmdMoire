@@ -34,7 +34,7 @@ python scripts/dev/check_k5_detail.py
 # After combining chunks from a supplemental Gamma sweep:
 python scripts/dev/merge_edc_gamma_runs.py \
     --base-id 4Dsm8a --extension-id 4Dsm8a_phi155_164 \
-    --output-id 4Dsm8a_extended
+    --output-id 4Dsm8a_extended --sample S11
 ```
 
 They are intended for one-off inspection and should not be used for production grid sweeps.

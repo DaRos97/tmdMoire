@@ -8,7 +8,7 @@ Example:
     python scripts/dev/merge_edc_gamma_runs.py \
         --base-id 4Dsm8a \
         --extension-id 4Dsm8a_phi155_164 \
-        --output-id 4Dsm8a_extended
+        --output-id 4Dsm8a_extended --sample S11
 """
 import argparse
 import copy
@@ -24,6 +24,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "Data"
 COORDINATES = ("Vg", "phiG", "w1p", "w1d")
 FIXED_PARAMS = ("Vk_ev", "phiK_deg", "w2p_ev", "w2d_ev")
+LEGACY_RUN_SAMPLES = {
+    "4Dsm8a": "S11",
+    "4Dsm8d": "S11_m26",
+    "4Dsm8e": "S11_p30",
+}
 
 
 def _read_run(run_id):
@@ -115,7 +120,7 @@ def _validate_fixed_params(base_metadata, extension_metadata):
 
 
 def _merged_metadata(base_metadata, extension_metadata, output_id, axes, n_rows,
-                     base_id, extension_id):
+                     base_id, extension_id, sample):
     metadata = copy.deepcopy(base_metadata)
     phi_values = axes["phiG"]
     phi_steps = np.diff(phi_values)
@@ -124,7 +129,7 @@ def _merged_metadata(base_metadata, extension_metadata, output_id, axes, n_rows,
 
     metadata.update({
         "run_id": output_id,
-        "sample": base_metadata.get("sample", "S11"),
+        "sample": sample,
         "timestamp_merged": datetime.datetime.now().isoformat(),
         "source_runs": [base_id, extension_id],
         "n_chunks": int(base_metadata.get("n_chunks", 0)
@@ -146,7 +151,7 @@ def _merged_metadata(base_metadata, extension_metadata, output_id, axes, n_rows,
     return metadata
 
 
-def merge_runs(base_id, extension_id, output_id):
+def merge_runs(base_id, extension_id, output_id, sample=None):
     ids = (base_id, extension_id, output_id)
     if any(Path(run_id).name != run_id for run_id in ids):
         raise ValueError("Run IDs must be simple names, not paths")
@@ -164,8 +169,24 @@ def merge_runs(base_id, extension_id, output_id):
     extension_dir, extension_metadata, extension_data = _read_run(extension_id)
     if set(base_data) != set(extension_data):
         raise ValueError("The two HDF5 runs have different columns")
-    if base_metadata.get("sample", "S11") != extension_metadata.get("sample", "S11"):
-        raise ValueError("The two runs use different samples")
+    base_sample = base_metadata.get("sample") or LEGACY_RUN_SAMPLES.get(base_id)
+    extension_sample = (
+        extension_metadata.get("sample") or LEGACY_RUN_SAMPLES.get(extension_id)
+    )
+    declared_samples = [
+        declared for declared in (base_sample, extension_sample)
+        if declared is not None
+    ]
+    if sample is None:
+        if not declared_samples:
+            raise ValueError(
+                "Neither run metadata records a sample; pass --sample explicitly"
+            )
+        sample = declared_samples[0]
+    if any(declared != sample for declared in declared_samples):
+        raise ValueError(
+            f"Run metadata sample does not match requested sample {sample!r}"
+        )
     _validate_fixed_params(base_metadata, extension_metadata)
 
     base_axes = _axes_and_check_complete(base_data, base_id)
@@ -202,6 +223,7 @@ def merge_runs(base_id, extension_id, output_id):
         n_rows,
         base_id,
         extension_id,
+        sample,
     )
 
     base_params = base_dir / "interlayer_params.npy"
@@ -234,8 +256,12 @@ def main():
     parser.add_argument("--base-id", default="4Dsm8a")
     parser.add_argument("--extension-id", default="4Dsm8a_phi155_164")
     parser.add_argument("--output-id", default="4Dsm8a_extended")
+    parser.add_argument(
+        "--sample",
+        help="Sample name for legacy runs whose metadata predates the sample field",
+    )
     args = parser.parse_args()
-    merge_runs(args.base_id, args.extension_id, args.output_id)
+    merge_runs(args.base_id, args.extension_id, args.output_id, args.sample)
 
 
 if __name__ == "__main__":
