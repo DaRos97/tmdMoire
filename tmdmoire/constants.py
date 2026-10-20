@@ -78,10 +78,10 @@ Order: 7 on-site energies, 21 t1 hoppings, 8 t5 hoppings, 4 t6 hoppings,
 
 # ─── Sample configuration ────────────────────────────────────────────────────
 
-TWIST_ANGLES = {"S3": 1.8, "S3_m15": 1.5, "S3_p21": 2.1, "S11": 2.8, "S11_m25": 2.5, "S11_m26": 2.6, "S11_p30": 3.0, "S11_p31": 3.1}
+TWIST_ANGLES = {"S3": 1.8, "S3_m15": 1.5, "S3_m16": 1.6, "S3_p20": 2.0, "S3_p21": 2.1, "S11": 2.8, "S11_m25": 2.5, "S11_m26": 2.6, "S11_p30": 3.0, "S11_p31": 3.1}
 """Twist angles in degrees for experimental samples (from LEED)."""
 
-ENERGY_OFFSETS = {"S3": 0, "S3_m15": 0, "S3_p21": 0, "S11": -0.47, "S11_m25": -0.47, "S11_m26": -0.47, "S11_p30": -0.47, "S11_p31": -0.47}
+ENERGY_OFFSETS = {"S3": 0, "S3_m15": 0, "S3_m16": 0, "S3_p20": 0, "S3_p21": 0, "S11": -0.47, "S11_m25": -0.47, "S11_m26": -0.47, "S11_p30": -0.47, "S11_p31": -0.47}
 """Energy offsets in eV applied to each sample's ARPES data."""
 
 EDC_G_POSITIONS = {
@@ -92,11 +92,13 @@ EDC_G_POSITIONS = {
     "S11_p31": np.array([-1.1599, -1.2531, -1.82]),
     "S3": np.array([-0.69484, -0.77307, -1.35]),
     "S3_m15": np.array([-0.69484, -0.77307, -1.35]),
+    "S3_m16": np.array([-0.69484, -0.77307, -1.35]),
+    "S3_p20": np.array([-0.69484, -0.77307, -1.35]),
     "S3_p21": np.array([-0.69484, -0.77307, -1.35]),
 }
 """Experimental EDC peak positions at Gamma (eV): TVB, side band, WS2 band."""
 
-EDC_G_SEED_BOUNDARY = {"S3": -1.03, "S3_m15": -1.03, "S3_p21": -1.03}
+EDC_G_SEED_BOUNDARY = {"S3": -1.03, "S3_m15": -1.03, "S3_m16": -1.03, "S3_p20": -1.03, "S3_p21": -1.03}
 """Energy boundary (eV) separating TVB/LVB regions for Gamma seed finding.
 Defaults to -1.5 if sample not listed."""
 
@@ -108,6 +110,8 @@ EDC_K_POSITIONS = {
     "S11_p31": np.array([-0.8990, -1.0696]),
     "S3": np.array([np.nan, np.nan]),
     "S3_m15": np.array([np.nan, np.nan]),
+    "S3_m16": np.array([np.nan, np.nan]),
+    "S3_p20": np.array([np.nan, np.nan]),
     "S3_p21": np.array([np.nan, np.nan]),
 }
 """Experimental EDC peak positions at K (eV): TVB, moire band."""

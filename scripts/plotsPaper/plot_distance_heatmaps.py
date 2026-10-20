@@ -29,10 +29,15 @@ def _make_heatmap(ax, phi_edges, Vg_edges_meV, d2d_meV, title, cmap="viridis_r")
         ax.axhline(y=v, color="gray", ls="--", lw=0.5, alpha=0.6)
     ax.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
     ax.set_ylabel(r"$V_G$ (meV)", fontsize=12)
-    ax.set_xticks([160, 170, 180, 190, 200])
+    phi_centers = (phi_edges[:-1] + phi_edges[1:]) / 2.0
+    tick_indices = np.arange(0, len(phi_centers), 10)
+    phi_ticks = phi_centers[tick_indices]
+    if len(phi_ticks) == 0 or not np.isclose(phi_ticks[-1], phi_centers[-1]):
+        phi_ticks = np.append(phi_ticks, phi_centers[-1])
+    ax.set_xticks(phi_ticks)
     ax.set_yticks(np.arange(0, 21, 2))
     ax.set_ylim(0, 20)
-    ax.set_xlim(160, 200)
+    ax.set_xlim(phi_edges[0], phi_edges[-1])
     ax.set_title(title, fontsize=11)
     return im
 

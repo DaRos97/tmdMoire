@@ -1,7 +1,8 @@
 """Export moire bands and a Gamma EDC profile for standalone plotting.
 
 Computes the supercell band structure along a G->K line through Gamma for
-V_G = 0, a chosen middle value (10.5 meV by default), and 21 meV. Also
+V_G = 0, a chosen middle value (10.5 meV by default), and a high value
+(21 meV by default). Also
 exports the Gamma EDC profile and its four-Lorentzian fit for each potential.
 Output goes to scripts/plotsPaper/data/. The profiles use the same Gamma-only
 potential configuration as the band plot (V_K = 0).
@@ -10,6 +11,7 @@ Usage:
     source .venv/bin/activate
     python scripts/export_moire_bands.py
     python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180
+    python scripts/export_moire_bands.py --sample S3 --Vg 11.5 --Vg-high 23 --phiG 180
 """
 import sys
 from pathlib import Path
@@ -161,6 +163,7 @@ def parse_args():
     w2d = 0.0215
     phiG_deg = 175.0
     vg_middle_mev = 10.5
+    vg_high_mev = 21.0
 
     args = sys.argv[1:]
     i = 0
@@ -186,20 +189,23 @@ def parse_args():
         elif args[i] == "--Vg" and i + 1 < len(args):
             vg_middle_mev = float(args[i + 1])
             i += 2
+        elif args[i] == "--Vg-high" and i + 1 < len(args):
+            vg_high_mev = float(args[i + 1])
+            i += 2
         else:
             i += 1
 
-    return sample, w1p, w1d, w2p, w2d, phiG_deg, vg_middle_mev
+    return sample, w1p, w1d, w2p, w2d, phiG_deg, vg_middle_mev, vg_high_mev
 
 
 def main():
-    sample, w1p, w1d, w2p, w2d, phiG_deg, vg_middle_mev = parse_args()
+    sample, w1p, w1d, w2p, w2d, phiG_deg, vg_middle_mev, vg_high_mev = parse_args()
 
     interlayer = {"w1p": w1p, "w1d": w1d, "w2p": w2p, "w2d": w2d}
     phiG_rad = phiG_deg * np.pi / 180.0
-    vg_values_mev = np.array([0.0, vg_middle_mev, 21.0])
-    if not 0.0 < vg_middle_mev < 21.0:
-        raise ValueError("The middle Vg value must be between 0 and 21 meV.")
+    vg_values_mev = np.array([0.0, vg_middle_mev, vg_high_mev])
+    if not 0.0 < vg_middle_mev < vg_high_mev:
+        raise ValueError("Require 0 < middle Vg < high Vg.")
     vg_values = vg_values_mev / 1000.0
     vg_labels = np.array([f"{vg_mev:g} meV" for vg_mev in vg_values_mev], dtype=str)
 
@@ -280,9 +286,10 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     vg_middle_str = f"{vg_middle_mev:g}"
+    vg_high_str = f"{vg_high_mev:g}"
     phase_str = f"{phiG_deg:g}".replace(".", "p")
     out_fn = OUTPUT_DIR / (
-        f"moire_bands_{sample}_k{N_K_PTS}_n{N_SHELLS}_Vg0_{vg_middle_str}_21_"
+        f"moire_bands_{sample}_k{N_K_PTS}_n{N_SHELLS}_Vg0_{vg_middle_str}_{vg_high_str}_"
         f"phiG{phase_str}.npz"
     )
     np.savez(out_fn, **export)

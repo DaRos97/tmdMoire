@@ -10,6 +10,7 @@ Produces:
 Usage:
     python plot_ldos.py <data.npz>
     python plot_ldos.py data.npz --output-dir ./figures
+    python plot_ldos.py data.npz --output ldos_S11.png
 """
 import sys
 from pathlib import Path
@@ -23,16 +24,20 @@ import matplotlib.pyplot as plt
 def main():
     args = sys.argv[1:]
     if not args or args[0].endswith(".py"):
-        print("Usage: python plot_ldos.py <data.npz> [--output-dir <dir>]")
+        print("Usage: python plot_ldos.py <data.npz> [--output-dir <dir>] [--output <file>]")
         sys.exit(1)
 
     data_path = Path(args[0])
     output_dir = Path(__file__).resolve().parent / "figures"
+    output_name = None
 
     i = 1
     while i < len(args):
         if args[i] == "--output-dir" and i + 1 < len(args):
             output_dir = Path(args[i + 1])
+            i += 2
+        elif args[i] == "--output" and i + 1 < len(args):
+            output_name = Path(args[i + 1])
             i += 2
         else:
             i += 1
@@ -89,7 +94,12 @@ def main():
     ax.set_title(title, size=s_ - 2)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_fn = output_dir / "ldos.png"
+    if output_name is None:
+        out_fn = output_dir / "ldos.png"
+    elif output_name.is_absolute():
+        out_fn = output_name
+    else:
+        out_fn = output_dir / output_name
     fig.savefig(out_fn, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out_fn}")

@@ -32,9 +32,10 @@ source .venv/bin/activate
 # Step 1: Export EDC Gamma data (reads Data/edc_gamma_{id}/combined.h5)
 python scripts/export_edc_gamma_data.py --id S3_2a --sample S3 --vg 0.0115 --phig 175
 
-# Step 2: Export bands and Gamma EDC profiles at V_G = 0, 10.5, and 21 meV
-python scripts/export_moire_bands.py --sample S11 --Vg 10.5
-python scripts/export_moire_bands.py --sample S3 --Vg 10.5 --w1p -1.2 --w1d 0.455 --phiG 175
+# Step 2: Export bands and Gamma EDC profiles at phiG = 180 degrees
+python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180
+python scripts/export_moire_bands.py --sample S3 --Vg 11.5 --Vg-high 23 --phiG 180 \
+    --w1p -1.2 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
 
 # Same S11 interlayer couplings, recalculated at phiG = 180 degrees
 python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180 \
@@ -42,8 +43,8 @@ python scripts/export_moire_bands.py --sample S11 --Vg 10.5 --phiG 180 \
 ```
 
 Each `export_moire_bands.py` run saves **three matched band datasets and three
-Gamma-point EDC intensity profiles** in one `.npz`: at V_G = 0, 10.5 (the
-`--Vg` value), and 21 meV. For each potential, the band eigenvalues/weights
+Gamma-point EDC intensity profiles** in one `.npz`: at V_G = 0, the `--Vg`
+value, and `--Vg-high` (21 meV by default). For each potential, the band eigenvalues/weights
 and EDC profile come from the same Hamiltonian parameters and phase; the EDC
 uses the Gamma-only setup (V_K = 0). The EDC data includes the broadened
 intensity, four-Lorentzian fit, and fitted peak centers. The plot command
@@ -56,7 +57,7 @@ The three potential-indexed sets are stored as:
 |---:|---|---|
 | 0 meV | `evals_0`, `weights_0` | `energy_list_0`, `weight_list_0`, `fit_4L_curve_0`, `fit_4L_centers_0` |
 | 10.5 meV | `evals_1`, `weights_1` | `energy_list_1`, `weight_list_1`, `fit_4L_curve_1`, `fit_4L_centers_1` |
-| 21 meV | `evals_2`, `weights_2` | `energy_list_2`, `weight_list_2`, `fit_4L_curve_2`, `fit_4L_centers_2` |
+| 21 meV by default, or `--Vg-high` | `evals_2`, `weights_2` | `energy_list_2`, `weight_list_2`, `fit_4L_curve_2`, `fit_4L_centers_2` |
 
 ```bash
 # Step 3: Export EDC vs V_G
@@ -65,6 +66,10 @@ python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
 # S11 EDC-vs-V_G at phiG = 180 degrees, using the same couplings as above
 python scripts/export_edc_vs_V.py --sample S11 --phiG 180 \
     --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+
+# S3 EDC-vs-V_G at phiG = 180 degrees
+python scripts/export_edc_vs_V.py --sample S3 --phiG 180 \
+    --w1p -1.200 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
 ```
 
 This is a separate observable: `export_edc_vs_V.py` sweeps V_G from 1 to 20 meV
@@ -73,6 +78,8 @@ EDC intensity profiles saved by `export_moire_bands.py`.
 
 ```bash
 # Step 4: Export LDOS
+python scripts/export_ldos.py --sample S11 --Vg 0.0105 --phiG 175 \
+    --w1p -1.22 --w1d 0.46 --w2p -0.1694 --w2d 0.0215
 python scripts/export_ldos.py --sample S3 --Vg 0.0115 --phiG 175 --w1p -1.2 --w1d 0.455 \
     --e-min -0.85 --e-max -0.55
 
@@ -107,13 +114,16 @@ python plot_edc_profile.py        data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg
 python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz       # S11
 python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20.npz    # S3
 python plot_edc_vs_V.py data/edc_vs_V_S11_n20_Vg1-20_phiG180.npz # S11: phiG=180
+python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20_phiG180.npz # S3: phiG=180
 # Outputs edc_vs_V_S11_phiG180.png
 python plot_moire_bands.py data/moire_bands_S11_k301_n2_Vg0_10.5_21_phiG180.npz # S11: phiG=180
-# Outputs moire_bands_S11_gamma_phiG180.png and edc_profiles_S11_gamma_phiG180.png
+python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_11.5_23_phiG180.npz # S3: phiG=180
+# Outputs the matching bands and Gamma EDC profile figures for each sample
 
 # LDOS
-python plot_ldos.py data/ldos_S11_n2_k10_10.5meV_170deg.npz
-python plot_ldos.py data/ldos_S3_n2_k10_11.5meV_175deg.npz
+python plot_ldos.py data/ldos_export.npz --output ldos_S11_n2_k10_10.5meV_175deg.png
+python plot_ldos.py data/ldos_S3_n2_k10_11.5meV_175deg.npz \
+    --output ldos_S3_n2_k10_11.5meV_175deg.png
 ```
 
 ## Distance metrics in heatmaps
@@ -176,6 +186,22 @@ python plot_distance_w_heatmap.py <data.npz> [--output-dir ./figures]
 
 1x2 panels: L1 and L2 distance over (w1p, w1d). Red star at global best.
 
+### Combined 155–205 degree Gamma heatmaps
+
+The twist-angle supplemental plot uses these combined runs with L1 < 10 meV,
+L2 < 10 meV, and `a2/a1 >= 0`. Export the S3 heatmap data in the same `.npz`
+format as the S11 exports:
+
+```bash
+python scripts/export_edc_gamma_data.py --id S3_2a_155_205 --sample S3 \
+    --l1-cutoff 0.010 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_S3_2a_155_205_L1_10meV.npz
+python plot_distance_heatmaps.py data/edc_gamma_4Dsm8a_155_205_L1_10meV.npz
+python plot_distance_w_heatmap.py data/edc_gamma_4Dsm8a_155_205_L1_10meV.npz
+python plot_distance_heatmaps.py data/edc_gamma_S3_2a_155_205_L1_10meV.npz
+python plot_distance_w_heatmap.py data/edc_gamma_S3_2a_155_205_L1_10meV.npz
+```
+
 ### EDC intensity profile
 
 ```bash
@@ -205,6 +231,26 @@ python plot_moire_bands.py <data.npz> [--output-dir ./figures]
 
 Three panels: TVB bands along k in [-0.4, 0.4] A^-1 for V_G = 0, 10.5, and 21 meV. Thin gray lines + weight-proportional blue circles. Y-axis auto-scales from the data (works for both S11 and S3).
 When the input `.npz` includes the 21 meV profile, the same command also writes `edc_profile_4L_<run_id>.png`.
+
+### Twist-angle uncertainty figure
+
+`plot_moire_geometry.py` builds `figures/SM_twist_angle.pdf` from the combined
+155–205° Gamma runs for S11, S11_m26, and S11_p30. Export the heatmaps from the
+combined HDF5 data with an L1 cutoff of 10 meV (the plotted quantity remains the
+minimum L2 separation distance):
+
+```bash
+python scripts/export_edc_gamma_data.py --id 4Dsm8a_155_205 --sample S11 \
+    --l1-cutoff 0.010 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_4Dsm8a_155_205_L1_10meV.npz
+python scripts/export_edc_gamma_data.py --id 4Dsm8d_155_205 --sample S11_m26 \
+    --l1-cutoff 0.010 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_4Dsm8d_155_205_L1_10meV.npz
+python scripts/export_edc_gamma_data.py --id 4Dsm8e_155_205 --sample S11_p30 \
+    --l1-cutoff 0.010 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_4Dsm8e_155_205_L1_10meV.npz
+python scripts/plotsPaper/plot_moire_geometry.py
+```
 
 ### LDOS in real space
 

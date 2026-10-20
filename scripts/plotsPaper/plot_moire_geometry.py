@@ -86,25 +86,25 @@ def main():
         ax1b.text(tm + 0.03, label_y_offsets[tm], f"{tm}\u00b0", fontsize=10, color="gray",
                   va="center", bbox=dict(facecolor="white", edgecolor="none", pad=1))
 
-    # ── Right subplot: L2 distance heatmaps ──────────────────────────────────────
+    # ── Right subplot: L2 distance heatmaps after an L1 < 10 meV filter ─────────
 
     data_dir = Path(__file__).resolve().parent / "data"
 
-    d_a = np.load(data_dir / "edc_gamma_4Dsm8a_Vg_10.5meV_phiG_176deg.npz")
+    d_a = np.load(data_dir / "edc_gamma_4Dsm8a_155_205_L1_10meV.npz")
     phi_edges_a = d_a["phi_edges"]
     Vg_edges_meV = d_a["Vg_edges_meV"]
     dist_sep_a = d_a["dist_sep_2d_meV"]
 
-    d_b = np.load(data_dir / "edc_gamma_4Dsm8d_S11_m26_Vg_11.5meV_phiG_175deg.npz")
+    d_b = np.load(data_dir / "edc_gamma_4Dsm8d_155_205_L1_10meV.npz")
     phi_edges_b = d_b["phi_edges"]
-    shift_b = 20.0
+    shift_b = 25.0
     dist_sep_b = d_b["dist_sep_2d_meV"].copy()
     phi_centers_b = (phi_edges_b[:-1] + phi_edges_b[1:]) / 2.0
     dist_sep_b[:, phi_centers_b > 180] = np.nan
 
-    d_c = np.load(data_dir / "edc_gamma_4Dsm8e_S11_p30_Vg_9.5meV_phiG_175deg.npz")
+    d_c = np.load(data_dir / "edc_gamma_4Dsm8e_155_205_L1_10meV.npz")
     phi_edges_c = d_c["phi_edges"]
-    shift_c = 20.0
+    shift_c = 25.0
     dist_sep_c = d_c["dist_sep_2d_meV"].copy()
     phi_centers_c = (phi_edges_c[:-1] + phi_edges_c[1:]) / 2.0
     dist_sep_c[:, phi_centers_c < 180] = np.nan
@@ -116,37 +116,45 @@ def main():
     im_c = ax2.pcolormesh(phi_edges_c + shift_c, Vg_edges_meV, dist_sep_c,
                           cmap="Reds", shading="flat")
 
-    for v in np.arange(2, 21, 2):
+    for v in np.arange(2, 23, 2):
         ax2.axhline(y=v, color="gray", ls="--", lw=0.5, alpha=0.5)
 
-    ax2.text(180, 19, r"S11 moiré analysis with twist angle uncertainty $\pm0.2^\circ$",
+    ax2.text(180, 21, r"S11 moiré analysis with twist angle uncertainty $\pm0.2^\circ$",
              ha="center", va="top", fontsize=12,
              bbox=dict(boxstyle="round,pad=0.5", facecolor="white", edgecolor="gray"))
     ax2.axvline(x=180, color="red", ls="--", lw=0.7, alpha=0.5)
-    ax2.axvline(x=180 - shift_b, ymin=8 / 20, ymax=18 / 20, color="red", ls="--", lw=0.7)
+    ax2.axvline(x=180 - shift_b, ymin=8 / 22, ymax=18 / 22, color="red", ls="--", lw=0.7)
     ax2.annotate(
-        "", xy=(165 - shift_b, 8), xytext=(180 - shift_b, 8),
+        "", xy=(155 - shift_b, 8), xytext=(180 - shift_b, 8),
         arrowprops=dict(arrowstyle="->", color="black", lw=0.8),
     )
-    for x_pos, lbl in [(180 - shift_b, "180"), (170 - shift_b, "170")]:
+    for x_pos, lbl in [
+        (180 - shift_b, "180"),
+        (170 - shift_b, "170"),
+        (160 - shift_b, "160"),
+    ]:
         ax2.plot([x_pos, x_pos], [7.8, 8.0], "k-", lw=0.8)
         ax2.text(x_pos, 7.65, lbl, fontsize=10, ha="center", va="top")
 
-    ax2.axvline(x=180 + shift_c, ymin=5 / 20, ymax=15 / 20, color="red", ls="--", lw=0.7)
+    ax2.axvline(x=180 + shift_c, ymin=5 / 22, ymax=15 / 22, color="red", ls="--", lw=0.7)
     ax2.annotate(
-        "", xy=(195 + shift_c, 5), xytext=(180 + shift_c, 5),
+        "", xy=(205 + shift_c, 5), xytext=(180 + shift_c, 5),
         arrowprops=dict(arrowstyle="->", color="black", lw=0.8),
     )
-    for x_pos, lbl in [(180 + shift_c, "180"), (190 + shift_c, "190")]:
+    for x_pos, lbl in [
+        (180 + shift_c, "180"),
+        (190 + shift_c, "190"),
+        (200 + shift_c, "200"),
+    ]:
         ax2.plot([x_pos, x_pos], [4.8, 5.0], "k-", lw=0.8)
         ax2.text(x_pos, 4.65, lbl, fontsize=10, ha="center", va="top")
 
     ax2.set_xlabel(r"$\phi_G$ (deg)", fontsize=12)
     ax2.set_ylabel(r"$\bar{V}$ (meV)", fontsize=12)
     ax2.set_xticks(np.arange(140, 221, 20))
-    ax2.set_yticks(np.arange(0, 21, 2))
-    ax2.set_ylim(0, 20)
-    ax2.set_xlim(140, 220)
+    ax2.set_yticks(np.arange(0, 23, 2))
+    ax2.set_ylim(0, 22)
+    ax2.set_xlim(130, 230)
 
     divider = make_axes_locatable(ax2)
     cax_b = divider.append_axes("right", size="4%", pad=0.05)
