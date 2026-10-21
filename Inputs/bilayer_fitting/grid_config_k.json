@@ -21,16 +21,16 @@
     "Vk": {
       "min_ev": 0.001,
       "max_ev": 0.040,
-      "step_ev": 0.002
+      "step_ev": 0.001
     },
     "phiK": {
-      "min_deg": 0,
-      "max_deg": 359,
-      "step_deg": 10
+      "min_deg": 90,
+      "max_deg": 120,
+      "step_deg": 1
     }
   },
   "fixed": {
-    "Vg_ev": 0.015,
+    "Vg_ev": 0.0105,
     "phiG_deg": 180,
     "w1p_ev": -1.3232,
     "w1d_ev": 0.5012,

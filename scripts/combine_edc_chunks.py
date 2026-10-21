@@ -36,7 +36,14 @@ while i < len(args):
     else:
         i += 1
 
-out_dir = Path("Data") / f"edc_{bz_point}_{run_id}"
+if bz_point == "gamma":
+    run_dir_name = f"edc_gamma_{run_id}"
+elif bz_point == "k":
+    run_dir_name = f"edc_grid_k_{run_id}"
+else:
+    raise ValueError("--bz-point must be 'gamma' or 'k'")
+
+out_dir = Path("Data") / run_dir_name
 if output is None:
     output = out_dir / "combined.h5"
 
@@ -63,6 +70,11 @@ skipped = []
 for fn in chunk_files:
     try:
         with h5py.File(fn, "r") as f:
+            if set(f.keys()) != set(columns):
+                raise ValueError(
+                    f"Dataset columns in {fn} do not match the first chunk. "
+                    "Do not combine chunks from different sweep versions."
+                )
             for col in columns:
                 data[col].append(f[col][:])
             total_points += f[columns[0]].shape[0]

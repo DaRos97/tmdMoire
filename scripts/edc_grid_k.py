@@ -1,4 +1,4 @@
-"""EDC intensity grid sweep at K for HPC.
+"""EDC intensity grid sweep at K.
 
 Loads grid parameters from Inputs/bilayer_fitting/grid_config_k.json,
 sweeps 2D parameter space (Vk, phiK) with fixed Gamma parameters and
@@ -6,9 +6,8 @@ interlayer couplings from the config, fits 2 Lorentzians to each EDC,
 and saves results.
 
 Usage:
-    python scripts/edc_grid_k.py --chunk <id>/<total>
-    python scripts/edc_grid_k.py --chunk 0/128 --id 001
-    python scripts/edc_grid_k.py --chunk 0/128 --id test
+    python scripts/edc_grid_k.py --id 001
+    python scripts/edc_grid_k.py --chunk <id>/<total> --id 001
 """
 import sys
 import os
@@ -55,6 +54,9 @@ while i < len(args):
         i += 2
     else:
         i += 1
+
+if n_chunks < 1 or chunk_id < 0 or chunk_id >= n_chunks:
+    raise ValueError(f"Invalid chunk {chunk_id}/{n_chunks}; expected 0 <= id < total")
 
 # ─── Load grid config ────────────────────────────────────────────────────────
 
@@ -151,6 +153,8 @@ def compute_and_fit(Vk, phiK_deg):
     min_e -= delta / 2
     max_e += delta / 2
     n_e = int((max_e - min_e) / 0.005)
+    if n_e < 2 or not np.isfinite(min_e + max_e):
+        return None
     energy_list = np.linspace(min_e, max_e, n_e)
     weight_list = np.zeros(len(energy_list))
 
@@ -189,20 +193,38 @@ def compute_and_fit(Vk, phiK_deg):
         params_fit[p].set(min=0)
     for p in ["g1", "g2"]:
         params_fit[p].set(min=1e-4, max=0.2)
+    for i, (seed, _) in enumerate(peak_states, start=1):
+        params_fit[f"c{i}"].set(min=seed - 0.05, max=seed + 0.05)
 
     result = model.fit(weight_list, params_fit, x=energy_list)
 
     if not result.success:
         return None
 
+    fitted_peaks = [
+        (result.best_values["c1"], result.best_values["a1"], result.best_values["g1"]),
+        (result.best_values["c2"], result.best_values["a2"], result.best_values["g2"]),
+    ]
+    fitted_peaks.sort(key=lambda peak: peak[0], reverse=True)
+    if not np.all(np.isfinite(np.asarray(fitted_peaks, dtype=float))):
+        return None
+
+    peak_scale = np.max(np.abs(weight_list))
+    if not np.isfinite(peak_scale) or peak_scale <= 0:
+        return None
+    nrmse = float(np.sqrt(np.mean((weight_list - result.best_fit) ** 2)) / peak_scale)
+    if not np.isfinite(result.redchi) or not np.isfinite(nrmse):
+        return None
+
     return {
-        "c1": result.best_values["c1"],
-        "c2": result.best_values["c2"],
-        "a1": result.best_values["a1"],
-        "a2": result.best_values["a2"],
-        "g1": result.best_values["g1"],
-        "g2": result.best_values["g2"],
+        "c1": fitted_peaks[0][0],
+        "a1": fitted_peaks[0][1],
+        "g1": fitted_peaks[0][2],
+        "c2": fitted_peaks[1][0],
+        "a2": fitted_peaks[1][1],
+        "g2": fitted_peaks[1][2],
         "redchi": result.redchi,
+        "nrmse": nrmse,
     }
 
 # ─── Run grid ────────────────────────────────────────────────────────────────
@@ -242,7 +264,7 @@ if not meta_fn.exists():
 out_fn = out_dir / f"chunk_{chunk_id}_{n_chunks}.h5"
 
 columns = ["Vk", "phiK",
-           "c1", "c2", "a1", "a2", "g1", "g2", "redchi"]
+           "c1", "a1", "g1", "c2", "a2", "g2", "redchi", "nrmse"]
 
 t_start = time.perf_counter()
 n_success = 0
@@ -259,7 +281,7 @@ with h5py.File(out_fn, "w") as hf:
         dsets["phiK"][i] = phiK_deg
 
         if result is not None:
-            for col in ["c1", "c2", "a1", "a2", "g1", "g2", "redchi"]:
+            for col in ["c1", "a1", "g1", "c2", "a2", "g2", "redchi", "nrmse"]:
                 dsets[col][i] = result[col]
             n_success += 1
         else:

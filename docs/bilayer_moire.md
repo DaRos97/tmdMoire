@@ -272,11 +272,51 @@ The **L2 distance** is the primary ranking metric used to find the global minimu
 
 ## K Analysis (`analyze_edc_k.py`)
 
-**Not yet implemented.** Planned features:
-- Load `combined.h5` from `edc_grid_k_<id>/`
-- Compute L1/L2 distance from `EDC_K_POSITIONS` (`[−0.8990, −1.0696]` eV)
-- 2D heatmap: φK (x) × Vk (y), color = distance
-- Band gap heatmap
+Loads `combined.h5` from `Data/edc_grid_k_<id>/`, compares the fitted centers
+to `EDC_K_POSITIONS`, and writes `analysis.png` with four heatmaps:
+
+- **L1**: sum of absolute errors in the two peak positions.
+- **L2**: absolute error in the peak separation.
+- **NRMSE**: normalized root-mean-square residual of the two-Lorentzian fit,
+  defined as `RMSE / max(abs(EDC intensity))`.
+- **Reduced chi-square**: the unweighted `lmfit` reduced chi-square.
+
+No cutoff is applied by default. Optional fit-quality thresholds, `--max-l2`,
+and `--max-vk` mask points from the L1/L2 maps and ranking; the fit-quality
+heatmaps continue to show all successful fits. Both `--max-l2` and `--max-vk`
+are in meV. Example fit-quality threshold values are illustrative; inspect
+the run's metrics before choosing them:
+
+```bash
+python scripts/analyze_edc_k.py --id test_k --max-nrmse 0.05
+python scripts/analyze_edc_k.py --id test_k --max-redchi 0.01
+python scripts/analyze_edc_k.py --id test_k --max-l2 15
+python scripts/analyze_edc_k.py --id test_k --sample S11_m25 --max-vk 25
+```
+
+The script reports the best accepted L1 point, makes an EDC profile plot with
+the two-Lorentzian fit and experimental positions, and writes its parameters
+to `best_fit.json`. Use `--vk <eV> --phik <deg>` to inspect a specific grid
+point instead. Reduced chi-square is retained as a diagnostic; because these
+are synthetic intensity profiles without an assigned noise variance, it is
+not treated as a calibrated goodness-of-fit probability.
+
+## K Twist-Angle Summary (`plot_edc_k_twist.py`)
+
+After combining the K results for each S11 twist angle, run:
+
+```bash
+python scripts/plot_edc_k_twist.py --suffix _k_2 --max-l2 30 --phi-k 106 \
+    --sample-max-vk S11_m25=25
+```
+
+The script selects the minimum-L2 `(Vk, phiK)` point for each angle that passes
+the cutoffs (30 meV by default), including any per-sample Vk maximum. By
+default, it fixes `phiK = 106°` and minimizes L2 over Vk. It connects the
+twist-angle points with a dashed line, maps L2 to color, uses equal marker
+sizes, adds a 2.5–2.65° inset, and writes a PNG plus CSV under `Data/`. It
+uses a separate L2 colorbar for the inset and discovers S11 runs from
+directories named `edc_grid_k_<sample>_k_2/`.
 
 ## EDC Quick Start
 
@@ -296,8 +336,8 @@ python scripts/analyze_edc_gamma.py --id test --vg 0.012 --phig 177
 # With custom distance cutoff and ratio cutoff
 python scripts/analyze_edc_gamma.py --id test --cutoff 0.030 --ratio-cutoff 0.15
 
-# K sweep (after Gamma best fit is known)
-python scripts/edc_grid_k.py --chunk 0/10000 --id test_k
+# K sweep (one chunk by default; after Gamma best fit is known)
+python scripts/edc_grid_k.py --id test_k
 
 # K sweep: combine and analyze
 python scripts/combine_edc_chunks.py --bz-point k --id test_k
@@ -316,8 +356,8 @@ python scripts/analyze_edc_k.py --id test_k
 # Submit with run ID and custom task count
 ./HPC/edc_gamma_job.sh 001 256
 
-# Submit K sweep
-./HPC/edc_k_job.sh 001 128
+# Submit K sweep (one task by default; a larger count explicitly splits it)
+./HPC/edc_k_job.sh 001
 ```
 
 ## EDC Run Management
@@ -355,7 +395,7 @@ Each `.h5` chunk file contains float64 columns pre-allocated with `fillvalue=np.
 | `c3`, `a3`, `g3` | Lorentzian 3: center, amplitude, width |
 | `redchi` | Reduced chi-squared |
 
-**K HDF5 columns** (9 columns):
+**K HDF5 columns** (10 columns):
 
 | Column | Description |
 |---|---|
@@ -363,4 +403,4 @@ Each `.h5` chunk file contains float64 columns pre-allocated with `fillvalue=np.
 | `c1`, `a1`, `g1` | Lorentzian 1: center (eV), amplitude, width (eV) |
 | `c2`, `a2`, `g2` | Lorentzian 2: center, amplitude, width (eV) |
 | `redchi` | Reduced chi-squared |
-
+| `nrmse` | RMSE of the fit divided by the maximum absolute EDC intensity |

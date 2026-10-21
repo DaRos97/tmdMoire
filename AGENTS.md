@@ -6,7 +6,7 @@ Tight-binding model of WSe2/WS2 heterobilayer moire superlattices. Three-stage w
 
 1. **Monolayer fitting** — fit 43 TB parameters per TMD (WSe2, WS2) to ARPES band dispersion data via differential evolution + Nelder-Mead. Results saved as `.npz` files; best params exported to `Inputs/bilayer_fitting/tb_{TMD}.npy` via `run_monolayer_grid.py --score --export`.
 2. **Bilayer interlayer coupling** — fit 4 interlayer hopping parameters (w1p, w2p, w1d, w2d) to reproduce the 3 top valence bands from bilayer ARPES data (`WSe2WS2_Band*.txt`). Uses `scipy.optimize.minimize` (Nelder-Mead) from multiple starting points. Output saved to `Inputs/bilayer_fitting/interlayer_params.npy`.
-3. **Bilayer moiré potential** — with interlayer params fixed, sweep moiré potential parameters at Gamma (4D: Vg, phiG, w1p, w1d; w2p/w2d fixed from Step 2) and K (2D: Vk, phiK) to match experimental EDC peak positions via Lorentzian profile fitting. w2p/w2d control the momentum dependence of the interlayer coupling; since we focus on small k-variations around Gamma, their value is already constrained by the main band dispersion fit in Step 2. Gamma sweep finds best interlayer + moire params; K sweep refines Vk/phiK and computes band gap.
+3. **Bilayer moiré potential** — with interlayer params fixed, sweep moiré potential parameters at Gamma (4D: Vg, phiG, w1p, w1d; w2p/w2d fixed from Step 2) and K (2D: Vk, phiK) to match experimental EDC peak positions via Lorentzian profile fitting. w2p/w2d control the momentum dependence of the interlayer coupling; since we focus on small k-variations around Gamma, their value is already constrained by the main band dispersion fit in Step 2. Gamma sweep finds best interlayer + moire params; K sweep refines Vk/phiK and assesses the two-Lorentzian fit quality. Gap analysis is currently out of scope.
 
 ## Environment
 
@@ -85,10 +85,11 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `plot_bilayer_data.py` | Loads and plots bilayer ARPES data pipeline (raw → symmetrized → interpolated) |
 | `fit_bilayer_coupling.py` | Fits interlayer coupling parameters to bilayer ARPES data |
 | `edc_grid_gamma.py` | Gamma-point EDC sweep: 4D grid over Vg, phiG, w1p, w1d (w2p/w2d fixed); fits 3 Lorentzians; saves to `.h5` |
-| `edc_grid_k.py` | K-point EDC sweep: 2D grid over Vk, phiK; fits 2 Lorentzians + band gap; saves to `.h5` |
+| `edc_grid_k.py` | K-point EDC sweep: 2D grid over Vk, phiK; fits 2 Lorentzians and saves fit-quality metrics to `.h5` |
 | `combine_edc_chunks.py` | Combines chunked `.h5` files into single `combined.h5` |
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
-| `analyze_edc_k.py` | Analyzes K results: computes distance + band gap, plots 2D heatmap |
+| `analyze_edc_k.py` | Analyzes K results: computes experimental peak distances and fit quality; plots 2D heatmaps and a selected EDC profile |
+| `plot_edc_k_twist.py` | Plots the minimum-L2 K EDC point per S11 twist angle at fixed phiK; color shows L2 with a 2.5–2.65° inset and separate colorbar |
 | `plot_moire_bands.py` | Plots moire bilayer bands with intensity spreading along K'→Γ→K and K→M→K' paths; supports caching, Gaussian/Lorentzian spreading, half-ARPES overlay |
 
 ### Development scripts: `scripts/dev/`
@@ -117,9 +118,9 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Inputs/monolayer_fitting/**: ARPES band data (`KpGK_*.txt`, `KMKp_*.txt`), pre-fitted TB params (`tb_*.npy`), fit config (`fit_config.json`), manifest (`manifest.json`)
 - **Inputs/bilayer_fitting/**: Bilayer ARPES bands (`WSe2WS2_Band*.txt`), exported monolayer params (`tb_WSe2.npy`, `tb_WS2.npy`), interlayer params (Step 2 output), grid configs (`grid_config_gamma.json`, `grid_config_k.json`)
 - **Inputs/plot_bilayer/**: Parameters for final band plotting — `tb_WSe2.npy`, `tb_WS2.npy` (43 monolayer params each), `interlayer_G.json` (dict: w1p, w1d, w2p, w2d, Vg, phiG_deg), `interlayer_K.json` (dict: Vk, phiK_deg). ARPES data files for half-ARPES plots (`i06_sum_S11_KGK_BE.txt`, `S11_KK_80eV_LV_BE.txt`).
-- **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
+- **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
 - **Default Gamma grid**: 11×37×11×11 = ~49K combinations (4D: Vg×phiG×w1p×w1d). ~0.6s per point (836×836 diagonalization dominates).
-- **Default K grid**: 20×37 = 740 combinations (configurable).
+- **Default K grid**: 40×31 = 1,240 combinations (Vk 1–40 meV by 1 meV; phiK 90–120° by 1°).
 - **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV). Peak seeds are the 4 highest-weight eigenstates (separated by > 0.01 eV). At Gamma: 4-Lorentzian fit (TVB main/side + LVB main/side); only first 3 peaks saved to HDF5. At K: 2-Lorentzian fit.
 - **Band plotting**: computes single G→K→M path (--k-pts points), mirrors to K'→G→K and K→M→K'. Keeps bands 18–27 per cell (10 bands including TVB). Two-level cache: `Data/plot_bilayer_moire/diag_<params>/diag.npz` for diagonalization, `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` for intensity spreading.
 
@@ -166,10 +167,10 @@ Bilayer stage:
                                                      Step 2b: Moire potential at K
                                                      Fix all params from Gamma best fit
                                                      Sweep Vk, phiK (2D)
-                                                     2-Lorentzian fit + band gap
+                                                      2-Lorentzian fit + quality metrics
                                                      Match EDC_K_POSITIONS
                                                                    ↓
-                                                      Data/edc_grid_k_run_<id>/
+                                                       Data/edc_grid_k_<id>/
                                                       combined.h5 + analysis.png
                                                                     ↓
                                                        Step 3: Moire band plotting
@@ -234,10 +235,11 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `plot_bilayer_data.py` | Loads and plots bilayer ARPES data pipeline (raw → symmetrized → interpolated) |
 | `fit_bilayer_coupling.py` | Fits interlayer coupling parameters to bilayer ARPES data |
 | `edc_grid_gamma.py` | Gamma-point EDC sweep: 4D grid over Vg, phiG, w1p, w1d (w2p/w2d fixed); fits 3 Lorentzians; saves to `.h5` |
-| `edc_grid_k.py` | K-point EDC sweep: 2D grid over Vk, phiK; fits 2 Lorentzians + band gap; saves to `.h5` |
+| `edc_grid_k.py` | K-point EDC sweep: 2D grid over Vk, phiK; fits 2 Lorentzians and saves fit-quality metrics to `.h5` |
 | `combine_edc_chunks.py` | Combines chunked `.h5` files into single `combined.h5` |
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
-| `analyze_edc_k.py` | Analyzes K results: computes distance + band gap, plots 2D heatmap |
+| `analyze_edc_k.py` | Analyzes K results: computes experimental peak distances and fit quality; plots 2D heatmaps and a selected EDC profile |
+| `plot_edc_k_twist.py` | Plots the minimum-L2 K EDC point per S11 twist angle at fixed phiK; color shows L2 with a 2.5–2.65° inset and separate colorbar |
 | `plot_moire_bands.py` | Plots moire bilayer bands with intensity spreading along K'→Γ→K and K→M→K' paths; supports caching, Gaussian/Lorentzian spreading, half-ARPES overlay |
 
 ### Development scripts: `scripts/dev/`
@@ -266,9 +268,9 @@ Scripts in `scripts/dev/` are for testing, debugging, and inspecting intermediat
 - **Inputs/monolayer_fitting/**: ARPES band data (`KpGK_*.txt`, `KMKp_*.txt`), pre-fitted TB params (`tb_*.npy`), fit config (`fit_config.json`), manifest (`manifest.json`)
 - **Inputs/bilayer_fitting/**: Bilayer ARPES bands (`WSe2WS2_Band*.txt`), exported monolayer params (`tb_WSe2.npy`, `tb_WS2.npy`), interlayer params (Step 2 output), grid configs (`grid_config_gamma.json`, `grid_config_k.json`)
 - **Inputs/plot_bilayer/**: Parameters for final band plotting — `tb_WSe2.npy`, `tb_WS2.npy` (43 monolayer params each), `interlayer_G.json` (dict: w1p, w1d, w2p, w2d, Vg, phiG_deg), `interlayer_K.json` (dict: Vk, phiK_deg). ARPES data files for half-ARPES plots (`i06_sum_S11_KGK_BE.txt`, `S11_KK_80eV_LV_BE.txt`).
-- **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_run_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
+- **Outputs**: `Data/<TMD>_<id>/fit_{TMD}_idx{N}.npz` (fitting results), `Data/<TMD>_<id>/Figures/` (plots for top results), `Data/sym_{TMD}.npz` (symmetrized ARPES cache), `Data/edc_gamma_run_<id>/` and `Data/edc_grid_k_<id>/` (EDC sweep results as `.h5` files), `Data/plot_bilayer_moire/diag_<params>/diag.npz` (cached diagonalization), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` (cached intensity), `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/*.png` (plots).
 - **Default Gamma grid**: 11×37×11×11 = ~49K combinations (4D: Vg×phiG×w1p×w1d). ~0.6s per point (836×836 diagonalization dominates).
-- **Default K grid**: 20×37 = 740 combinations (configurable).
+- **Default K grid**: 40×31 = 1,240 combinations (Vk 1–40 meV by 1 meV; phiK 90–120° by 1°).
 - **EDC fitting**: Lorentzian broadening (spreadE=0.03 eV). Peak seeds are the 4 highest-weight eigenstates (separated by > 0.01 eV). At Gamma: 4-Lorentzian fit (TVB main/side + LVB main/side); only first 3 peaks saved to HDF5. At K: 2-Lorentzian fit.
 - **Band plotting**: computes single G→K→M path (--k-pts points), mirrors to K'→G→K and K→M→K'. Keeps bands 18–27 per cell (10 bands including TVB). Two-level cache: `Data/plot_bilayer_moire/diag_<params>/diag.npz` for diagonalization, `Data/plot_bilayer_moire/diag_<params>/intensity_<params>/spread.npz` for intensity spreading.
 
@@ -315,10 +317,10 @@ Bilayer stage:
                                                      Step 2b: Moire potential at K
                                                      Fix all params from Gamma best fit
                                                      Sweep Vk, phiK (2D)
-                                                     2-Lorentzian fit + band gap
+                                                      2-Lorentzian fit + quality metrics
                                                      Match EDC_K_POSITIONS
                                                                    ↓
-                                                      Data/edc_grid_k_run_<id>/
+                                                       Data/edc_grid_k_<id>/
                                                       combined.h5 + analysis.png
                                                                     ↓
                                                        Step 3: Moire band plotting
