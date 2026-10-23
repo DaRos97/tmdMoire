@@ -83,6 +83,14 @@ python scripts/export_ldos.py --sample S11 --Vg 0.0105 --phiG 175 \
 python scripts/export_ldos.py --sample S3 --Vg 0.0115 --phiG 175 --w1p -1.2 --w1d 0.455 \
     --e-min -0.85 --e-max -0.55
 
+# S11 K-centered LDOS; use the same Gamma/interlayer settings as the reference
+# The K-point TVB is at about -0.894 eV; the upper bound leaves room for broadening.
+for phik in 106 120 -120; do
+  python scripts/export_ldos.py --sample S11 --center K --Vg 0.0105 --phiG 175 \
+      --Vk 0.0077 --phiK "$phik" --w1p -1.22 --w1d 0.46 \
+      --w2p -0.1694 --w2d 0.0215 --e-min -1.17 --e-max -0.80
+done
+
 # Step 5: Export bilayer bands (n_shells=0, no moire)
 python scripts/export_bilayer_bands.py --sample S3
 ```
@@ -124,7 +132,20 @@ python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_11.5_23_phiG180.npz #
 python plot_ldos.py data/ldos_export.npz --output ldos_S11_n2_k10_10.5meV_175deg.png
 python plot_ldos.py data/ldos_S3_n2_k10_11.5meV_175deg.npz \
     --output ldos_S3_n2_k10_11.5meV_175deg.png
+python plot_ldos.py data/ldos_S11_n2_k10_K_10.5meV_175deg_7.7meV_106deg.npz \
+    --e-min -1.17 --e-max -0.80 --output ldos_S11_K_Vk7.7meV_phiK106deg_E-1.17_-0.80.png
+python plot_ldos.py data/ldos_S11_n2_k10_K_10.5meV_175deg_7.7meV_120deg.npz \
+    --e-min -1.17 --e-max -0.80 --output ldos_S11_K_Vk7.7meV_phiK120deg_E-1.17_-0.80.png
+python plot_ldos.py data/ldos_S11_n2_k10_K_10.5meV_175deg_7.7meV_-120deg.npz \
+    --e-min -1.17 --e-max -0.80 --output ldos_S11_K_Vk7.7meV_phiK-120deg_E-1.17_-0.80.png
 ```
+
+The plotter can crop broader LDOS exports to -1.17–-0.80 eV.
+`phiK=-120°` is equivalent to `240°` modulo 360° for this Hamiltonian.
+
+`--center K` shifts the full mini-Brillouin-zone k-grid to the WSe2 monolayer
+K point; it does not select only the exact K momentum. Use `--k-pts 1` for a
+single-K-point spectral density.
 
 ## Distance metrics in heatmaps
 

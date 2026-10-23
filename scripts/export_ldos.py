@@ -8,6 +8,7 @@ Usage:
     source .venv/bin/activate
     python scripts/export_ldos.py
     python scripts/export_ldos.py --k-pts 10 --n-shells 2 --e-min -1.28 --e-max -1.11
+    python scripts/export_ldos.py --center K --Vk 0.0077 --phiK 106
 """
 import argparse
 import sys
@@ -45,6 +46,8 @@ def parse_args():
     p.add_argument("--r-extra", type=float, default=0.166)
     p.add_argument("--sample", default="S11")
     p.add_argument("--theta", type=float, default=None)
+    p.add_argument("--center", choices=("G", "K"), default="G",
+                   help="Center the mini-BZ k-grid on Gamma or the WSe2 K point")
     p.add_argument("--Vg", type=float, default=None)
     p.add_argument("--phiG", type=float, default=170.0)
     p.add_argument("--Vk", type=float, default=None)
@@ -108,8 +111,9 @@ def main():
     e_list = np.linspace(args.e_min, args.e_max,
                          int((args.e_max - args.e_min) / args.delta_e))
 
-    print(f"Computing k-grid (k_pts={args.k_pts})")
-    k_flat = compute_k_grid(args.k_pts, G_M)
+    k_center = compute_monolayer_K("WSe2") if args.center == "K" else None
+    print(f"Computing k-grid (k_pts={args.k_pts}, center={args.center})")
+    k_flat = compute_k_grid(args.k_pts, G_M, center=k_center)
 
     print(f"Diagonalizing (n_cells={n_cells}, dim={n_cells*44})")
     evals, evecs = moire_ham.diagonalize(k_flat, args.n_shells, interlayer, pars_v)
@@ -139,6 +143,8 @@ def main():
         "sample": args.sample,
         "theta_deg": theta,
         "energy_offset": energy_offset,
+        "center": args.center,
+        "k_center": np.zeros(2) if k_center is None else k_center,
         "Vg": Vg,
         "Vk": Vk,
         "phiG_deg": phiG * 180 / np.pi,
@@ -155,8 +161,17 @@ def main():
     else:
         phi_str = f"{phiG*180/np.pi:.0f}deg"
         Vg_str = f"{Vg*1000:.1f}meV"
-        out_fn = OUTPUT_DIR / f"ldos_{args.sample}_n{args.n_shells}_k{args.k_pts}"
-        out_fn = out_fn.with_name(out_fn.name + f"_{Vg_str}_{phi_str}.npz")
+        if args.center == "G":
+            # Preserve the existing automatic Gamma-export filename.
+            out_fn = OUTPUT_DIR / f"ldos_{args.sample}_n{args.n_shells}_k{args.k_pts}"
+            out_fn = out_fn.with_name(out_fn.name + f"_{Vg_str}_{phi_str}.npz")
+        else:
+            Vk_str = f"{Vk*1000:.1f}meV"
+            phiK_str = f"{phiK*180/np.pi:.0f}deg"
+            out_fn = OUTPUT_DIR / (
+                f"ldos_{args.sample}_n{args.n_shells}_k{args.k_pts}_{args.center}_"
+                f"{Vg_str}_{phi_str}_{Vk_str}_{phiK_str}.npz"
+            )
 
     np.savez(out_fn, **export)
     print(f"Exported: {out_fn}")
