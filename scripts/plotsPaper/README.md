@@ -61,11 +61,22 @@ The three potential-indexed sets are stored as:
 
 ```bash
 # Step 3: Export EDC vs V_G
-python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
-
-# S11 EDC-vs-V_G at phiG = 180 degrees, using the same couplings as above
 python scripts/export_edc_vs_V.py --sample S11 --phiG 180 \
     --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+
+# S11 twist-angle endpoints for the error bars (2.8° ± 0.2°)
+python scripts/export_edc_vs_V.py --sample S11_m26 --phiG 180 \
+    --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+python scripts/export_edc_vs_V.py --sample S11_p30 --phiG 180 \
+    --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
+
+# S3 twist-angle endpoints for the error bars (1.8° ± 0.2°)
+python scripts/export_edc_vs_V.py --sample S3_m16 --phiG 180 \
+    --w1p -1.200 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
+python scripts/export_edc_vs_V.py --sample S3_p20 --phiG 180 \
+    --w1p -1.200 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
+
+python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
 
 # S3 EDC-vs-V_G at phiG = 180 degrees
 python scripts/export_edc_vs_V.py --sample S3 --phiG 180 \
@@ -75,6 +86,10 @@ python scripts/export_edc_vs_V.py --sample S3 --phiG 180 \
 This is a separate observable: `export_edc_vs_V.py` sweeps V_G from 1 to 20 meV
 and exports one TVB-to-side-band distance per V_G, rather than the three full
 EDC intensity profiles saved by `export_moire_bands.py`.
+For S11 and S3, the plotter auto-loads the matching twist endpoint exports
+(`S11_m26`/`S11_p30` or `S3_m16`/`S3_p20`) and draws an asymmetric error bar
+at each V_G spanning the endpoint values around the central curve. Endpoint
+exports must use the same V_G grid, couplings, and phase as the central export.
 
 ```bash
 # Step 4: Export LDOS
@@ -119,10 +134,9 @@ python plot_distance_w_heatmap.py data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg
 python plot_edc_profile.py        data/edc_gamma_S3_2a_S3_Vg_11.5meV_phiG_175deg.npz
 
 # EDC vs V and moire bands (moire plot command also saves all exported Gamma EDC profiles)
-python plot_edc_vs_V.py data/edc_vs_V_n20_Vg1-20.npz       # S11
+python plot_edc_vs_V.py data/edc_vs_V_S11_n20_Vg1-20_phiG180.npz # S11 with 2.6°–3.0° twist error bars
 python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20.npz    # S3
-python plot_edc_vs_V.py data/edc_vs_V_S11_n20_Vg1-20_phiG180.npz # S11: phiG=180
-python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20_phiG180.npz # S3: phiG=180
+python plot_edc_vs_V.py data/edc_vs_V_S3_n20_Vg1-20_phiG180.npz # S3 with 1.6°–2.0° twist error bars
 # Outputs edc_vs_V_S11_phiG180.png
 python plot_moire_bands.py data/moire_bands_S11_k301_n2_Vg0_10.5_21_phiG180.npz # S11: phiG=180
 python plot_moire_bands.py data/moire_bands_S3_k301_n2_Vg0_11.5_23_phiG180.npz # S3: phiG=180

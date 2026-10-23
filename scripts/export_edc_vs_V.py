@@ -220,6 +220,7 @@ def main():
         interlayer_w2p=w2p,
         interlayer_w2d=w2d,
         phiG_deg=phiG_deg,
+        theta_deg=theta,
         n_shells=N_SHELLS,
     )
     print(f"Exported: {out_fn}")
