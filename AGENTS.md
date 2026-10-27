@@ -90,6 +90,7 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
 | `analyze_edc_k.py` | Analyzes K results: computes experimental peak distances and fit quality; plots 2D heatmaps and a selected EDC profile |
 | `plot_edc_k_twist.py` | Plots the minimum-L2 K EDC point per S11 twist angle at fixed phiK; color shows L2 with a 2.5–2.65° inset and separate colorbar |
+| `plot_edc_vs_Vk.py` | Reads combined K EDC results, saves the fixed-phiK peak-separation data, and plots it versus Vk |
 | `plot_moire_bands.py` | Plots moire bilayer bands with intensity spreading along K'→Γ→K and K→M→K' paths; supports caching, Gaussian/Lorentzian spreading, half-ARPES overlay |
 
 ### Development scripts: `scripts/dev/`
@@ -240,6 +241,7 @@ No build/test/lint tooling exists. Verification = does it run and produce `.npz`
 | `analyze_edc_gamma.py` | Analyzes Gamma results: computes distance from experiment, plots 2D heatmap |
 | `analyze_edc_k.py` | Analyzes K results: computes experimental peak distances and fit quality; plots 2D heatmaps and a selected EDC profile |
 | `plot_edc_k_twist.py` | Plots the minimum-L2 K EDC point per S11 twist angle at fixed phiK; color shows L2 with a 2.5–2.65° inset and separate colorbar |
+| `plot_edc_vs_Vk.py` | Reads combined K EDC results, saves the fixed-phiK peak-separation data, and plots it versus Vk |
 | `plot_moire_bands.py` | Plots moire bilayer bands with intensity spreading along K'→Γ→K and K→M→K' paths; supports caching, Gaussian/Lorentzian spreading, half-ARPES overlay |
 
 ### Development scripts: `scripts/dev/`

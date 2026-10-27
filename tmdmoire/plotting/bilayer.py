@@ -305,10 +305,13 @@ def plot_bilayer_fit(bilayer_data, k_list, evals, evals_no_coupling=None,
 
 
 def _apply_energy_shading(spread, e_list, shade_factor_e):
-    """Apply linear energy-dependent shading.
+    """Apply linear energy-dependent shading when a final factor is given.
 
     Starts at factor 0.1 at E_min and goes to shade_factor_e at E_max.
+    If shade_factor_e is None, return the unshaded intensity.
     """
+    if shade_factor_e is None:
+        return spread
     shade = np.linspace(0.1, shade_factor_e, len(e_list))
     return spread * shade[np.newaxis, :]
 

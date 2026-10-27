@@ -1,8 +1,14 @@
 # Plots for paper
 
-Standalone plotting scripts for EDC Gamma analysis, EDC vs V_G, and moire band structure. No tmdmoire environment needed — only numpy + matplotlib.
+Standalone plotting scripts for EDC Gamma analysis, EDC vs V_G, and moire band structure. Most require only numpy + matplotlib; `plot_edc_vs_Vk.py` reads the K sweep HDF5 and requires the project `.venv`.
 
-Run all commands from `scripts/plotsPaper/`. Output goes to `figures/`.
+Run plotting commands from `scripts/plotsPaper/` unless noted. Figures go to
+`figures/`; exported plot data goes to `data/`.
+
+The folder `scripts/plotsPaper/fig2_plot/` contains the data used for Fig. 2,
+generated from `Data/plot_bilayer_moire/`. Its `phi175/` and `phi180/` folders
+contain the pow=1 intensity files from the `n_shells=2` runs and `bands_KpGK.txt` and `bands_KpMK.txt` exports from a separate `n_shells=0` run with matching phase
+and interlayer parameters. The band file contains k plus bands 27 through 20.
 
 ## Dataset reference
 
@@ -90,6 +96,23 @@ For S11 and S3, the plotter auto-loads the matching twist endpoint exports
 (`S11_m26`/`S11_p30` or `S3_m16`/`S3_p20`) and draws an asymmetric error bar
 at each V_G spanning the endpoint values around the central curve. Endpoint
 exports must use the same V_G grid, couplings, and phase as the central export.
+
+## EDC peak separation vs V_K
+
+`plot_edc_vs_Vk.py` reads the central and twist-endpoint K sweep HDF5 files,
+selects a fixed phiK slice and Vk range, computes the fitted TVB-to-moire peak
+separation for each Vk, saves the selected data to `data/`, and plots it
+against Vk with the ARPES separation and ±0.2° twist uncertainty. It plots the
+fitted peak separation, not the full EDC intensity map:
+
+```bash
+# From the repository root, after combining the K sweep
+.venv/bin/python scripts/plotsPaper/plot_edc_vs_Vk.py \
+    --id S11_k_2 --sample S11 --phi-k 120 --vk-min 1 --vk-max 20
+```
+
+By default, the NPZ and PNG are saved under `scripts/plotsPaper/data/` and
+`scripts/plotsPaper/figures/`, respectively.
 
 ```bash
 # Step 4: Export LDOS

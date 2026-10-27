@@ -71,6 +71,8 @@ def parse_args():
     parser.add_argument("--pow-factor", type=float, default=2.0, help="Eigenvector exponent")
     parser.add_argument("--shade-ws2", type=float, default=0.1, help="WS2 shading factor")
     parser.add_argument("--shade-e-factor", type=float, default=3.0, help="Energy shading factor at E_max")
+    parser.add_argument("--no-energy-shading", action="store_true",
+                        help="Disable energy-dependent shading in simulated intensity figures")
     parser.add_argument("--e-min", type=float, default=-3.5, help="Minimum energy (eV)")
     parser.add_argument("--e-max", type=float, default=0.0, help="Maximum energy (eV)")
     parser.add_argument("--delta-e", type=float, default=0.01, help="Energy grid spacing (eV)")
@@ -79,6 +81,12 @@ def parse_args():
     parser.add_argument("--theta", type=float, default=None, help="Twist angle (deg, overrides sample)")
     parser.add_argument("--Vg", type=float, default=None, help="Override moire potential at Gamma (eV)")
     parser.add_argument("--Vk", type=float, default=None, help="Override moire potential at K (eV)")
+    parser.add_argument("--w1p", type=float, default=None, help="Override first p interlayer hopping (eV)")
+    parser.add_argument("--w1d", type=float, default=None, help="Override first d interlayer hopping (eV)")
+    parser.add_argument("--w2p", type=float, default=None, help="Override second p interlayer hopping (eV)")
+    parser.add_argument("--w2d", type=float, default=None, help="Override second d interlayer hopping (eV)")
+    parser.add_argument("--phiG-deg", dest="phi_g_deg", type=float, default=None,
+                        help="Override moire potential phase at Gamma (degrees)")
     return parser.parse_args()
 
 
@@ -117,8 +125,9 @@ def compute_diag_dir_name(n_shells, k_pts, interlayer, moire):
             f"{Vg_meV:.1f}_{phiG_deg:.1f}_{Vk_meV:.1f}_{phiK_deg:.1f}")
 
 
-def save_metadata(diag_dir, k_pts, n_shells, n_cells, interlayer, moire, theta, sample):
-    """Save metadata.json with all run parameters."""
+def save_metadata(diag_dir, k_pts, n_shells, n_cells, interlayer, moire, theta, sample,
+                  intensity_settings):
+    """Save diagonalization parameters and all intensity settings used."""
     meta = {
         "k_pts": k_pts,
         "n_shells": n_shells,
@@ -143,6 +152,24 @@ def save_metadata(diag_dir, k_pts, n_shells, n_cells, interlayer, moire, theta, 
         },
     }
     meta_fn = diag_dir / "metadata.json"
+
+    # Multiple intensity variants (for example, different pow_factor values)
+    # share one diagonalization directory. Preserve their settings together.
+    intensity_configs = []
+    if meta_fn.exists():
+        with open(meta_fn) as f:
+            previous_meta = json.load(f)
+        physical_keys = ("k_pts", "n_shells", "n_cells", "theta_deg", "sample",
+                         "interlayer", "moire")
+        if all(previous_meta.get(key) == meta.get(key) for key in physical_keys):
+            previous_configs = previous_meta.get("intensity_settings", [])
+            if isinstance(previous_configs, list):
+                intensity_configs = previous_configs
+
+    if intensity_settings not in intensity_configs:
+        intensity_configs.append(intensity_settings)
+    meta["intensity_settings"] = intensity_configs
+
     with open(meta_fn, "w") as f:
         json.dump(meta, f, indent=2)
 
@@ -202,6 +229,12 @@ def main():
         moire["Vg"] = args.Vg
     if args.Vk is not None:
         moire["Vk"] = args.Vk
+    for name in ("w1p", "w1d", "w2p", "w2d"):
+        value = getattr(args, name)
+        if value is not None:
+            interlayer[name] = value
+    if args.phi_g_deg is not None:
+        moire["phiG"] = np.deg2rad(args.phi_g_deg)
 
     wse2 = TMDMaterial("WSe2", params=tb_wse2)
     ws2 = TMDMaterial("WS2", params=tb_ws2)
@@ -224,6 +257,20 @@ def main():
         args.spread_type, args.spread_k, args.spread_e, args.pow_factor,
         args.shade_ws2, args.shade_e_factor
     )
+    intensity_settings = {
+        "spread_type": args.spread_type,
+        "spread_k": args.spread_k,
+        "spread_k_unit": "A^-1",
+        "spread_e": args.spread_e,
+        "spread_e_unit": "eV",
+        "pow_factor": args.pow_factor,
+        "shade_ws2": args.shade_ws2,
+        "shade_e_factor": args.shade_e_factor,
+        "energy_shading": not args.no_energy_shading,
+        "e_min": args.e_min,
+        "e_max": args.e_max,
+        "delta_e": args.delta_e,
+    }
 
     diag_dir = CACHE_ROOT / diag_dir_name
     diag_file = diag_dir / "diag.npz"
@@ -245,7 +292,8 @@ def main():
         norm_kgk_mono = d["norm_kgk_mono"]
         k_list_kgk = d["k_list_kgk"]
         k_list_kmkp = d["k_list_kmkp"]
-        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire, theta, args.sample)
+        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire,
+                      theta, args.sample, intensity_settings)
     else:
         print(f"Building G->K->M path (k_pts={args.k_pts})")
         k_list_gkm, norm_gkm = get_k_list("G-K-M", args.k_pts, tmd="WSe2", return_norm=True)
@@ -311,7 +359,8 @@ def main():
             k_list_kgk=k_list_kgk,
             k_list_kmkp=k_list_kmkp,
         )
-        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire, theta, args.sample)
+        save_metadata(diag_dir, args.k_pts, args.n_shells, n_cells, interlayer, moire,
+                      theta, args.sample, intensity_settings)
 
     print("Loading ARPES intensity data for band-line plots")
     k_kgk_arpes, e_kgk_arpes, intensity_kgk, k_kk_arpes, e_kk_arpes, intensity_kk = load_arpes_intensity()
@@ -398,13 +447,15 @@ def main():
             "pow_factor": args.pow_factor,
             "shade_ws2": args.shade_ws2,
             "shade_e_factor": args.shade_e_factor,
+            "energy_shading": not args.no_energy_shading,
         }, f, indent=2)
     print(f"  {meta_fn}")
 
     print("Plotting simulated bands")
+    shade_factor_e = None if args.no_energy_shading else args.shade_e_factor
     plot_moire_bands_simulated(
         norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
-        shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
+        shade_factor_e=shade_factor_e, save_dir=intensity_dir
     )
 
     print("Loading bilayer ARPES data for overlay")
@@ -416,7 +467,7 @@ def main():
     print("Plotting simulated bands with ARPES overlay")
     plot_moire_bands_simulated_with_arpes(
         norm_kgk, norm_kmkp, e_list, spread_kgk, spread_kmkp,
-        bilayer_data, shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
+        bilayer_data, shade_factor_e=shade_factor_e, save_dir=intensity_dir
     )
 
     print("Plotting ARPES data")
@@ -434,7 +485,7 @@ def main():
         k_kgk_arpes, k_kk_arpes, e_kgk_arpes,
         spread_kgk_resampled, spread_kmkp_resampled,
         intensity_kgk, intensity_kk,
-        shade_factor_e=args.shade_e_factor, save_dir=intensity_dir
+        shade_factor_e=shade_factor_e, save_dir=intensity_dir
     )
 
     print("Done")

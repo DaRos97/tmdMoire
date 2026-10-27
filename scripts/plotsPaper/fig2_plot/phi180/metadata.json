@@ -1,0 +1,37 @@
+{
+  "k_pts": 300,
+  "n_shells": 2,
+  "n_cells": 19,
+  "theta_deg": 2.8,
+  "sample": "S11",
+  "interlayer": {
+    "w1p": -1.22,
+    "w1d": 0.46,
+    "w2p": -0.1694,
+    "w2d": 0.0215
+  },
+  "moire": {
+    "Vg_ev": 0.0105,
+    "Vg_meV": 10.5,
+    "phiG_deg": 180.0,
+    "phiG_rad": 3.141592653589793,
+    "Vk_ev": 0.0077,
+    "Vk_meV": 7.7,
+    "phiK_deg": 106.0,
+    "phiK_rad": 1.8500490071139892
+  },
+  "intensity_settings": [
+    {
+      "spread_type": "Gauss",
+      "spread_k": 0.005,
+      "spread_k_unit": "A^-1",
+      "spread_e": 0.015,
+      "spread_e_unit": "eV",
+      "pow_factor": 1.0,
+      "shade_ws2": 0.1,
+      "e_min": -3.5,
+      "e_max": 0.0,
+      "delta_e": 0.01
+    }
+  ]
+}
