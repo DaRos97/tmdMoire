@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 TWIST_ENDPOINTS = {
     "S11": (("S11_m26", 2.6), ("S11_p30", 3.0)),
-    "S3": (("S3_m16", 1.6), ("S3_p20", 2.0)),
+    "S3": (("S3_m15", 1.5), ("S3_p21", 2.1)),
 }
 
 CENTRAL_TWIST_ANGLES = {"S11": 2.8, "S3": 1.8}

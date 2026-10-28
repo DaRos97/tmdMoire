@@ -76,10 +76,10 @@ python scripts/export_edc_vs_V.py --sample S11_m26 --phiG 180 \
 python scripts/export_edc_vs_V.py --sample S11_p30 --phiG 180 \
     --w1p -1.220 --w1d 0.460 --w2p -0.1694 --w2d 0.0215
 
-# S3 twist-angle endpoints for the error bars (1.8° ± 0.2°)
-python scripts/export_edc_vs_V.py --sample S3_m16 --phiG 180 \
+# S3 twist-angle endpoints for the error bars (1.8° ± 0.3°)
+python scripts/export_edc_vs_V.py --sample S3_m15 --phiG 180 \
     --w1p -1.200 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
-python scripts/export_edc_vs_V.py --sample S3_p20 --phiG 180 \
+python scripts/export_edc_vs_V.py --sample S3_p21 --phiG 180 \
     --w1p -1.200 --w1d 0.455 --w2p -0.1694 --w2d 0.0215
 
 python scripts/export_edc_vs_V.py --sample S3 --w1p -1.2 --w1d 0.455 --phiG 175
@@ -293,9 +293,10 @@ When the input `.npz` includes the 21 meV profile, the same command also writes 
 ### Twist-angle uncertainty figure
 
 `plot_moire_geometry.py` builds `figures/SM_twist_angle.pdf` from the combined
-155–205° Gamma runs for S11, S11_m26, and S11_p30. Export the heatmaps from the
-combined HDF5 data with an L1 cutoff of 10 meV (the plotted quantity remains the
-minimum L2 separation distance):
+155–205° Gamma runs for S11 (2.6°, 2.8°, 3.0°) and S3 (1.5°, 1.8°, 2.1°).
+Export S11 heatmaps with an L1 cutoff of 10 meV and S3 heatmaps with an L1
+cutoff of 20 meV. Both rows use an L2 cutoff of 10 meV and the plotted quantity
+is the minimum L2 separation distance. From the repository root:
 
 ```bash
 python scripts/export_edc_gamma_data.py --id 4Dsm8a_155_205 --sample S11 \
@@ -307,6 +308,15 @@ python scripts/export_edc_gamma_data.py --id 4Dsm8d_155_205 --sample S11_m26 \
 python scripts/export_edc_gamma_data.py --id 4Dsm8e_155_205 --sample S11_p30 \
     --l1-cutoff 0.010 --cutoff 0.010 --ratio-cutoff 0 \
     --output scripts/plotsPaper/data/edc_gamma_4Dsm8e_155_205_L1_10meV.npz
+python scripts/export_edc_gamma_data.py --id S3_2b_155_205 --sample S3_m15 \
+    --l1-cutoff 0.020 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_S3_2b_155_205_L1_20meV.npz
+python scripts/export_edc_gamma_data.py --id S3_2a_155_205 --sample S3 \
+    --l1-cutoff 0.020 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_S3_2a_155_205_L1_20meV.npz
+python scripts/export_edc_gamma_data.py --id S3_2c_155_205 --sample S3_p21 \
+    --l1-cutoff 0.020 --cutoff 0.010 --ratio-cutoff 0 \
+    --output scripts/plotsPaper/data/edc_gamma_S3_2c_155_205_L1_20meV.npz
 python scripts/plotsPaper/plot_moire_geometry.py
 ```
 
